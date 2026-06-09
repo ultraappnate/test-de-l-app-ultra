@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useStore } from './store'
 
@@ -60,10 +60,21 @@ function LandingOrDashboard({ theme, setTheme }) {
   return <Navigate to="/dashboard" replace />
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return isMobile
+}
+
 function Layout({ theme, setTheme, children }) {
   const { user } = useStore()
   const { pathname } = useLocation()
   const [collapsed, setCollapsed] = useState(false)
+  const isMobile = useIsMobile()
   const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/'
   const isBuilderPage = pathname.startsWith('/coach/programs/') || pathname === '/coach/programs/new'
   const isFullscreen = pathname === '/discover'
@@ -82,7 +93,8 @@ function Layout({ theme, setTheme, children }) {
         <main
           className="flex-1 transition-all duration-300"
           style={{
-            marginLeft: collapsed ? '60px' : '216px',
+            marginLeft: isMobile ? 0 : (collapsed ? '60px' : '216px'),
+            paddingBottom: isMobile ? '70px' : undefined,
             height: isFullscreen ? '100vh' : undefined,
             minHeight: isFullscreen ? undefined : '100vh',
             overflow: isFullscreen ? 'hidden' : undefined,
@@ -90,8 +102,8 @@ function Layout({ theme, setTheme, children }) {
         >
           {children}
         </main>
-        {!isBuilderPage && <ThemeToggle theme={theme} setTheme={setTheme} />}
-        <AICoach/>
+        {!isBuilderPage && !isMobile && <ThemeToggle theme={theme} setTheme={setTheme} />}
+        {!isMobile && <AICoach/>}
       </div>
     </SidebarContext.Provider>
   )

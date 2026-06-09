@@ -110,3 +110,34 @@ input:focus, textarea:focus, select:focus {
 
 /* ── Smooth image load ───────────────────────────── */
 img { transition: opacity 0.3s ease; }
+
+/* ── Mobile responsive ───────────────────────────── */
+@media (max-width: 767px) {
+  /* Grids: 4 colonnes → 2 sur mobile */
+  .grid-cols-4, [class*="grid-cols-4"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  /* Grids: 3 colonnes → 1-2 sur mobile */
+  .grid-cols-3, [class*="grid-cols-3"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  /* Grids: 2 colonnes → 1 sur mobile */
+  .grid-cols-2, [class*="grid-cols-2"] {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+  /* Empêcher overflow horizontal */
+  body { overflow-x: hidden; }
+  /* Charts: hauteur réduite sur mobile */
+  .recharts-wrapper, .recharts-responsive-container {
+    max-width: 100% !important;
+    overflow: hidden;
+  }
+  /* Tables horizontales scrollables */
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Padding de page réduit */
+  .page-padding { padding: 16px !important; }
+  /* Textes trop larges */
+  h1, h2 { font-size: clamp(18px, 5vw, 28px) !important; }
+  /* Boutons pleine largeur sur mobile dans les headers */
+  .mobile-full-width { width: 100% !important; }
+}

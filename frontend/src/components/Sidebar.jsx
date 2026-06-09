@@ -3,49 +3,57 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 
 const NAV_CLIENT = [
-  { to: '/dashboard',   label: 'Accueil',          icon: '⌂' },
-  { to: '/discover',    label: 'Découvrir',         icon: '🗺', highlight: true },
-  { to: '/programs',    label: 'Programmes',        icon: '◈' },
-  { to: '/nutrition',   label: 'Mon Tracker',       icon: '◎' },
-  { to: '/progress',    label: 'Ma progression',    icon: '↑' },
-  { to: '/health',      label: 'Applis Santé',      icon: '🔗' },
-  { to: '/community',   label: 'Communauté',        icon: '🌐' },
-  { to: '/chat',        label: 'Messages',           icon: '◉' },
-  { to: '/calendar',    label: 'Calendrier',         icon: '▦' },
+  { to: '/dashboard',  label: 'Accueil',          icon: '⌂' },
+  { to: '/discover',   label: 'Découvrir',         icon: '🗺', highlight: true },
+  { to: '/programs',   label: 'Programmes',        icon: '◈' },
+  { to: '/nutrition',  label: 'Mon Tracker',       icon: '◎' },
+  { to: '/progress',   label: 'Ma progression',    icon: '↑' },
+  { to: '/health',     label: 'Applis Santé',      icon: '🔗' },
+  { to: '/community',  label: 'Communauté',        icon: '🌐' },
+  { to: '/chat',       label: 'Messages',          icon: '◉' },
+  { to: '/calendar',   label: 'Calendrier',        icon: '▦' },
 ]
 const NAV_COACH = [
   { to: '/dashboard',        label: 'Accueil',          icon: '⌂' },
-  { to: '/coach/profile',    label: 'Mon profil',        icon: '◈' },
-  { to: '/programs',         label: 'Catalogue',         icon: '◉' },
-  { to: '/coach/programs',   label: 'Mes programmes',    icon: '▦' },
-  { to: '/coach/nutrition',  label: 'Suivi Nutrition',   icon: '◎' },
-  { to: '/clients',          label: 'Mes clients',       icon: '❯❯' },
-  { to: '/health',           label: 'Applis Santé',      icon: '🔗' },
-  { to: '/community',        label: 'Communauté',        icon: '🌐' },
-  { to: '/chat',             label: 'Messages',           icon: '◆' },
-  { to: '/analytics',        label: 'Statistiques',      icon: '↑' },
-  { to: '/revenue',          label: 'Revenus',            icon: '◇' },
-  { to: '/calendar',         label: 'Calendrier',         icon: '▤' },
+  { to: '/coach/profile',    label: 'Mon profil',       icon: '◈' },
+  { to: '/programs',         label: 'Catalogue',        icon: '◉' },
+  { to: '/coach/programs',   label: 'Mes programmes',   icon: '▦' },
+  { to: '/coach/nutrition',  label: 'Suivi Nutrition',  icon: '◎' },
+  { to: '/clients',          label: 'Mes clients',      icon: '❯❯' },
+  { to: '/health',           label: 'Applis Santé',     icon: '🔗' },
+  { to: '/community',        label: 'Communauté',       icon: '🌐' },
+  { to: '/chat',             label: 'Messages',         icon: '◆' },
+  { to: '/analytics',        label: 'Statistiques',     icon: '↑' },
+  { to: '/revenue',          label: 'Revenus',          icon: '◇' },
+  { to: '/calendar',         label: 'Calendrier',       icon: '▤' },
 ]
 const NAV_NUTRITIONIST = [
-  { to: '/nutri/dashboard',   label: 'Accueil',              icon: '⌂' },
-  { to: '/nutri/profile',     label: 'Mon profil',           icon: '◈' },
-  { to: '/nutri/clients',     label: 'Mes clients',          icon: '❯❯' },
-  { to: '/nutri/plans',       label: 'Plans nutritionnels',  icon: '◎' },
-  { to: '/nutri/recipes',     label: 'Mes recettes',         icon: '◆' },
-  { to: '/nutri/resources',   label: 'Ebooks & Ressources',  icon: '▦' },
-  { to: '/health',            label: 'Applis Santé',         icon: '🔗' },
-  { to: '/community',         label: 'Communauté',           icon: '🌐' },
-  { to: '/chat',              label: 'Messages',             icon: '◉' },
-  { to: '/nutri/stats',       label: 'Statistiques',         icon: '↑' },
-  { to: '/revenue',           label: 'Revenus',              icon: '◇' },
-  { to: '/calendar',          label: 'Calendrier',           icon: '▤' },
+  { to: '/nutri/dashboard',  label: 'Accueil',              icon: '⌂' },
+  { to: '/nutri/profile',    label: 'Mon profil',           icon: '◈' },
+  { to: '/nutri/clients',    label: 'Mes clients',          icon: '❯❯' },
+  { to: '/nutri/plans',      label: 'Plans nutritionnels',  icon: '◎' },
+  { to: '/nutri/recipes',    label: 'Mes recettes',         icon: '◆' },
+  { to: '/nutri/resources',  label: 'Ebooks & Ressources',  icon: '▦' },
+  { to: '/health',           label: 'Applis Santé',         icon: '🔗' },
+  { to: '/community',        label: 'Communauté',           icon: '🌐' },
+  { to: '/chat',             label: 'Messages',             icon: '◉' },
+  { to: '/nutri/stats',      label: 'Statistiques',         icon: '↑' },
+  { to: '/revenue',          label: 'Revenus',              icon: '◇' },
+  { to: '/calendar',         label: 'Calendrier',           icon: '▤' },
 ]
 const NAV_ADMIN = [
-  { to: '/admin',      label: 'Panneau admin',   icon: '👑' },
-  { to: '/programs',   label: 'Programmes',      icon: '◉' },
-  { to: '/analytics',  label: 'Analytiques',     icon: '↑' },
+  { to: '/admin',     label: 'Panneau admin', icon: '👑' },
+  { to: '/programs',  label: 'Programmes',    icon: '◉' },
+  { to: '/analytics', label: 'Analytiques',   icon: '↑' },
 ]
+
+// Raccourcis bottom nav mobile (5 max)
+const MOBILE_NAV = {
+  coach:        ['/dashboard', '/coach/programs', '/community', '/chat', '/analytics'],
+  client:       ['/dashboard', '/programs', '/community', '/chat', '/progress'],
+  nutritionist: ['/nutri/dashboard', '/nutri/clients', '/community', '/chat', '/nutri/stats'],
+  admin:        ['/admin', '/programs', '/analytics'],
+}
 
 function getNav(role) {
   if (role === 'coach') return NAV_COACH
@@ -59,6 +67,16 @@ function getRoleLabel(role) {
   if (role === 'nutritionist') return 'Espace Nutrition'
   if (role === 'admin') return 'Administration'
   return 'Coaching & Nutrition'
+}
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return isMobile
 }
 
 function NotificationBell({ collapsed }) {
@@ -106,9 +124,7 @@ function NotificationBell({ collapsed }) {
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
             <p className="text-sm font-black" style={{ color: 'var(--text-primary)' }}>Notifications</p>
             {unread > 0 && (
-              <button onClick={markAllNotifsRead}
-                className="text-[10px] font-bold hover:opacity-70 transition"
-                style={{ color: 'var(--accent)' }}>
+              <button onClick={markAllNotifsRead} className="text-[10px] font-bold hover:opacity-70 transition" style={{ color: 'var(--accent)' }}>
                 Tout marquer lu
               </button>
             )}
@@ -144,12 +160,98 @@ function NotificationBell({ collapsed }) {
   )
 }
 
+/* ── Bottom Nav Mobile ── */
+function MobileBottomNav({ links, theme, setTheme, user }) {
+  const navigate = useNavigate()
+  const { logout } = useStore()
+  const isDark = theme === 'dark'
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  // Les 4 premiers liens + menu "Plus"
+  const mainLinks = links.slice(0, 4)
+
+  return (
+    <>
+      {/* Overlay menu "Plus" */}
+      {menuOpen && (
+        <div style={{ position:'fixed', inset:0, zIndex:998, background:'rgba(0,0,0,0.5)' }}
+          onClick={() => setMenuOpen(false)}>
+          <div style={{ position:'absolute', bottom:70, left:0, right:0, margin:'0 12px',
+            background:'var(--bg-card)', borderRadius:20, padding:16,
+            border:'1px solid var(--border)', boxShadow:'0 -8px 32px rgba(0,0,0,0.3)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:8, marginBottom:12 }}>
+              {links.slice(4).map(({ to, label, icon }) => (
+                <NavLink key={to} to={to} onClick={() => setMenuOpen(false)}
+                  style={({ isActive }) => ({
+                    display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+                    padding:'10px 4px', borderRadius:14, textDecoration:'none',
+                    background: isActive ? 'var(--accent)' : 'var(--bg-base)',
+                    color: isActive ? '#fff' : 'var(--text-secondary)',
+                  })}>
+                  <span style={{ fontSize:18 }}>{icon}</span>
+                  <span style={{ fontSize:9, fontWeight:700, textAlign:'center', lineHeight:1.2 }}>{label}</span>
+                </NavLink>
+              ))}
+            </div>
+            {/* Actions */}
+            <div style={{ display:'flex', gap:8, borderTop:'1px solid var(--border)', paddingTop:12 }}>
+              <button onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                style={{ flex:1, padding:'10px 0', borderRadius:12, fontSize:12, fontWeight:700,
+                  background:'var(--bg-base)', border:'1px solid var(--border)', color:'var(--text-secondary)', cursor:'pointer' }}>
+                {isDark ? '☀ Clair' : '☾ Sombre'}
+              </button>
+              <button onClick={() => { logout(); navigate('/login'); setMenuOpen(false) }}
+                style={{ flex:1, padding:'10px 0', borderRadius:12, fontSize:12, fontWeight:700,
+                  background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.2)',
+                  color:'#ef4444', cursor:'pointer' }}>
+                ⏻ Quitter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barre du bas */}
+      <nav style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:999,
+        background:'var(--sidebar-bg)', borderTop:'1px solid var(--sidebar-border)',
+        display:'flex', alignItems:'center', paddingBottom:'env(safe-area-inset-bottom)',
+        height: 60 }}>
+        {mainLinks.map(({ to, label, icon }) => (
+          <NavLink key={to} to={to} end={to === '/dashboard'}
+            style={({ isActive }) => ({
+              flex:1, display:'flex', flexDirection:'column', alignItems:'center',
+              justifyContent:'center', gap:3, padding:'6px 0', textDecoration:'none',
+              color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+            })}>
+            <span style={{ fontSize:20, lineHeight:1 }}>{icon}</span>
+            <span style={{ fontSize:9, fontWeight:700, lineHeight:1 }}>{label.split(' ')[0]}</span>
+          </NavLink>
+        ))}
+        {/* Bouton Plus */}
+        <button onClick={() => setMenuOpen(!menuOpen)}
+          style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center',
+            justifyContent:'center', gap:3, padding:'6px 0', background:'none', border:'none',
+            color: menuOpen ? 'var(--accent)' : 'var(--text-muted)', cursor:'pointer' }}>
+          <span style={{ fontSize:20, lineHeight:1 }}>☰</span>
+          <span style={{ fontSize:9, fontWeight:700, lineHeight:1 }}>Plus</span>
+        </button>
+      </nav>
+    </>
+  )
+}
+
 export default function Sidebar({ theme, setTheme, collapsed, setCollapsed }) {
   const { user, logout } = useStore()
   const navigate = useNavigate()
   const links = getNav(user?.role)
-
+  const isMobile = useIsMobile()
   const isDark = theme === 'dark'
+
+  // Sur mobile → barre de navigation en bas
+  if (isMobile) {
+    return <MobileBottomNav links={links} theme={theme} setTheme={setTheme} user={user} />
+  }
 
   return (
     <aside
@@ -161,27 +263,21 @@ export default function Sidebar({ theme, setTheme, collapsed, setCollapsed }) {
       }}
     >
       {/* Logo */}
-      <div
-        className="flex items-center justify-between px-4 py-5 min-h-[64px]"
-        style={{ borderBottom: '1px solid var(--sidebar-border)' }}
-      >
+      <div className="flex items-center justify-between px-4 py-5 min-h-[64px]"
+        style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
         {!collapsed && (
           <div>
-            <span className="font-black tracking-[0.22em] text-lg" style={{ color: 'var(--text-primary)' }}>
-              ULTRA
-            </span>
+            <span className="font-black tracking-[0.22em] text-lg" style={{ color: 'var(--text-primary)' }}>ULTRA</span>
             <p className="text-[10px] font-bold tracking-widest uppercase mt-0.5" style={{ color: 'var(--gold)' }}>
               {getRoleLabel(user?.role)}
             </p>
           </div>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
+        <button onClick={() => setCollapsed(!collapsed)}
           className="rounded-lg p-1.5 transition ml-auto text-sm font-bold"
           style={{ color: 'var(--text-muted)', background: 'transparent' }}
           onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-        >
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
           {collapsed ? '›' : '‹'}
         </button>
       </div>
@@ -189,11 +285,7 @@ export default function Sidebar({ theme, setTheme, collapsed, setCollapsed }) {
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
         {links.map(({ to, label, icon, highlight }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/dashboard'}
-            title={collapsed ? label : undefined}
+          <NavLink key={to} to={to} end={to === '/dashboard'} title={collapsed ? label : undefined}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
             style={({ isActive }) => ({
               background: isActive ? 'var(--accent)' : highlight && !isActive ? 'rgba(39,174,96,0.08)' : 'transparent',
@@ -211,8 +303,7 @@ export default function Sidebar({ theme, setTheme, collapsed, setCollapsed }) {
                 e.currentTarget.style.background = highlight ? 'rgba(39,174,96,0.08)' : 'transparent'
                 e.currentTarget.style.color = highlight ? '#27ae60' : 'var(--text-muted)'
               }
-            }}
-          >
+            }}>
             <span className="w-4 text-center text-xs flex-shrink-0 leading-none font-black">{icon}</span>
             {!collapsed && <span className="truncate">{label}</span>}
           </NavLink>
@@ -221,45 +312,33 @@ export default function Sidebar({ theme, setTheme, collapsed, setCollapsed }) {
 
       {/* Footer */}
       <div className="px-2 pb-4 pt-3 space-y-0.5" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
-        {/* Theme toggle */}
-        <button
-          onClick={() => setTheme(isDark ? 'light' : 'dark')}
+        <button onClick={() => setTheme(isDark ? 'light' : 'dark')}
           title={collapsed ? (isDark ? 'Mode clair' : 'Mode sombre') : undefined}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition w-full text-left"
           style={{ color: 'var(--text-muted)' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
-        >
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}>
           <span className="text-base leading-none flex-shrink-0">{isDark ? '☀' : '☾'}</span>
           {!collapsed && <span>{isDark ? 'Mode clair' : 'Mode sombre'}</span>}
         </button>
 
-        {/* Notifications */}
         <NotificationBell collapsed={collapsed} />
 
-        {/* Logout */}
-        <button
-          onClick={() => { logout(); navigate('/login') }}
+        <button onClick={() => { logout(); navigate('/login') }}
           title={collapsed ? 'Déconnexion' : undefined}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition w-full text-left"
           style={{ color: 'var(--text-muted)' }}
           onMouseEnter={e => { e.currentTarget.style.background = 'rgba(125,45,56,0.08)'; e.currentTarget.style.color = 'var(--accent)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
-        >
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}>
           <span className="text-base leading-none flex-shrink-0">⏻</span>
           {!collapsed && <span>Déconnexion</span>}
         </button>
 
-        {/* User card */}
         {!collapsed && (
-          <div
-            className="flex items-center gap-2.5 px-3 py-2.5 mt-2 rounded-xl"
-            style={{ background: 'var(--bg-card-2)', border: '1px solid var(--border-soft)' }}
-          >
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
-              style={{ background: 'var(--accent)' }}
-            >
+          <div className="flex items-center gap-2.5 px-3 py-2.5 mt-2 rounded-xl"
+            style={{ background: 'var(--bg-card-2)', border: '1px solid var(--border-soft)' }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+              style={{ background: 'var(--accent)' }}>
               {user?.name?.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
