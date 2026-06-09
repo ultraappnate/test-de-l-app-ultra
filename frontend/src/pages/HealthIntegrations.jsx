@@ -489,144 +489,142 @@ export default function HealthIntegrations() {
   const connectedCount = Object.values(connections).filter(c => c?.connected).length
   const selectedPlatform = PLATFORMS.find(x => x.id === selected)
 
-  return (
-    <div style={{ minHeight:'100vh', background:'var(--bg-base)', padding:'32px 28px' }}>
+  /* Vue détail — plein écran, s'adapte mobile et desktop */
+  if (selected) {
+    return (
+      <div style={{ minHeight:'100vh', background:'var(--bg-base)', padding:'clamp(16px,4vw,32px)' }}>
+        {toast && (
+          <div style={{ position:'fixed', top:20, right:20, zIndex:9999,
+            background: toast.ok ? 'var(--accent)' : '#ef4444',
+            color:'#fff', padding:'12px 20px', borderRadius:14, fontWeight:700, fontSize:13,
+            boxShadow:'0 8px 24px rgba(0,0,0,0.3)' }}>
+            {toast.ok ? '✓' : '✗'} {toast.msg}
+          </div>
+        )}
 
-      {/* Toast */}
+        {/* Barre du haut — retour + liste rapide */}
+        <div style={{ marginBottom:24 }}>
+          <button onClick={() => setSelected(null)}
+            style={{ display:'inline-flex', alignItems:'center', gap:8, fontSize:14, fontWeight:700,
+              color:'var(--text-secondary)', background:'var(--bg-card)', border:'1px solid var(--border)',
+              borderRadius:12, padding:'9px 16px', cursor:'pointer', marginBottom:20 }}>
+            ← Toutes les intégrations
+          </button>
+
+          {/* Sélecteur de plateforme horizontal */}
+          <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4, scrollbarWidth:'none' }}>
+            {PLATFORMS.map(p => (
+              <button key={p.id} onClick={() => setSelected(p.id)}
+                style={{ display:'flex', alignItems:'center', gap:8, padding:'10px 16px',
+                  borderRadius:14, border:`1px solid ${selected===p.id ? p.color : 'var(--border)'}`,
+                  background: selected===p.id ? p.bg : 'var(--bg-card)',
+                  cursor:'pointer', flexShrink:0, transition:'all 0.2s' }}>
+                <span style={{ fontSize:18 }}>{p.logo}</span>
+                <div style={{ textAlign:'left' }}>
+                  <p style={{ fontSize:12, fontWeight:800, color: selected===p.id ? '#fff' : 'var(--text-primary)', margin:0, whiteSpace:'nowrap' }}>
+                    {p.name}
+                  </p>
+                  {connections[p.id]?.connected
+                    ? <span style={{ fontSize:9, color:'#4ade80', fontWeight:700 }}>● Connecté</span>
+                    : <span style={{ fontSize:9, color:'var(--text-faint)' }}>Non connecté</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Contenu de la plateforme sélectionnée */}
+        <div style={{ maxWidth:760, margin:'0 auto' }}>
+          {selectedPlatform?.isManual && !connections[selected]?.connected
+            ? <AppleImportView onImport={handleAppleImport} importing={importing} />
+            : connections[selected]?.connected
+              ? <ConnectedView
+                  platform={selected}
+                  data={connections[selected]}
+                  onDisconnect={() => handleDisconnect(selected)}
+                  onSync={() => handleSync(selected)}
+                  syncing={syncing} />
+              : (
+                <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)',
+                  borderRadius:24, padding:'clamp(24px,6vw,48px)', textAlign:'center' }}>
+                  <div style={{ fontSize:64, marginBottom:16 }}>{selectedPlatform?.logo}</div>
+                  <h3 style={{ fontSize:'clamp(20px,5vw,28px)', fontWeight:900, color:'var(--text-primary)', margin:'0 0 8px' }}>
+                    {selectedPlatform?.name}
+                  </h3>
+                  <p style={{ color:'var(--text-secondary)', fontSize:15, marginBottom:28, lineHeight:1.6, maxWidth:420, margin:'0 auto 28px' }}>
+                    {selectedPlatform?.description}
+                  </p>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', marginBottom:32 }}>
+                    {selectedPlatform?.metrics.map(m => (
+                      <span key={m} style={{ fontSize:12, padding:'6px 14px', borderRadius:10, fontWeight:600,
+                        background:'var(--bg-base)', color:'var(--text-secondary)', border:'1px solid var(--border)' }}>
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                  <button onClick={() => handleConnect(selected)} disabled={connecting === selected}
+                    style={{ padding:'16px 40px', borderRadius:16, fontSize:15, fontWeight:800, cursor:'pointer',
+                      background: selectedPlatform?.color, color:'#fff', border:'none', width:'100%', maxWidth:320,
+                      opacity: connecting===selected ? 0.7 : 1,
+                      boxShadow:`0 8px 32px ${selectedPlatform?.color}55` }}>
+                    {connecting === selected ? '⟳ Connexion en cours…' : `🔗 Connecter ${selectedPlatform?.name}`}
+                  </button>
+                </div>
+              )
+          }
+        </div>
+
+        <style>{`@keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      </div>
+    )
+  }
+
+  /* ── Vue liste ── */
+  return (
+    <div style={{ minHeight:'100vh', background:'var(--bg-base)', padding:'clamp(16px,4vw,32px)' }}>
       {toast && (
-        <div style={{ position:'fixed', top:20, right:24, zIndex:9999,
+        <div style={{ position:'fixed', top:20, right:20, zIndex:9999,
           background: toast.ok ? 'var(--accent)' : '#ef4444',
           color:'#fff', padding:'12px 20px', borderRadius:14, fontWeight:700, fontSize:13,
-          boxShadow:'0 8px 24px rgba(0,0,0,0.25)', animation:'fadeDown 0.3s ease' }}>
+          boxShadow:'0 8px 24px rgba(0,0,0,0.3)' }}>
           {toast.ok ? '✓' : '✗'} {toast.msg}
         </div>
       )}
 
       {/* Header */}
       <div style={{ marginBottom:32 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:6 }}>
-          <span style={{ fontSize:28 }}>🔗</span>
-          <h1 style={{ fontSize:26, fontWeight:900, color:'var(--text-primary)', margin:0 }}>
-            Intégrations Santé
-          </h1>
-        </div>
-        <p style={{ color:'var(--text-faint)', fontSize:14, marginBottom:0 }}>
-          Connecte tes appareils et applications pour centraliser toutes tes données dans ULTRA.
+        <p style={{ fontSize:11, fontWeight:900, letterSpacing:'0.25em', textTransform:'uppercase',
+          color:'var(--gold)', marginBottom:6 }}>Santé & Données</p>
+        <h1 style={{ fontSize:'clamp(24px,6vw,36px)', fontWeight:900, color:'var(--text-primary)', margin:'0 0 8px' }}>
+          Intégrations Santé
+        </h1>
+        <p style={{ color:'var(--text-secondary)', fontSize:14, lineHeight:1.6, maxWidth:520 }}>
+          Connecte tes appareils pour centraliser toutes tes données d'entraînement et de récupération.
         </p>
         {connectedCount > 0 && (
-          <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:10,
+          <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:12,
             background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.25)',
-            borderRadius:99, padding:'4px 12px' }}>
+            borderRadius:99, padding:'5px 14px' }}>
             <div style={{ width:6, height:6, borderRadius:'50%', background:'#4ade80' }}/>
             <span style={{ fontSize:12, fontWeight:700, color:'#4ade80' }}>
-              {connectedCount} application{connectedCount > 1 ? 's' : ''} connectée{connectedCount > 1 ? 's' : ''}
+              {connectedCount} app{connectedCount > 1 ? 's' : ''} connectée{connectedCount > 1 ? 's' : ''}
             </span>
           </div>
         )}
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns: selected ? '340px 1fr' : '1fr', gap:24, alignItems:'start' }}>
-
-        {/* Liste des plateformes */}
-        <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-          {!selected && (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:14 }}>
-              {PLATFORMS.map(p => (
-                <PlatformCard key={p.id} p={p}
-                  connection={connections[p.id]}
-                  onConnect={handleConnect}
-                  onSelect={setSelected} />
-              ))}
-            </div>
-          )}
-
-          {selected && (
-            <>
-              {/* Bouton retour */}
-              <button onClick={() => setSelected(null)}
-                style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, fontWeight:700,
-                  color:'var(--text-secondary)', background:'none', border:'none', cursor:'pointer', padding:'4px 0', marginBottom:4 }}>
-                ← Toutes les intégrations
-              </button>
-
-              {/* Carte sélectionnée */}
-              {PLATFORMS.map(p => (
-                <div key={p.id}
-                  onClick={() => setSelected(p.id)}
-                  style={{ background: selected===p.id ? p.bg : 'var(--bg-card)',
-                    border:`1px solid ${selected===p.id ? 'transparent' : 'var(--border)'}`,
-                    borderRadius:16, padding:'14px 16px', cursor:'pointer', display:'flex',
-                    alignItems:'center', gap:12, transition:'all 0.2s' }}>
-                  <span style={{ fontSize:22 }}>{p.logo}</span>
-                  <div style={{ flex:1 }}>
-                    <p style={{ fontSize:13, fontWeight:800, color: selected===p.id ? '#fff' : 'var(--text-primary)', margin:0 }}>{p.name}</p>
-                    {connections[p.id]?.connected
-                      ? <span style={{ fontSize:10, color:'#4ade80', fontWeight:700 }}>● Connecté</span>
-                      : <span style={{ fontSize:10, color:'var(--text-faint)', fontWeight:600 }}>Non connecté</span>}
-                  </div>
-                  {!connections[p.id]?.connected && (
-                    <button
-                      onClick={e => { e.stopPropagation(); handleConnect(p.id) }}
-                      disabled={connecting === p.id}
-                      style={{ padding:'6px 12px', borderRadius:10, fontSize:11, fontWeight:700,
-                        cursor:'pointer', border:'none', background:`${p.color}22`, color:p.color,
-                        opacity: connecting===p.id ? 0.6 : 1 }}>
-                      {connecting===p.id ? '⟳' : (p.isManual ? '📥' : '+')}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-
-        {/* Panneau de droite — vue détaillée */}
-        {selected && (
-          <div>
-            {selectedPlatform?.isManual && !connections[selected]?.connected
-              ? <AppleImportView onImport={handleAppleImport} importing={importing} />
-              : connections[selected]?.connected
-                ? <ConnectedView
-                    platform={selected}
-                    data={connections[selected]}
-                    onDisconnect={() => handleDisconnect(selected)}
-                    onSync={() => handleSync(selected)}
-                    syncing={syncing} />
-                : (
-                  <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)',
-                    borderRadius:20, padding:40, textAlign:'center' }}>
-                    <span style={{ fontSize:48 }}>{selectedPlatform?.logo}</span>
-                    <h3 style={{ fontSize:18, fontWeight:900, color:'var(--text-primary)', marginTop:12 }}>
-                      Connecter {selectedPlatform?.name}
-                    </h3>
-                    <p style={{ color:'var(--text-faint)', fontSize:13, marginBottom:24, lineHeight:1.6 }}>
-                      {selectedPlatform?.description}
-                    </p>
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', marginBottom:28 }}>
-                      {selectedPlatform?.metrics.map(m => (
-                        <span key={m} style={{ fontSize:11, padding:'5px 12px', borderRadius:10, fontWeight:600,
-                          background:'var(--bg-base)', color:'var(--text-secondary)', border:'1px solid var(--border)' }}>
-                          {m}
-                        </span>
-                      ))}
-                    </div>
-                    <button onClick={() => handleConnect(selected)} disabled={connecting === selected}
-                      style={{ padding:'14px 32px', borderRadius:14, fontSize:14, fontWeight:800, cursor:'pointer',
-                        background: selectedPlatform?.color, color:'#fff', border:'none',
-                        opacity: connecting===selected ? 0.7 : 1,
-                        boxShadow:`0 8px 24px ${selectedPlatform?.color}44` }}>
-                      {connecting === selected ? '⟳ Connexion…' : `🔗 Connecter ${selectedPlatform?.name}`}
-                    </button>
-                  </div>
-                )
-            }
-          </div>
-        )}
+      {/* Grille des cartes — 1 col mobile, 2 col tablette, 3 col desktop */}
+      <div style={{ display:'grid', gap:16,
+        gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 280px), 1fr))' }}>
+        {PLATFORMS.map(p => (
+          <PlatformCard key={p.id} p={p}
+            connection={connections[p.id]}
+            onConnect={handleConnect}
+            onSelect={setSelected} />
+        ))}
       </div>
 
-      <style>{`
-        @keyframes fadeDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
-      `}</style>
+      <style>{`@keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}`}</style>
     </div>
   )
 }
