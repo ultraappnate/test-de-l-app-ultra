@@ -95,8 +95,15 @@ export default function Login() {
       >
         <div className="w-full max-w-md">
 
-          <div className="lg:hidden mb-10 text-center">
-            <span className="text-5xl font-black tracking-[0.3em]" style={{ color: 'var(--text-primary)' }}>ULTRA</span>
+          <div className="lg:hidden mb-8">
+            <button onClick={() => navigate('/welcome')}
+              className="flex items-center gap-1.5 text-sm font-bold mb-6 transition-opacity hover:opacity-70"
+              style={{ color: 'var(--text-muted)' }}>
+              ← Accueil
+            </button>
+            <div className="text-center">
+              <span className="text-4xl font-black tracking-[0.3em]" style={{ color: 'var(--text-primary)' }}>ULTRA</span>
+            </div>
           </div>
 
           <h1 className="text-4xl font-black mb-2" style={{ color: 'var(--text-primary)' }}>Bon retour.</h1>
