@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import axios from 'axios'
 import { useStore } from '../store'
 
-const API = 'http://localhost:5001/api'
+import API from '../config.js'
 
 /* ── Constantes ── */
 const ROLE_LABEL  = { coach:'Coach', client:'Membre', nutritionist:'Nutritionniste', admin:'Admin' }

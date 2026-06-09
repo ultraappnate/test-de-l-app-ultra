@@ -179,8 +179,9 @@ export default function CoachNutritionMonitor() {
     })
 
     // SSE pour mises à jour live
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
     const es = new EventSource(
-      `http://localhost:5001/api/coach/clients/${clientId}/nutrition/stream?date=${date}`,
+      `${base}/coach/clients/${clientId}/nutrition/stream?date=${date}`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
     es.onopen    = () => setLiveStatus('live')

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { useStore } from '../store'
 
-const API = 'http://localhost:5001/api'
+import API from '../config.js'
 
 /* ─── Config des plateformes ─── */
 const PLATFORMS = [

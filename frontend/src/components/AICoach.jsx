@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useStore } from '../store'
 
-const API = 'http://localhost:5001/api'
+import API from '../config.js'
 
 const SUGGESTIONS = [
   { role: 'coach',  text: 'Comment améliorer la rétention de mes clients ?' },

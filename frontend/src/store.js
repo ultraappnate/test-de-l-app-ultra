@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import axios from 'axios'
 
-const API = 'http://localhost:5001/api'
+import API from './config.js'
 
 export const useStore = create(
   persist(

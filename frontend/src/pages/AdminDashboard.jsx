@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
-const API = 'http://localhost:5001/api'
+import API from '../config.js'
 const ROLE_COLOR = { admin: '#e8a020', coach: '#2980b9', client: '#a03848', nutritionist: '#8e44ad' }
 const ROLE_LABEL = { admin: 'Admin', coach: 'Coach', client: 'Client', nutritionist: 'Nutritionniste' }
 const ROLE_ICON  = { admin: '👑', coach: '🎓', client: '💪', nutritionist: '🥗' }
