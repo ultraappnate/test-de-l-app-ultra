@@ -1,0 +1,20 @@
+{
+  "welcome": "Bienvenue",
+  "login": "Connexion",
+  "register": "Inscription",
+  "logout": "Déconnexion",
+  "programs": "Programmes",
+  "dashboard": "Tableau de bord",
+  "coach": "Coach",
+  "client": "Client",
+  "nutritionist": "Nutritionniste",
+  "price": "Prix",
+  "duration": "Durée",
+  "enrolled": "Inscrit",
+  "not_enrolled": "Non inscrit",
+  "buy": "Acheter",
+  "free": "Gratuit",
+  "loading": "Chargement...",
+  "error": "Erreur",
+  "success": "Succès"
+}

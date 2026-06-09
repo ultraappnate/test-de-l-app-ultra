@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(node server.js)",
+      "Bash(curl -s -X POST http://localhost:5000/api/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"test@test.com\",\"password\":\"test123\",\"name\":\"Test User\",\"role\":\"client\"}')",
+      "Bash(lsof -ti:5000)",
+      "Bash(xargs kill -9)",
+      "Bash(curl -s -X POST http://localhost:5001/api/auth/register -H 'Content-Type: application/json' -d '{\"email\":\"test@test.com\",\"password\":\"test123\",\"name\":\"Test User\",\"role\":\"client\"}')",
+      "Bash(node --input-type=module)",
+      "Bash(npx --yes acorn --ecma2020 --module src/pages/Landing.jsx)",
+      "Bash(npx vite *)",
+      "Bash(kill 3656)",
+      "Bash(curl -s http://localhost:5001/api/programs -H \"Authorization: Bearer test\")",
+      "Bash(pkill -f \"node server.js\")",
+      "Bash(curl -s http://localhost:5001/api/programs -H \"Authorization: Bearer fake\")",
+      "Bash(npx tsc *)",
+      "Bash(cat \"/Users/nate/Library/Application Support/Claude/config.json\" | grep -i \"api\\\\|key\\\\|token\" | head -10)",
+      "Bash(curl -s -X POST http://localhost:5001/api/ai/generate-program -H 'Content-Type: application/json' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.test' -d '{\"goal\":\"Prise de masse\",\"level\":\"Débutant\",\"daysPerWeek\":4,\"duration\":8}')",
+      "Bash(pkill -f \"node.*server\")",
+      "Bash(curl -s http://localhost:5001/api/discover)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'{len\\(d\\)} experts chargés'\\); [print\\(f'  - {e[\\\\\"name\\\\\"]} \\({e[\\\\\"role\\\\\"]}\\) @ {e[\\\\\"location\\\\\"][\\\\\"city\\\\\"]}'\\) for e in d]\")",
+      "Bash(node -e \"const pkg = require\\('./node_modules/react-leaflet/package.json'\\); console.log\\('react-leaflet version:', pkg.version\\); console.log\\('exports:', Object.keys\\(pkg.exports || {}\\).slice\\(0,5\\)\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\); print\\('main:', p.get\\('main'\\)\\); print\\('module:', p.get\\('module'\\)\\); print\\('exports keys:', list\\(\\(p.get\\('exports'\\) or {}\\).keys\\(\\)\\)[:8]\\)\")",
+      "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\); print\\('version:', p['version']\\); print\\('main:', p.get\\('main'\\)\\); print\\('module:', p.get\\('module'\\)\\)\")",
+      "Bash(cat vite.config.js)",
+      "Bash(cat vite.config.ts)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(curl -s \"http://localhost:5001/api/discover?lat=48.8566&lng=2.3522&radius=20\")",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(pkill -f \"node.*server.js\")",
+      "Bash(curl -s http://localhost:5001/api/health)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}

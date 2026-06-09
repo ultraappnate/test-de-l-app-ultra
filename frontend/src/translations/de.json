@@ -1,0 +1,20 @@
+{
+  "welcome": "Willkommen",
+  "login": "Anmelden",
+  "register": "Registrieren",
+  "logout": "Abmelden",
+  "programs": "Programme",
+  "dashboard": "Armaturenbrett",
+  "coach": "Trainer",
+  "client": "Kunde",
+  "nutritionist": "Ernährungsberater",
+  "price": "Preis",
+  "duration": "Dauer",
+  "enrolled": "Registriert",
+  "not_enrolled": "Nicht registriert",
+  "buy": "Kaufen",
+  "free": "Kostenlos",
+  "loading": "Wird geladen...",
+  "error": "Fehler",
+  "success": "Erfolg"
+}

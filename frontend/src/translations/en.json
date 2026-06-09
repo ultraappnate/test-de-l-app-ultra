@@ -1,0 +1,20 @@
+{
+  "welcome": "Welcome",
+  "login": "Login",
+  "register": "Register",
+  "logout": "Logout",
+  "programs": "Programs",
+  "dashboard": "Dashboard",
+  "coach": "Coach",
+  "client": "Client",
+  "nutritionist": "Nutritionist",
+  "price": "Price",
+  "duration": "Duration",
+  "enrolled": "Enrolled",
+  "not_enrolled": "Not Enrolled",
+  "buy": "Buy",
+  "free": "Free",
+  "loading": "Loading...",
+  "error": "Error",
+  "success": "Success"
+}
