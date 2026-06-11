@@ -111,34 +111,78 @@ input:focus, textarea:focus, select:focus {
 /* ── Smooth image load ───────────────────────────── */
 img { transition: opacity 0.3s ease; }
 
-/* ── Mobile responsive ───────────────────────────── */
+/* ════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — règles globales (< 768px)
+   ════════════════════════════════════════════════════ */
 @media (max-width: 767px) {
-  /* Toutes les grilles multi-colonnes → 2 colonnes max sur mobile */
-  .grid-cols-2,
-  .grid-cols-3,
-  .grid-cols-4,
-  .grid-cols-5,
-  .grid-cols-6,
-  [class*="grid-cols-2"],
-  [class*="grid-cols-3"],
-  [class*="grid-cols-4"],
-  [class*="grid-cols-5"] {
+
+  /* ── Overflow ── */
+  body, #root { overflow-x: hidden; max-width: 100vw; }
+
+  /* ── Padding de page ── */
+  .p-8  { padding: 16px !important; }
+  .px-8 { padding-left: 16px !important; padding-right: 16px !important; }
+  .py-8 { padding-top: 20px !important; padding-bottom: 20px !important; }
+  .p-6  { padding: 14px !important; }
+  .px-6 { padding-left: 14px !important; padding-right: 14px !important; }
+
+  /* ── Typographie ── */
+  .text-5xl { font-size: clamp(22px, 7vw, 32px) !important; line-height: 1.15 !important; }
+  .text-4xl { font-size: clamp(20px, 6vw, 28px) !important; line-height: 1.2  !important; }
+  .text-3xl { font-size: clamp(18px, 5vw, 24px) !important; }
+
+  /* ── Grilles : tout passe en 1 ou 2 colonnes ── */
+  /* 5+ colonnes → 2 colonnes */
+  .grid-cols-5, .grid-cols-6, .grid-cols-7 {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
-  /* Exceptions : certaines grilles vraiment trop larges → 1 colonne */
-  .grid-cols-3,
-  [class*="grid-cols-3"] {
+  /* 4 colonnes → 2 colonnes */
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  /* 3 colonnes → 1 colonne */
+  .grid-cols-3 {
     grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
   }
-  /* Empêcher overflow horizontal */
-  body { overflow-x: hidden; }
-  /* Tables horizontales scrollables */
+  /* 2 colonnes → 1 colonne (sauf exceptions déclarées explicitement) */
+  .grid-cols-2:not(.keep-2-mobile) {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  /* ── col-span neutralisé ── */
+  .col-span-2, .col-span-3, .col-span-4 { grid-column: span 1 !important; }
+
+  /* ── Flex → stack sur mobile ── */
+  .mobile-stack { flex-direction: column !important; }
+
+  /* ── Largeurs fixes qui débordent ── */
+  .max-w-sm, .max-w-md, .max-w-lg, .max-w-xl,
+  .max-w-2xl, .max-w-3xl, .max-w-4xl, .max-w-5xl, .max-w-6xl {
+    max-width: 100% !important;
+  }
+  .w-full { width: 100% !important; }
+  [style*="width: 340px"], [style*="width:340px"] { width: 100% !important; }
+
+  /* ── Tables scrollables ── */
   table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  /* Padding de page réduit */
-  .min-h-screen.p-8 { padding: 16px !important; }
-  /* col-span-2 n'a plus de sens sur mobile */
-  .col-span-2 { grid-column: span 1 !important; }
-  /* Textes trop grands */
-  .text-4xl { font-size: 1.5rem !important; }
-  .text-5xl { font-size: 1.75rem !important; }
+
+  /* ── Cartes KPI : padding réduit mais pas étouffant ── */
+  .rounded-2xl.p-5 { padding: 14px !important; }
+  .rounded-2xl.p-6 { padding: 14px !important; }
+
+  /* ── Hauteur des graphiques ── */
+  .recharts-wrapper, .recharts-responsive-container { max-width: 100% !important; }
+
+  /* ── Boutons : pas de wrap bizarre ── */
+  button { white-space: nowrap; }
+  button.w-full { white-space: normal !important; }
+
+  /* ── Gap réduit sur mobile ── */
+  .gap-5 { gap: 12px !important; }
+  .gap-6 { gap: 14px !important; }
+  .gap-8 { gap: 16px !important; }
+
+  /* ── Marges top réduites ── */
+  .mb-8 { margin-bottom: 20px !important; }
+  .mb-6 { margin-bottom: 16px !important; }
 }

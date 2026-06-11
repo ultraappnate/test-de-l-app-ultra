@@ -324,7 +324,7 @@ function CoachDashboard({ user, navigate }) {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <div className="max-w-4xl mx-auto px-8 py-8">
+      <div className="max-w-4xl mx-auto" style={{ padding: 'clamp(16px, 4vw, 32px)' }}>
 
         {/* Hero cinématique */}
         {profile !== null && <CoachHero profile={profile} user={user} navigate={navigate}/>}
@@ -335,19 +335,18 @@ function CoachDashboard({ user, navigate }) {
         {/* Vidéo */}
         <VideoCard profile={profile}/>
 
-        {/* Metrics row */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
+        {/* Metrics row — 2 cols mobile, 4 desktop */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:16 }} className="dash-kpi">
           <MetricCard label="Programmes" value={programs.length || 0} color="var(--accent)" icon="📋" trend={1} trendLabel="créés" sparkData={MOCK_SPARK} delay={500}/>
-          <MetricCard label="Inscrits total" value={programs.reduce((s,p)=>s+(p.enrollmentCount||0),0)} color="#3a52a8" icon="👥" trend={1} trendLabel="tous programmes" sparkData={[3,5,4,7,6,8,9,8,11,10,12,11]} delay={580}/>
-          <MetricCard label="Revenus estimés" unit="€" value={programs.reduce((s,p)=>s+p.price*(p.enrollmentCount||0),0)} color="#4ade80" icon="💰" trend={1} trendLabel="total" sparkData={[200,280,240,380,320,450,380,500,440,560,490,540]} delay={660}/>
+          <MetricCard label="Inscrits" value={programs.reduce((s,p)=>s+(p.enrollmentCount||0),0)} color="#3a52a8" icon="👥" trend={1} trendLabel="total" sparkData={[3,5,4,7,6,8,9,8,11,10,12,11]} delay={580}/>
+          <MetricCard label="Revenus" unit="€" value={programs.reduce((s,p)=>s+p.price*(p.enrollmentCount||0),0)} color="#4ade80" icon="💰" trend={1} trendLabel="estimés" sparkData={[200,280,240,380,320,450,380,500,440,560,490,540]} delay={660}/>
           <MetricCard label="Gratuits" value={programs.filter(p=>p.price===0).length} color="#e8a020" icon="🎁" trend={0} trendLabel="programmes" sparkData={[70,72,68,75,74,78,76,80,79,82,81,83]} delay={740}/>
         </div>
 
-        {/* Two-col: Activity + Actions */}
-        <div className="grid grid-cols-5 gap-4 mb-5">
-
+        {/* Activité + Actions — colonne unique mobile */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:12, marginBottom:16 }} className="dash-activity">
           {/* Activity feed */}
-          <div className="col-span-3 rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between mb-1">
               <p className="text-[10px] font-black tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Activité récente</p>
               <span className="flex items-center gap-1.5 text-[10px] font-bold" style={{ color: '#4ade80' }}>
@@ -361,7 +360,7 @@ function CoachDashboard({ user, navigate }) {
           </div>
 
           {/* Quick actions */}
-          <div className="col-span-2 flex flex-col gap-3">
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             <QuickAction icon="➕" title="Nouveau programme" sub="Créer et vendre un programme" color="var(--accent)"
               onClick={() => navigate('/coach/programs/new')} delay={600}/>
             <QuickAction icon="🥗" title="Suivi nutrition" sub="Macros clients en temps réel" color="#27ae60"
@@ -370,6 +369,13 @@ function CoachDashboard({ user, navigate }) {
               onClick={() => navigate('/coach/programs')} delay={800}/>
           </div>
         </div>
+
+        <style>{`
+          @media(min-width:768px){
+            .dash-kpi { grid-template-columns: repeat(4,1fr) !important; }
+            .dash-activity { grid-template-columns: 3fr 2fr !important; }
+          }
+        `}</style>
 
         {/* AI Insights */}
         <AIInsights/>
@@ -396,14 +402,14 @@ function ClientDashboard({ user, navigate }) {
   const phrase = PHRASES[Math.floor(Math.random() * PHRASES.length)]
 
   return (
-    <div className="min-h-screen p-10" style={{ background: 'var(--bg-base)' }}>
-      <div className={`mb-8 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+    <div className="min-h-screen" style={{ background: 'var(--bg-base)', padding: 'clamp(16px,4vw,40px)' }}>
+      <div className={`mb-6 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
         <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--gold)' }}>
           {timeBlock.icon} {timeBlock.label} · {formatDate()}
         </p>
-        <h1 className="text-3xl font-black leading-snug max-w-xl" style={{ color: 'var(--text-primary)' }}>{phrase}</h1>
+        <h1 className="font-black leading-snug" style={{ color: 'var(--text-primary)', fontSize: 'clamp(20px,5vw,30px)' }}>{phrase}</h1>
       </div>
-      <div className="grid grid-cols-3 gap-4 mb-5">
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }} className="client-kpi">
         <MetricCard label="Programmes actifs" value="0" color="var(--accent)" icon="💪" delay={200}/>
         <MetricCard label="Coaches" value="0" color="var(--gold)" icon="🏆" delay={300}/>
         <MetricCard label="Progression" unit="%" value="0" color="#4ade80" icon="📈" delay={400}/>

@@ -213,8 +213,8 @@ export default function CoachPrograms() {
               </div>
             ))}
           </div>
-          <style>{`@media(min-width:768px){.prog-stats-grid{grid-template-columns:repeat(4,1fr)!important;}}`}</style>
         )}
+        <style>{`@media(min-width:768px){.prog-stats-grid{grid-template-columns:repeat(4,1fr)!important;}}`}</style>
 
         {/* Liste */}
         {loading ? (

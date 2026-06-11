@@ -73,24 +73,24 @@ export default function Progress() {
   const isPositive = activeMetric === 'muscle' ? delta > 0 : delta < 0
 
   return (
-    <div className="min-h-screen p-8" style={{ background: 'var(--bg-base)' }}>
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen" style={{ background: 'var(--bg-base)', padding: 'clamp(16px,4vw,32px)' }}>
+      <div style={{ maxWidth:1024, margin:'0 auto' }}>
 
         {/* Header */}
-        <div className={`mb-8 transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className={`mb-6 transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--gold)' }}>Athlète</p>
-          <h1 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>Ma Progression</h1>
+          <h1 className="font-black" style={{ color: 'var(--text-primary)', fontSize:'clamp(22px,6vw,36px)' }}>Ma Progression</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Suivi de tes performances depuis le début</p>
         </div>
 
-        {/* Program progress rings */}
-        <div className="grid grid-cols-4 gap-5 mb-6">
-          <div className={`col-span-1 rounded-2xl p-6 flex flex-col items-center justify-center transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+        {/* Program progress rings — empilé mobile */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:14, marginBottom:16 }} className="prog-top">
+          <div className={`rounded-2xl p-5 flex flex-col items-center justify-center transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <p className="text-[10px] font-black tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>Programme actif</p>
             <ProgressRing value={7} max={12} color="var(--accent)" label="Force Absolue" sub="Semaine 7 / 12" size={90}/>
           </div>
-          <div className={`col-span-3 rounded-2xl p-6 transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          <div className={`rounded-2xl p-5 transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', transitionDelay: '80ms' }}>
             <p className="text-[10px] font-black tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>Semaines complétées</p>
             <div className="flex gap-2">
@@ -105,13 +105,13 @@ export default function Progress() {
           </div>
         </div>
 
-        {/* Metric chart */}
-        <div className="grid grid-cols-3 gap-5 mb-6">
+        {/* Metric chart — empilé mobile */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:14, marginBottom:16 }} className="prog-chart">
 
           {/* Chart */}
-          <div className="col-span-2 rounded-2xl p-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             {/* Tabs */}
-            <div className="flex gap-2 mb-5">
+            <div className="flex gap-2 mb-5 flex-wrap">
               {Object.entries(metricConfig).map(([key, mc]) => (
                 <button key={key} onClick={() => setActiveMetric(key)}
                   className="px-3 py-1.5 rounded-lg text-xs font-bold transition"
@@ -155,8 +155,8 @@ export default function Progress() {
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="flex flex-col gap-3">
+          {/* Stats — 2 cols mobile */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }} className="prog-stats">
             {[
               { label: 'Poids actuel',   value: `${WEIGHT_DATA[WEIGHT_DATA.length-1]} kg`,  color: 'var(--accent)', icon: '⚖️' },
               { label: '% Graisses',     value: `${BODYFAT_DATA[BODYFAT_DATA.length-1]}%`,  color: '#f87171',       icon: '📉' },
@@ -175,15 +175,15 @@ export default function Progress() {
           </div>
         </div>
 
-        {/* PRs */}
+        {/* PRs — 2 cols mobile, 4 desktop */}
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
             <p className="text-[10px] font-black tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>🏆 Records personnels</p>
           </div>
-          <div className="grid grid-cols-4">
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)' }} className="prog-prs">
             {PRS.map((pr, i) => (
-              <div key={pr.exercise} className="p-5 text-center"
-                style={{ borderRight: i < PRS.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div key={pr.exercise} className="p-4 text-center"
+                style={{ borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
                 <p className="text-[10px] font-black tracking-widest uppercase mb-2" style={{ color: 'var(--text-muted)' }}>{pr.exercise}</p>
                 <p className="font-black text-2xl mb-1" style={{ color: pr.color }}>{pr.value}</p>
                 <span className="text-[10px] font-black px-2 py-0.5 rounded-full"
@@ -197,6 +197,15 @@ export default function Progress() {
         </div>
 
       </div>
+
+      <style>{`
+        @media(min-width:768px){
+          .prog-top   { grid-template-columns: 1fr 3fr !important; }
+          .prog-chart { grid-template-columns: 2fr 1fr !important; }
+          .prog-stats { grid-template-columns: 1fr !important; }
+          .prog-prs   { grid-template-columns: repeat(4,1fr) !important; }
+        }
+      `}</style>
     </div>
   )
 }

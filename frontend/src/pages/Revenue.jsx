@@ -64,43 +64,43 @@ export default function Revenue() {
   ]
 
   return (
-    <div className="min-h-screen p-8" style={{ background: 'var(--bg-base)' }}>
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen" style={{ background: 'var(--bg-base)', padding: 'clamp(16px,4vw,32px)' }}>
+      <div style={{ maxWidth:1024, margin:'0 auto' }}>
 
         {/* Header */}
-        <div className={`mb-8 transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className={`mb-6 transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--gold)' }}>Coach</p>
-          <h1 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>Revenus</h1>
+          <h1 className="font-black" style={{ color: 'var(--text-primary)', fontSize:'clamp(22px,6vw,36px)' }}>Revenus</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Suivi de tes performances financières</p>
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        {/* KPIs — 2 cols mobile, 4 desktop */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:16 }} className="rev-kpi">
           {KPIs.map((k, i) => (
             <div key={k.label}
-              className={`rounded-2xl p-5 transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+              className={`rounded-2xl p-4 transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
               style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', transitionDelay: `${i * 80}ms` }}>
-              <div className="flex justify-between items-start mb-3">
-                <p className="text-[10px] font-black tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>{k.label}</p>
-                <span>{k.icon}</span>
+              <div className="flex justify-between items-start mb-2">
+                <p className="text-[9px] font-black tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>{k.label}</p>
+                <span style={{ fontSize:14 }}>{k.icon}</span>
               </div>
-              <p className="font-black text-3xl mb-1.5" style={{ color: k.color }}>{k.value}</p>
+              <p className="font-black mb-1" style={{ color: k.color, fontSize:'clamp(18px,4vw,26px)' }}>{k.value}</p>
               <p className="text-[10px] font-bold" style={{ color: growth >= 0 ? '#4ade80' : '#f87171' }}>{k.trend}</p>
             </div>
           ))}
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-3 gap-5 mb-6">
+        {/* Charts — 1 col mobile, 2 cols desktop */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:14, marginBottom:16 }} className="rev-charts">
 
           {/* Monthly revenue */}
-          <div className="col-span-2 rounded-2xl p-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <p className="text-[10px] font-black tracking-widest uppercase mb-5" style={{ color: 'var(--text-muted)' }}>Revenus mensuels</p>
             <RevenueBar data={MONTHLY_DATA}/>
           </div>
 
           {/* Top program */}
-          <div className="rounded-2xl p-6" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <p className="text-[10px] font-black tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>Par programme</p>
             <div className="space-y-3">
               {PROGRAMS.sort((a, b) => b.price * b.sales - a.price * a.sales).map(p => {
@@ -124,12 +124,12 @@ export default function Revenue() {
 
         {/* Transactions */}
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
             <p className="text-[10px] font-black tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Dernières transactions</p>
           </div>
           <div>
             {TRANSACTIONS.map((t, i) => (
-              <div key={i} className="flex items-center gap-4 px-6 py-4 transition"
+              <div key={i} className="flex items-center gap-3 px-4 py-3.5 transition"
                 style={{ borderBottom: i < TRANSACTIONS.length - 1 ? '1px solid var(--border)' : 'none' }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-base)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
@@ -138,28 +138,34 @@ export default function Revenue() {
                   {t.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{t.name}</p>
-                  <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{t.program}</p>
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>{t.name}</p>
+                  <p className="text-xs truncate" style={{ color: 'var(--text-faint)' }}>{t.program} · {t.date}</p>
                 </div>
-                <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{t.date}</p>
-                <span className="text-[10px] font-black px-2 py-1 rounded-full"
-                  style={{
-                    background: t.status === 'paid' ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
-                    color:      t.status === 'paid' ? '#4ade80' : '#f87171',
-                    border:     `1px solid ${t.status === 'paid' ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)'}`,
-                  }}>
-                  {t.status === 'paid' ? 'Payé' : 'Remboursé'}
-                </span>
-                <p className="font-black text-sm w-14 text-right"
-                  style={{ color: t.status === 'paid' ? '#4ade80' : '#f87171' }}>
-                  {t.status === 'paid' ? '+' : '-'}{t.amount}€
-                </p>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <p className="font-black text-sm" style={{ color: t.status === 'paid' ? '#4ade80' : '#f87171' }}>
+                    {t.status === 'paid' ? '+' : '-'}{t.amount}€
+                  </p>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background: t.status === 'paid' ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
+                      color:      t.status === 'paid' ? '#4ade80' : '#f87171',
+                    }}>
+                    {t.status === 'paid' ? 'Payé' : 'Remboursé'}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
       </div>
+
+      <style>{`
+        @media(min-width:768px){
+          .rev-kpi    { grid-template-columns: repeat(4,1fr) !important; }
+          .rev-charts { grid-template-columns: 2fr 1fr !important; }
+        }
+      `}</style>
     </div>
   )
 }

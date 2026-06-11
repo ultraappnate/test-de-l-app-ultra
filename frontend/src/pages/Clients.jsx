@@ -147,38 +147,38 @@ export default function Clients() {
   const avgCompliance = Math.round(MOCK_CLIENTS.filter(c => c.compliance > 0).reduce((s, c) => s + c.compliance, 0) / MOCK_CLIENTS.filter(c => c.compliance > 0).length)
 
   return (
-    <div className="min-h-screen p-8" style={{ background: 'var(--bg-base)' }}>
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen" style={{ background: 'var(--bg-base)', padding: 'clamp(16px,4vw,32px)' }}>
+      <div style={{ maxWidth:1152, margin:'0 auto' }}>
 
         {/* Header */}
-        <div className={`mb-8 transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className={`mb-6 transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--gold)' }}>Coach</p>
-          <h1 className="text-4xl font-black" style={{ color: 'var(--text-primary)' }}>Mes clients</h1>
+          <h1 className="font-black" style={{ color: 'var(--text-primary)', fontSize:'clamp(22px,6vw,36px)' }}>Mes clients</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{MOCK_CLIENTS.length} clients · {active} actifs en ce moment</p>
         </div>
 
-        {/* Summary stats */}
-        <div className="grid grid-cols-4 gap-4 mb-7">
+        {/* Summary stats — 2 cols mobile, 4 desktop */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:20 }} className="cli-stats">
           {[
             { label: 'Total clients', value: MOCK_CLIENTS.length, color: 'var(--accent)', icon: '👥' },
             { label: 'Actifs', value: active, color: '#4ade80', icon: '🟢' },
             { label: 'Compliance moy.', value: `${avgCompliance}%`, color: '#e8a020', icon: '📊' },
             { label: 'Streak record', value: `${Math.max(...MOCK_CLIENTS.map(c => c.streak))}j`, color: '#f59e0b', icon: '🔥' },
           ].map((s, i) => (
-            <div key={s.label} className={`rounded-2xl p-5 transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+            <div key={s.label} className={`rounded-2xl p-4 transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
               style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', transitionDelay: `${i * 80}ms` }}>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-black tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
-                <span>{s.icon}</span>
+                <p className="text-[9px] font-black tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>{s.label}</p>
+                <span style={{ fontSize:14 }}>{s.icon}</span>
               </div>
-              <p className="font-black text-3xl" style={{ color: s.color }}>{s.value}</p>
+              <p className="font-black" style={{ color: s.color, fontSize:'clamp(20px,5vw,28px)' }}>{s.value}</p>
             </div>
           ))}
         </div>
 
-        {/* Search + filters */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="relative flex-1 max-w-sm">
+        {/* Search + filters — empilé mobile */}
+        <div className="flex items-center gap-3 mb-6 flex-wrap">
+          <div className="relative flex-1" style={{ minWidth:180 }}>
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-faint)' }}>🔍</span>
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Rechercher un client..."
@@ -196,8 +196,9 @@ export default function Clients() {
           </div>
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Grid — 1 col mobile, 2 tablette, 3 desktop */}
+        <div style={{ display:'grid', gap:14,
+          gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 300px), 1fr))' }}>
           {filtered.map((c, i) => (
             <div key={c.id} className={`transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
               style={{ transitionDelay: `${200 + i * 60}ms` }}>
@@ -215,6 +216,8 @@ export default function Clients() {
           </div>
         )}
       </div>
+
+      <style>{`@media(min-width:768px){.cli-stats{grid-template-columns:repeat(4,1fr)!important;}}`}</style>
     </div>
   )
 }
