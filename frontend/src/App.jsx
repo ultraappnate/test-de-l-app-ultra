@@ -40,6 +40,7 @@ import Discover from './pages/Discover'
 import Onboarding from './pages/Onboarding'
 import HealthIntegrations from './pages/HealthIntegrations'
 import Community from './pages/Community'
+import MuscleExplorer from './pages/MuscleExplorer'
 
 function PrivateRoute({ children }) {
   const { user } = useStore()
@@ -158,6 +159,7 @@ export default function App() {
           <Route path="/progress" element={<PrivateRoute><Progress /></PrivateRoute>} />
           <Route path="/health" element={<PrivateRoute><HealthIntegrations /></PrivateRoute>} />
           <Route path="/community" element={<PrivateRoute><Community /></PrivateRoute>} />
+          <Route path="/muscles" element={<PrivateRoute><MuscleExplorer /></PrivateRoute>} />
         </Routes>
       </Layout>
     </BrowserRouter>

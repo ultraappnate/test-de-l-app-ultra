@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import MuscleMap from '../components/MuscleMap'
 
 const LEVEL_COLORS = {
   'Débutant':      { bg: 'rgba(39,174,96,0.15)',   text: '#27ae60', border: 'rgba(39,174,96,0.4)' },
@@ -32,7 +33,7 @@ function StatPill({ icon, label, value }) {
   )
 }
 
-function WeekCard({ week, index }) {
+function WeekCard({ week, index, onExercise }) {
   const [open, setOpen] = useState(index === 0)
   const days = week.days || []
   const blockCount = days.reduce((s, d) => s + (d.blocks?.length || 0), 0)
@@ -74,15 +75,21 @@ function WeekCard({ week, index }) {
                 </p>
                 {day.blocks?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
-                    {day.blocks.slice(0, 4).map((b, bi) => (
-                      <span key={bi} className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                        style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                        {b.exercise || b.name || `Ex. ${bi + 1}`}
-                      </span>
-                    ))}
-                    {day.blocks.length > 4 && (
+                    {day.blocks.slice(0, 6).map((b, bi) => {
+                      const exName = b.exercise || b.name || `Ex. ${bi + 1}`
+                      return (
+                        <button key={bi} onClick={() => onExercise?.(exName)}
+                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold transition-all"
+                          style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)', cursor: 'pointer' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}>
+                          {exName} <span style={{ opacity: 0.5 }}>🦾</span>
+                        </button>
+                      )
+                    })}
+                    {day.blocks.length > 6 && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ color: 'var(--text-faint)' }}>
-                        +{day.blocks.length - 4}
+                        +{day.blocks.length - 6}
                       </span>
                     )}
                   </div>
@@ -103,6 +110,7 @@ export default function ProgramDetail() {
   const { programs, fetchPrograms, user } = useStore()
   const [program, setProgram] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [muscleEx, setMuscleEx] = useState(null)
   const [enrolling, setEnrolling] = useState(false)
   const [enrolled, setEnrolled] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
@@ -282,7 +290,7 @@ export default function ProgramDetail() {
               Programme semaine par semaine
             </h2>
             <div className="space-y-3">
-              {weeks.map((w, i) => <WeekCard key={i} week={w} index={i} />)}
+              {weeks.map((w, i) => <WeekCard key={i} week={w} index={i} onExercise={setMuscleEx} />)}
             </div>
           </div>
         )}
@@ -326,6 +334,25 @@ export default function ProgramDetail() {
           </div>
         )}
       </div>
+
+      {/* ── Modal Muscles ── */}
+      {muscleEx && (
+        <div onClick={() => setMuscleEx(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+            animation: 'fadeIn 0.2s ease' }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', position: 'relative' }}>
+            <button onClick={() => setMuscleEx(null)}
+              style={{ position: 'absolute', top: 12, right: 12, zIndex: 2, width: 32, height: 32,
+                borderRadius: 10, background: 'var(--bg-base)', border: '1px solid var(--border)',
+                color: 'var(--text-primary)', cursor: 'pointer', fontSize: 16, fontWeight: 800 }}>
+              ✕
+            </button>
+            <MuscleMap exercise={muscleEx} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
