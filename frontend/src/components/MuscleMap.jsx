@@ -281,7 +281,7 @@ export default function MuscleMap({ exercise, compact = false }) {
 
       {/* Corps + animation côte à côte */}
       <div style={{ display: 'grid',
-        gridTemplateColumns: showMovement && pattern !== 'idle' ? '1fr 1fr' : '1fr',
+        gridTemplateColumns: showMovement && pattern !== 'idle' ? 'minmax(0,1fr) minmax(0,1fr)' : 'minmax(0,1fr)',
         gap: 12, alignItems: 'stretch' }} className="muscle-grid">
 
         {/* Corps anatomique */}

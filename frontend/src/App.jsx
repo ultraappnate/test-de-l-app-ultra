@@ -94,10 +94,13 @@ function Layout({ theme, setTheme, children }) {
         <main
           className="flex-1 transition-all duration-300"
           style={{
+            minWidth: 0,
+            maxWidth: '100%',
             marginLeft: isMobile ? 0 : (collapsed ? '60px' : '216px'),
             paddingBottom: isMobile ? '70px' : undefined,
             height: isFullscreen ? '100vh' : undefined,
             minHeight: isFullscreen ? undefined : '100vh',
+            overflowX: 'hidden',
             overflow: isFullscreen ? 'hidden' : undefined,
           }}
         >

@@ -43,7 +43,11 @@
       "Read(//Users/nate/**)",
       "Bash(ssh-keygen -t ed25519 -C \"ultraappnate@github\" -f ~/.ssh/id_ed25519 -N \"\")",
       "Bash(ssh -T git@github.com)",
-      "Bash(ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null && ssh -T git@github.com 2>&1)"
+      "Bash(ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null && ssh -T git@github.com 2>&1)",
+      "Bash(awk '{print $5, $9}')",
+      "Read(//private/tmp/**)",
+      "Bash(lsof -ti:5001)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }
