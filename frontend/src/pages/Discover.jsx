@@ -78,9 +78,10 @@ const ROLE_EMOJI = { coach: '🎓', nutritionist: '🥗' }
 const SPECIALTIES = ['Force','HIIT','Cardio','Yoga','Mobilité','Running','Boxe','Powerlifting','Nutrition sportive','Rééquilibrage','Végétarisme','Triathlon','Perte de poids','Prise de masse']
 const PARIS = { lat: 48.8566, lng: 2.3522 }
 
-/* Carte sobre / minimaliste (CartoDB Dark Matter — sans labels superflus) */
+/* Carte simple & fluide façon Apple Plans / Waze (CartoDB Positron clair).
+   Sans retina {r} → 4× moins de données = bien plus fluide. */
 const MAP_TILES = {
-  url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+  url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
   attribution: '&copy; OpenStreetMap &copy; CARTO',
 }
 
@@ -351,8 +352,18 @@ export default function Discover() {
           zoom={12}
           style={{ width: '100%', height: '100%' }}
           zoomControl={false}
+          preferCanvas={true}
+          zoomAnimation={true}
+          markerZoomAnimation={false}
         >
-          <TileLayer url={MAP_TILES.url} attribution={MAP_TILES.attribution} />
+          <TileLayer
+            url={MAP_TILES.url}
+            attribution={MAP_TILES.attribution}
+            updateWhenIdle={true}
+            updateWhenZooming={false}
+            keepBuffer={2}
+            maxZoom={18}
+          />
 
           <ResizeFix active={showMap} />
           {flyCenter && <FlyTo center={flyCenter} />}
