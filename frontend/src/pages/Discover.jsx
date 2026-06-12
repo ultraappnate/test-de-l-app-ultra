@@ -43,16 +43,48 @@ function FlyTo({ center }) {
   return null
 }
 
+/* Corrige la taille de la carte quand elle (re)devient visible
+   (Leaflet ne calcule pas ses tuiles si le conteneur était display:none) */
+function ResizeFix({ active }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!active) return
+    const t1 = setTimeout(() => map.invalidateSize(), 120)
+    const t2 = setTimeout(() => map.invalidateSize(), 400)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [active, map])
+  return null
+}
+
 /* ── Constants ──────────────────────────────────────── */
 const ROLE_COLOR = { coach: '#a03848', nutritionist: '#27ae60' }
 const ROLE_EMOJI = { coach: '🎓', nutritionist: '🥗' }
 const SPECIALTIES = ['Force','HIIT','Cardio','Yoga','Mobilité','Running','Boxe','Powerlifting','Nutrition sportive','Rééquilibrage','Végétarisme','Triathlon','Perte de poids','Prise de masse']
 const PARIS = { lat: 48.8566, lng: 2.3522 }
 
+/* Carte sobre / minimaliste (CartoDB Dark Matter — sans labels superflus) */
+const MAP_TILES = {
+  url: 'https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+  attribution: '&copy; OpenStreetMap &copy; CARTO',
+}
+
+function useIsMobile() {
+  const [m, setM] = useState(typeof window !== 'undefined' && window.innerWidth < 768)
+  useEffect(() => {
+    const fn = () => setM(window.innerWidth < 768)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return m
+}
+
 /* ── Main page ──────────────────────────────────────── */
 export default function Discover() {
   const navigate = useNavigate()
   const { fetchDiscoverExperts } = useStore()
+  const isMobile = useIsMobile()
+  const [mobileView, setMobileView] = useState('list')   // 'list' | 'map'
+  const [geoHidden, setGeoHidden]   = useState(false)
 
   const [experts,    setExperts]    = useState([])
   const [loading,    setLoading]    = useState(true)
@@ -114,11 +146,16 @@ export default function Discover() {
 
   const mapCenter = userPos ? [userPos.lat, userPos.lng] : [PARIS.lat, PARIS.lng]
 
+  const showList = !isMobile || mobileView === 'list'
+  const showMap  = !isMobile || mobileView === 'map'
+
   return (
     <div style={{ display: 'flex', height: '100vh', maxHeight: '100vh', overflow: 'hidden', background: 'var(--bg-base)' }}>
 
       {/* ── LEFT PANEL ──────────────────────────── */}
-      <div style={{ width: 380, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', overflow: 'hidden', height: '100vh' }}>
+      <div style={{ width: isMobile ? '100%' : 380, flexShrink: 0,
+        display: showList ? 'flex' : 'none', flexDirection: 'column',
+        borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'hidden', height: '100vh' }}>
 
         {/* Header */}
         <div style={{ padding: '20px 20px 12px', borderBottom: '1px solid var(--border)' }}>
@@ -132,18 +169,32 @@ export default function Discover() {
               <p style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 2 }}>résultats</p>
             </div>
           </div>
-          {/* Geo status badge */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 10, fontSize: 11,
-            background: locStatus === 'ok' ? 'rgba(39,174,96,0.1)' : 'rgba(232,160,32,0.1)',
-            border: `1px solid ${locStatus === 'ok' ? 'rgba(39,174,96,0.3)' : 'rgba(232,160,32,0.3)'}`,
-            color: locStatus === 'ok' ? '#27ae60' : '#e8a020',
-          }}>
-            <span>{locStatus === 'ok' ? '📍' : '🗺'}</span>
-            <span style={{ fontWeight: 600 }}>
-              {locStatus === 'ok' ? 'Position GPS détectée' : locStatus === 'denied' ? 'Accès refusé — Paris par défaut' : 'Paris par défaut'}
-            </span>
-          </div>
+          {/* Geo status badge (fermable) */}
+          {!geoHidden && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 10, fontSize: 11,
+              background: locStatus === 'ok' ? 'rgba(39,174,96,0.1)' : 'rgba(232,160,32,0.1)',
+              border: `1px solid ${locStatus === 'ok' ? 'rgba(39,174,96,0.3)' : 'rgba(232,160,32,0.3)'}`,
+              color: locStatus === 'ok' ? '#27ae60' : '#e8a020',
+            }}>
+              <span>{locStatus === 'ok' ? '📍' : '🗺'}</span>
+              <span style={{ fontWeight: 600, flex: 1 }}>
+                {locStatus === 'ok' ? 'Position GPS détectée' : locStatus === 'denied' ? 'Accès refusé — Paris par défaut' : 'Paris par défaut'}
+              </span>
+              {locStatus === 'denied' && (
+                <button onClick={() => { setLocStatus('pending'); navigator.geolocation?.getCurrentPosition(
+                    pos => { setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocStatus('ok') },
+                    () => setLocStatus('denied'), { timeout: 6000 }) }}
+                  style={{ background: 'none', border: 'none', color: 'inherit', fontWeight: 800, cursor: 'pointer', fontSize: 11, textDecoration: 'underline', padding: 0 }}>
+                  Réessayer
+                </button>
+              )}
+              <button onClick={() => setGeoHidden(true)}
+                style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 13, fontWeight: 800, padding: '0 2px', lineHeight: 1 }}>
+                ✕
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Search */}
@@ -208,7 +259,7 @@ export default function Discover() {
         </div>
 
         {/* Expert list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px', scrollbarWidth: 'none' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '0 12px 150px' : '0 12px 12px', scrollbarWidth: 'none' }}>
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: 12 }}>
               <div style={{ width: 30, height: 30, borderRadius: '50%', border: '3px solid var(--accent)', borderTopColor: 'transparent', animation: 'spin 0.8s linear infinite' }} />
@@ -229,7 +280,7 @@ export default function Discover() {
       </div>
 
       {/* ── MAP ─────────────────────────────────── */}
-      <div style={{ flex: 1, position: 'relative', height: '100vh', minHeight: 0 }}>
+      <div style={{ flex: 1, position: 'relative', height: '100vh', minHeight: 0, display: showMap ? 'block' : 'none' }}>
 
         {/* Overlay: selected expert */}
         {selected && (
@@ -247,11 +298,9 @@ export default function Discover() {
           style={{ width: '100%', height: '100%' }}
           zoomControl={false}
         >
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; OpenStreetMap contributors'
-          />
+          <TileLayer url={MAP_TILES.url} attribution={MAP_TILES.attribution} />
 
+          <ResizeFix active={showMap} />
           {flyCenter && <FlyTo center={flyCenter} />}
 
           {/* User position */}
@@ -288,10 +337,10 @@ export default function Discover() {
         </MapContainer>
         </div>{/* /absolute map wrapper */}
 
-        {/* Legend */}
+        {/* Legend (cachée sur mobile pour ne pas gêner) */}
         <div style={{
           position: 'absolute', bottom: 16, left: 16, zIndex: 1000,
-          display: 'flex', alignItems: 'center', gap: 14,
+          display: isMobile ? 'none' : 'flex', alignItems: 'center', gap: 14,
           padding: '10px 16px', borderRadius: 14, fontSize: 11,
           background: 'var(--bg-card)', border: '1px solid var(--border)',
         }}>
@@ -303,6 +352,19 @@ export default function Discover() {
           ))}
         </div>
       </div>
+
+      {/* ── Bouton bascule Liste / Carte (mobile) ── */}
+      {isMobile && (
+        <button onClick={() => setMobileView(v => v === 'list' ? 'map' : 'list')}
+          style={{
+            position: 'fixed', bottom: 78, left: '50%', transform: 'translateX(-50%)', zIndex: 1500,
+            display: 'flex', alignItems: 'center', gap: 8, padding: '12px 22px', borderRadius: 99,
+            background: 'var(--accent)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 800,
+            cursor: 'pointer', boxShadow: '0 6px 24px rgba(0,0,0,0.4)', whiteSpace: 'nowrap',
+          }}>
+          {mobileView === 'list' ? '🗺  Voir la carte' : '☰  Voir la liste'}
+        </button>
+      )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

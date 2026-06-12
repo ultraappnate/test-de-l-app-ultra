@@ -94,14 +94,14 @@ export default function CalendarPage() {
             </div>
 
             {/* En-têtes jours */}
-            <div className="grid grid-cols-7 mb-1">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
               {DAYS_FR.map(d => (
                 <div key={d} className="text-center text-[10px] font-black py-1" style={{ color: 'var(--text-muted)' }}>{d}</div>
               ))}
             </div>
 
             {/* Jours */}
-            <div className="grid grid-cols-7 gap-0.5">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
               {Array(startOffset).fill(null).map((_, i) => <div key={`e${i}`}/>)}
               {Array(daysInMonth).fill(null).map((_, i) => {
                 const d = i + 1

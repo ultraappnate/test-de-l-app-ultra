@@ -5,20 +5,20 @@ import { useStore } from '../store'
 const NAV_CLIENT = [
   { to: '/dashboard',  label: 'Accueil',          icon: '⌂' },
   { to: '/discover',   label: 'Découvrir',         icon: '🗺', highlight: true },
-  { to: '/programs',   label: 'Programmes',        icon: '◈' },
-  { to: '/muscles',    label: 'Muscles 3D',        icon: '🦾' },
-  { to: '/nutrition',  label: 'Mon Tracker',       icon: '◎' },
-  { to: '/progress',   label: 'Ma progression',    icon: '↑' },
+  { to: '/programs',   label: 'Programmes',        icon: '◈', short: 'Prog' },
+  { to: '/muscles',    label: 'Muscles 3D',        icon: '🦾', short: 'Muscles' },
+  { to: '/nutrition',  label: 'Mon Tracker',       icon: '◎', short: 'Tracker' },
+  { to: '/progress',   label: 'Ma progression',    icon: '↑', short: 'Progrès' },
   { to: '/health',     label: 'Applis Santé',      icon: '🔗' },
   { to: '/community',  label: 'Communauté',        icon: '🌐' },
   { to: '/chat',       label: 'Messages',          icon: '◉' },
   { to: '/calendar',   label: 'Calendrier',        icon: '▦' },
 ]
 const NAV_COACH = [
-  { to: '/dashboard',        label: 'Accueil',          icon: '⌂' },
-  { to: '/coach/profile',    label: 'Mon profil',       icon: '◈' },
-  { to: '/programs',         label: 'Catalogue',        icon: '◉' },
-  { to: '/coach/programs',   label: 'Mes programmes',   icon: '▦' },
+  { to: '/dashboard',        label: 'Accueil',          icon: '⌂', short: 'Accueil' },
+  { to: '/coach/profile',    label: 'Mon profil',       icon: '◈', short: 'Profil' },
+  { to: '/programs',         label: 'Catalogue',        icon: '◉', short: 'Catal.' },
+  { to: '/coach/programs',   label: 'Mes programmes',   icon: '▦', short: 'Prog' },
   { to: '/muscles',          label: 'Muscles 3D',       icon: '🦾' },
   { to: '/coach/nutrition',  label: 'Suivi Nutrition',  icon: '◎' },
   { to: '/clients',          label: 'Mes clients',      icon: '❯❯' },
@@ -30,10 +30,10 @@ const NAV_COACH = [
   { to: '/calendar',         label: 'Calendrier',       icon: '▤' },
 ]
 const NAV_NUTRITIONIST = [
-  { to: '/nutri/dashboard',  label: 'Accueil',              icon: '⌂' },
-  { to: '/nutri/profile',    label: 'Mon profil',           icon: '◈' },
-  { to: '/nutri/clients',    label: 'Mes clients',          icon: '❯❯' },
-  { to: '/nutri/plans',      label: 'Plans nutritionnels',  icon: '◎' },
+  { to: '/nutri/dashboard',  label: 'Accueil',              icon: '⌂', short: 'Accueil' },
+  { to: '/nutri/profile',    label: 'Mon profil',           icon: '◈', short: 'Profil' },
+  { to: '/nutri/clients',    label: 'Mes clients',          icon: '❯❯', short: 'Clients' },
+  { to: '/nutri/plans',      label: 'Plans nutritionnels',  icon: '◎', short: 'Plans' },
   { to: '/nutri/recipes',    label: 'Mes recettes',         icon: '◆' },
   { to: '/nutri/resources',  label: 'Ebooks & Ressources',  icon: '▦' },
   { to: '/health',           label: 'Applis Santé',         icon: '🔗' },
@@ -219,7 +219,7 @@ function MobileBottomNav({ links, theme, setTheme, user }) {
         background:'var(--sidebar-bg)', borderTop:'1px solid var(--sidebar-border)',
         display:'flex', alignItems:'center', paddingBottom:'env(safe-area-inset-bottom)',
         height: 60 }}>
-        {mainLinks.map(({ to, label, icon }) => (
+        {mainLinks.map(({ to, label, icon, short }) => (
           <NavLink key={to} to={to} end={to === '/dashboard'}
             style={({ isActive }) => ({
               flex:1, display:'flex', flexDirection:'column', alignItems:'center',
@@ -227,7 +227,7 @@ function MobileBottomNav({ links, theme, setTheme, user }) {
               color: isActive ? 'var(--accent)' : 'var(--text-muted)',
             })}>
             <span style={{ fontSize:20, lineHeight:1 }}>{icon}</span>
-            <span style={{ fontSize:9, fontWeight:700, lineHeight:1 }}>{label.split(' ')[0]}</span>
+            <span style={{ fontSize:9, fontWeight:700, lineHeight:1 }}>{short || label.split(' ')[0]}</span>
           </NavLink>
         ))}
         {/* Bouton Plus */}
