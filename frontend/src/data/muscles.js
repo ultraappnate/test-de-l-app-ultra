@@ -254,6 +254,26 @@ export function getMusclesForExercise(name) {
   return { primary: [], secondary: [], pattern: 'idle', unknown: true }
 }
 
+/* ════════════════════════════════════════════════════════════
+   CORRESPONDANCE muscle ULTRA → objets BioDigital
+   Les IDs sont propres au modèle BioDigital chargé. On les remplit
+   en cliquant les muscles dans le viewer (mode découverte) une fois
+   la clé en place. Tant que vide → pas d'auto-surbrillance (mais le
+   modèle 3D reste pleinement explorable au clic).
+   ════════════════════════════════════════════════════════════ */
+export const BIODIGITAL_MUSCLE_MAP = {
+  // chest:       ['<objectId_pec_left>', '<objectId_pec_right>'],
+  // quads:       ['<objectId_quad_left>', '<objectId_quad_right>'],
+  // ...
+}
+
+export function getBioObjectIds(primary = [], secondary = []) {
+  const out = {}
+  primary.forEach(m => (BIODIGITAL_MUSCLE_MAP[m] || []).forEach(id => { out[id] = 'primary' }))
+  secondary.forEach(m => (BIODIGITAL_MUSCLE_MAP[m] || []).forEach(id => { if (!out[id]) out[id] = 'secondary' }))
+  return out
+}
+
 /* Liste d'exercices populaires pour l'explorateur */
 export const POPULAR_EXERCISES = [
   { name: 'Squat',                 emoji: '🦵' },

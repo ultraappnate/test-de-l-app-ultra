@@ -1,8 +1,11 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import MuscleMap from '../components/MuscleMap'
-import { POPULAR_EXERCISES, getMusclesForExercise, MUSCLES, MUSCLE_COLORS, ANATOMY } from '../data/muscles'
+import { POPULAR_EXERCISES, getMusclesForExercise, MUSCLES, MUSCLE_COLORS, ANATOMY, getBioObjectIds } from '../data/muscles'
 
 const Body3D = lazy(() => import('../components/Body3D'))
+const BioDigitalHuman = lazy(() => import('../components/BioDigitalHuman'))
+
+const HAS_BIODIGITAL = !!import.meta.env.VITE_BIODIGITAL_KEY
 
 function Spinner() {
   return (
@@ -21,13 +24,18 @@ export default function MuscleExplorer() {
   const [search, setSearch] = useState('')
   const [selectedMuscle, setSelectedMuscle] = useState(null)
   const [autoRotate, setAutoRotate] = useState(true)
+  const [engine, setEngine] = useState(HAS_BIODIGITAL ? 'bio' : 'lite')  // 'bio' | 'lite'
+  const [bioPick, setBioPick] = useState(null)  // { id, name } muscle cliqué dans BioDigital
 
   const { primary, secondary } = getMusclesForExercise(exercise || '')
 
-  // Highlights pour le 3D
+  // Highlights pour le 3D maison
   const highlights = {}
   primary.forEach(m => highlights[m] = 'primary')
   secondary.forEach(m => { if (!highlights[m]) highlights[m] = 'secondary' })
+
+  // Highlights pour BioDigital (objets du modèle médical)
+  const bioObjectIds = getBioObjectIds(primary, secondary)
 
   // Quand on change d'exercice, on déselectionne le muscle
   useEffect(() => { setSelectedMuscle(null) }, [exercise])
@@ -89,35 +97,60 @@ export default function MuscleExplorer() {
 
           {/* Viewer 3D */}
           <div style={{ position: 'relative', minWidth: 0, background:
-            'radial-gradient(circle at 50% 30%, #2a1820 0%, #150d11 70%)',
+            engine === 'bio' ? '#0a0a0f' : 'radial-gradient(circle at 50% 30%, #2a1820 0%, #150d11 70%)',
             border: '1px solid var(--border)', borderRadius: 24, overflow: 'hidden',
-            minHeight: 460, height: 'min(60vh, 540px)' }}>
+            minHeight: 460, height: 'min(64vh, 560px)' }}>
 
             <Suspense fallback={<Spinner />}>
-              <Body3D highlights={highlights} selected={selectedMuscle}
-                onSelect={setSelectedMuscle} autoRotate={autoRotate} />
+              {engine === 'bio' ? (
+                <BioDigitalHuman
+                  objectIds={bioObjectIds}
+                  onSelect={(id, name) => setBioPick({ id, name })} />
+              ) : (
+                <Body3D highlights={highlights} selected={selectedMuscle}
+                  onSelect={setSelectedMuscle} autoRotate={autoRotate} />
+              )}
             </Suspense>
 
             {/* Contrôles flottants */}
-            <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={() => setAutoRotate(a => !a)}
-                style={{ padding: '7px 12px', borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: 'pointer',
-                  background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255,255,255,0.18)', color: '#fff' }}>
-                {autoRotate ? '⏸ Stop rotation' : '↻ Rotation auto'}
-              </button>
-              {selectedMuscle && (
-                <button onClick={() => setSelectedMuscle(null)}
+            <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 8, flexWrap: 'wrap', zIndex: 5 }}>
+              {/* Bascule moteur (uniquement si BioDigital dispo) */}
+              {HAS_BIODIGITAL && (
+                <div style={{ display: 'flex', gap: 3, padding: 3, borderRadius: 12,
+                  background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)' }}>
+                  {[['bio', '🫀 Médical'], ['lite', '⚡ Léger']].map(([v, label]) => (
+                    <button key={v} onClick={() => setEngine(v)}
+                      style={{ padding: '6px 10px', borderRadius: 9, fontSize: 11, fontWeight: 800, cursor: 'pointer',
+                        border: 'none', background: engine === v ? 'var(--accent)' : 'transparent',
+                        color: engine === v ? '#fff' : 'rgba(255,255,255,0.65)' }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {engine === 'lite' && (
+                <button onClick={() => setAutoRotate(a => !a)}
                   style={{ padding: '7px 12px', borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: 'pointer',
                     background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)',
                     border: '1px solid rgba(255,255,255,0.18)', color: '#fff' }}>
-                  ✕ Désélectionner
+                  {autoRotate ? '⏸ Stop rotation' : '↻ Rotation auto'}
                 </button>
               )}
             </div>
 
+            {/* ID muscle cliqué (mode BioDigital) — aide au mapping */}
+            {engine === 'bio' && bioPick && (
+              <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 5, maxWidth: 200,
+                padding: '8px 12px', borderRadius: 10, fontSize: 11, fontWeight: 600,
+                background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.18)', color: '#fff' }}>
+                <p style={{ margin: 0, opacity: 0.6, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Sélection</p>
+                <p style={{ margin: '2px 0 0', fontWeight: 800 }}>{bioPick.name}</p>
+              </div>
+            )}
+
             {/* Hint */}
-            <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
+            <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 5,
               padding: '6px 14px', borderRadius: 99, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
               background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)',
               border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.75)' }}>
