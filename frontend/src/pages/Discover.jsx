@@ -35,6 +35,43 @@ function makeUserIcon() {
   })
 }
 
+/* Sélecteur de ville flottant SUR la carte (changer de ville à tout moment) */
+function MapCitySearch({ onPick }) {
+  const [q, setQ] = useState('')
+  const [open, setOpen] = useState(false)
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const sugg = q.trim().length >= 1
+    ? FR_CITIES.filter(c => norm(c.name).includes(norm(q.trim()))).slice(0, 6) : []
+  return (
+    <div style={{ position: 'fixed', top: 12, left: 12, right: 12, zIndex: 1400,
+      maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
+      <input value={q}
+        onChange={e => { setQ(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="🔍  Choisir une ville…"
+        style={{ width: '100%', padding: '12px 16px', borderRadius: 14, fontSize: 14, outline: 'none',
+          background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.25)', boxSizing: 'border-box' }} />
+      {open && sugg.length > 0 && (
+        <div style={{ marginTop: 4, background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 12, overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.35)' }}>
+          {sugg.map(c => (
+            <button key={c.name} onMouseDown={() => { onPick(c); setQ(c.name); setOpen(false) }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+                padding: '11px 14px', background: 'transparent', border: 'none', cursor: 'pointer',
+                fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+              <span>📍</span>{c.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* Re-center map when flyCenter changes ([lat, lng] ou [lat, lng, zoom]).
    Attend que la carte ait une taille valide (sinon flyTo → NaN → crash). */
 function FlyTo({ center }) {
@@ -337,9 +374,12 @@ export default function Discover() {
       {/* ── MAP ─────────────────────────────────── */}
       <div style={{ flex: 1, position: 'relative', height: '100vh', minHeight: 0, display: showMap ? 'block' : 'none' }}>
 
-        {/* Overlay: selected expert */}
+        {/* Sélecteur de ville sur la carte (mobile — desktop a déjà le panneau) */}
+        {isMobile && <MapCitySearch onPick={c => setFlyCenter([c.lat, c.lng, 13])} />}
+
+        {/* Overlay: selected expert (sous le sélecteur de ville) */}
         {selected && (
-          <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 1000, width: 300 }}>
+          <div style={{ position: 'absolute', top: 70, right: 12, zIndex: 1000, width: 'min(300px, calc(100% - 24px))' }}>
             <ExpertDetail expert={selected} onClose={() => setSelected(null)}
               onProfile={() => navigate(`/expert/${selected.id}`)} />
           </div>
@@ -350,6 +390,8 @@ export default function Discover() {
         <MapContainer
           center={mapCenter}
           zoom={12}
+          minZoom={5}
+          maxZoom={15}
           style={{ width: '100%', height: '100%' }}
           zoomControl={false}
           preferCanvas={true}
@@ -362,7 +404,7 @@ export default function Discover() {
             updateWhenIdle={true}
             updateWhenZooming={false}
             keepBuffer={2}
-            maxZoom={18}
+            maxZoom={15}
           />
 
           <ResizeFix active={showMap} />
