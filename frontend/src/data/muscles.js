@@ -267,6 +267,35 @@ export const BIODIGITAL_MUSCLE_MAP = {
   // ...
 }
 
+/* Fragments de noms susceptibles d'apparaître dans les mailles d'un modèle GLB
+   anatomique (anglais / latin). On affine selon le modèle réellement chargé. */
+export const GLB_NAME_HINTS = {
+  chest:       ['pectoral', 'pec_'],
+  front_delts: ['deltoid', 'delt'],
+  rear_delts:  ['deltoid', 'delt'],
+  biceps:      ['biceps_brachii', 'biceps'],
+  triceps:     ['triceps'],
+  forearms:    ['forearm', 'brachioradialis', 'flexor', 'extensor'],
+  abs:         ['rectus_abdominis', 'abdominis', 'abs'],
+  obliques:    ['oblique'],
+  traps:       ['trapezius', 'trap'],
+  lats:        ['latissimus', 'lat_'],
+  lower_back:  ['erector', 'spinae', 'lumbar'],
+  glutes:      ['gluteus', 'glute'],
+  quads:       ['quadricep', 'vastus', 'rectus_femoris'],
+  hamstrings:  ['hamstring', 'biceps_femoris', 'semitendinosus', 'semimembranosus'],
+  adductors:   ['adductor', 'gracilis'],
+  calves:      ['gastrocnemius', 'soleus', 'calf', 'triceps_surae'],
+  neck:        ['sternocleidomastoid', 'neck'],
+}
+
+export function getGlbHighlights(primary = [], secondary = []) {
+  const out = {}
+  primary.forEach(m => (GLB_NAME_HINTS[m] || []).forEach(frag => { out[frag] = 'primary' }))
+  secondary.forEach(m => (GLB_NAME_HINTS[m] || []).forEach(frag => { if (!out[frag]) out[frag] = 'secondary' }))
+  return out
+}
+
 export function getBioObjectIds(primary = [], secondary = []) {
   const out = {}
   primary.forEach(m => (BIODIGITAL_MUSCLE_MAP[m] || []).forEach(id => { out[id] = 'primary' }))

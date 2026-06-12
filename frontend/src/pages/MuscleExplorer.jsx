@@ -1,11 +1,14 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import MuscleMap from '../components/MuscleMap'
-import { POPULAR_EXERCISES, getMusclesForExercise, MUSCLES, MUSCLE_COLORS, ANATOMY, getBioObjectIds } from '../data/muscles'
+import { POPULAR_EXERCISES, getMusclesForExercise, MUSCLES, MUSCLE_COLORS, ANATOMY, getBioObjectIds, getGlbHighlights } from '../data/muscles'
 
 const Body3D = lazy(() => import('../components/Body3D'))
 const BioDigitalHuman = lazy(() => import('../components/BioDigitalHuman'))
+const AnatomyModel = lazy(() => import('../components/AnatomyModel'))
 
 const HAS_BIODIGITAL = !!import.meta.env.VITE_BIODIGITAL_KEY
+const ANATOMY_URL    = import.meta.env.VITE_ANATOMY_MODEL_URL || ''
+const HAS_ANATOMY    = !!ANATOMY_URL
 
 function Spinner() {
   return (
@@ -24,7 +27,7 @@ export default function MuscleExplorer() {
   const [search, setSearch] = useState('')
   const [selectedMuscle, setSelectedMuscle] = useState(null)
   const [autoRotate, setAutoRotate] = useState(true)
-  const [engine, setEngine] = useState(HAS_BIODIGITAL ? 'bio' : 'lite')  // 'bio' | 'lite'
+  const [engine, setEngine] = useState(HAS_ANATOMY ? 'glb' : HAS_BIODIGITAL ? 'bio' : 'lite')  // 'glb' | 'bio' | 'lite'
   const [bioPick, setBioPick] = useState(null)  // { id, name } muscle cliqué dans BioDigital
 
   const { primary, secondary } = getMusclesForExercise(exercise || '')
@@ -36,6 +39,9 @@ export default function MuscleExplorer() {
 
   // Highlights pour BioDigital (objets du modèle médical)
   const bioObjectIds = getBioObjectIds(primary, secondary)
+
+  // Highlights pour le modèle GLB (par fragments de noms de mailles)
+  const glbHighlights = getGlbHighlights(primary, secondary)
 
   // Quand on change d'exercice, on déselectionne le muscle
   useEffect(() => { setSelectedMuscle(null) }, [exercise])
@@ -102,7 +108,11 @@ export default function MuscleExplorer() {
             minHeight: 460, height: 'min(64vh, 560px)' }}>
 
             <Suspense fallback={<Spinner />}>
-              {engine === 'bio' ? (
+              {engine === 'glb' ? (
+                <AnatomyModel url={ANATOMY_URL} highlights={glbHighlights}
+                  selected={bioPick?.name} onSelect={(name) => setBioPick({ id: name, name })}
+                  autoRotate={autoRotate} />
+              ) : engine === 'bio' ? (
                 <BioDigitalHuman
                   objectIds={bioObjectIds}
                   onSelect={(id, name) => setBioPick({ id, name })} />
@@ -114,11 +124,15 @@ export default function MuscleExplorer() {
 
             {/* Contrôles flottants */}
             <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 8, flexWrap: 'wrap', zIndex: 5 }}>
-              {/* Bascule moteur (uniquement si BioDigital dispo) */}
-              {HAS_BIODIGITAL && (
+              {/* Bascule moteur (si plusieurs dispos) */}
+              {(HAS_BIODIGITAL || HAS_ANATOMY) && (
                 <div style={{ display: 'flex', gap: 3, padding: 3, borderRadius: 12,
                   background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)' }}>
-                  {[['bio', '🫀 Médical'], ['lite', '⚡ Léger']].map(([v, label]) => (
+                  {[
+                    ...(HAS_ANATOMY ? [['glb', '🫀 Anatomie']] : []),
+                    ...(HAS_BIODIGITAL ? [['bio', '🩻 Médical']] : []),
+                    ['lite', '⚡ Léger'],
+                  ].map(([v, label]) => (
                     <button key={v} onClick={() => setEngine(v)}
                       style={{ padding: '6px 10px', borderRadius: 9, fontSize: 11, fontWeight: 800, cursor: 'pointer',
                         border: 'none', background: engine === v ? 'var(--accent)' : 'transparent',
@@ -128,7 +142,7 @@ export default function MuscleExplorer() {
                   ))}
                 </div>
               )}
-              {engine === 'lite' && (
+              {(engine === 'lite' || engine === 'glb') && (
                 <button onClick={() => setAutoRotate(a => !a)}
                   style={{ padding: '7px 12px', borderRadius: 10, fontSize: 11, fontWeight: 800, cursor: 'pointer',
                     background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)',
@@ -138,8 +152,8 @@ export default function MuscleExplorer() {
               )}
             </div>
 
-            {/* ID muscle cliqué (mode BioDigital) — aide au mapping */}
-            {engine === 'bio' && bioPick && (
+            {/* Nom de la maille cliquée (BioDigital / GLB) — aide au mapping */}
+            {(engine === 'bio' || engine === 'glb') && bioPick && (
               <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 5, maxWidth: 200,
                 padding: '8px 12px', borderRadius: 10, fontSize: 11, fontWeight: 600,
                 background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',

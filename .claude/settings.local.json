@@ -47,7 +47,8 @@
       "Bash(awk '{print $5, $9}')",
       "Read(//private/tmp/**)",
       "Bash(lsof -ti:5001)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "WebSearch"
     ]
   }
 }
