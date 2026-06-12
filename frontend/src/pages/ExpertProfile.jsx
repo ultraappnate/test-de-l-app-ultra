@@ -5,6 +5,23 @@ import { useStore } from '../store'
 const ROLE_LABEL = { coach: 'Coach sportif', nutritionist: 'Nutritionniste' }
 const ROLE_EMOJI = { coach: '🎓', nutritionist: '🥗' }
 
+/* Normalise un handle/URL Instagram → URL complète + @handle d'affichage */
+function instaInfo(value) {
+  if (!value) return null
+  let handle = value.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/$/, '')
+  return { url: `https://instagram.com/${handle}`, handle: `@${handle}` }
+}
+
+/* Convertit une URL YouTube/Vimeo en URL d'embed */
+function videoEmbed(url) {
+  if (!url) return null
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`
+  const vi = url.match(/vimeo\.com\/(\d+)/)
+  if (vi) return `https://player.vimeo.com/video/${vi[1]}`
+  return null
+}
+
 export default function ExpertProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -45,6 +62,14 @@ export default function ExpertProfile() {
     if (!user) { navigate('/register?role=client'); return }
     navigate(`/chat/${expert.id}`)
   }
+
+  const insta = instaInfo(expert.instagram)
+  const embed = videoEmbed(expert.videoUrl)
+  const hasShop = expert.shop?.length > 0
+  const sectionTitle = (t) => (
+    <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-faint)', margin: '0 0 12px' }}>{t}</p>
+  )
+  const cardStyle = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, marginBottom: 16 }
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)', padding: 'clamp(16px,4vw,32px)' }}>
@@ -131,13 +156,109 @@ export default function ExpertProfile() {
 
         {/* Spécialités */}
         {expert.specialties?.length > 0 && (
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, padding: 20, marginBottom: 16 }}>
-            <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-faint)', margin: '0 0 12px' }}>Spécialités</p>
+          <div style={cardStyle}>
+            {sectionTitle('Spécialités')}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {expert.specialties.map(s => (
                 <span key={s} style={{ fontSize: 13, fontWeight: 700, padding: '7px 14px', borderRadius: 10,
                   background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>{s}</span>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Certifications */}
+        {expert.certifications?.length > 0 && (
+          <div style={cardStyle}>
+            {sectionTitle('Diplômes & certifications')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {expert.certifications.map((c, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--text-secondary)' }}>
+                  <span style={{ color: '#4a90d9' }}>🎓</span>{c}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Vidéo de présentation */}
+        {(embed || expert.videoData) && (
+          <div style={cardStyle}>
+            {sectionTitle('Vidéo de présentation')}
+            <div style={{ position: 'relative', width: '100%', borderRadius: 14, overflow: 'hidden', background: '#000', aspectRatio: '16/9' }}>
+              {embed ? (
+                <iframe src={embed} title="Présentation" allowFullScreen
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
+              ) : (
+                <video src={expert.videoData} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Galerie photos */}
+        {expert.photos?.length > 0 && (
+          <div style={cardStyle}>
+            {sectionTitle(`Galerie · ${expert.photos.length}`)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8 }}>
+              {expert.photos.map((p, i) => (
+                <img key={i} src={p} alt="" loading="lazy"
+                  style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 12, border: '1px solid var(--border)' }} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Boutique */}
+        {hasShop && (
+          <div style={cardStyle}>
+            {sectionTitle('🛍 Boutique')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {expert.shop.map((p, i) => (
+                <div key={p.id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 14,
+                  background: 'var(--bg-base)', border: '1px solid var(--border)' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 20, background: 'var(--accent-subtle)' }}>📦</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>{p.name}</p>
+                      {p.badge && <span style={{ fontSize: 9, padding: '1px 7px', borderRadius: 99, fontWeight: 800, background: 'var(--gold-subtle)', color: 'var(--gold)' }}>{p.badge}</span>}
+                    </div>
+                    <p style={{ fontSize: 13, fontWeight: 900, color: 'var(--accent)', margin: '2px 0 0' }}>{p.price === 0 ? 'Gratuit' : `${p.price}€`}</p>
+                  </div>
+                  {p.link && (
+                    <a href={p.link} target="_blank" rel="noreferrer"
+                      style={{ padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 800, textDecoration: 'none',
+                        background: 'var(--accent)', color: '#fff', whiteSpace: 'nowrap' }}>
+                      Voir →
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Liens & réseaux */}
+        {(insta || expert.linkedin) && (
+          <div style={cardStyle}>
+            {sectionTitle('Réseaux & liens')}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {insta && (
+                <a href={insta.url} target="_blank" rel="noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, textDecoration: 'none',
+                    fontSize: 13, fontWeight: 700, color: '#fff',
+                    background: 'linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)' }}>
+                  📷 {insta.handle}
+                </a>
+              )}
+              {expert.linkedin && (
+                <a href={expert.linkedin.startsWith('http') ? expert.linkedin : `https://${expert.linkedin}`} target="_blank" rel="noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, textDecoration: 'none',
+                    fontSize: 13, fontWeight: 700, color: '#fff', background: '#0a66c2' }}>
+                  in LinkedIn
+                </a>
+              )}
             </div>
           </div>
         )}
@@ -150,13 +271,22 @@ export default function ExpertProfile() {
           </div>
         )}
 
-        {/* CTA contact */}
-        <button onClick={handleContact}
-          style={{ width: '100%', padding: '16px', borderRadius: 16, fontSize: 15, fontWeight: 800,
-            background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer',
-            boxShadow: '0 8px 24px rgba(125,45,56,0.3)' }}>
-          {user ? `💬 Contacter ${expert.name.split(' ')[0]}` : '🚀 Créer un compte pour contacter'}
-        </button>
+        {/* ── Zone d'action (contact + réservation) ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+          {expert.calendlyUrl && (
+            <a href={expert.calendlyUrl} target="_blank" rel="noreferrer"
+              style={{ width: '100%', padding: '15px', borderRadius: 16, fontSize: 15, fontWeight: 800, textAlign: 'center',
+                textDecoration: 'none', background: '#006bff', color: '#fff', boxShadow: '0 8px 24px rgba(0,107,255,0.3)' }}>
+              📅 Réserver un créneau
+            </a>
+          )}
+          <button onClick={handleContact}
+            style={{ width: '100%', padding: '15px', borderRadius: 16, fontSize: 15, fontWeight: 800,
+              background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer',
+              boxShadow: '0 8px 24px rgba(125,45,56,0.3)' }}>
+            {user ? `💬 Contacter ${expert.name.split(' ')[0]}` : '🚀 Créer un compte pour contacter'}
+          </button>
+        </div>
       </div>
     </div>
   )

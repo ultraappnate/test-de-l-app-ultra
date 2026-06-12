@@ -80,6 +80,12 @@ const db = {
       specialties: ['Force','Prise de masse','Powerlifting'], price: 80, rating: 4.9, reviewCount: 142,
       location: { lat: 48.8748, lng: 2.3098, city: 'Paris 8e', address: '12 Rue du Faubourg Saint-Honoré' },
       available: true, online: true, inPerson: true, avatarColor: '#a03848', verified: true,
+      instagram: 'nate.coaching', calendlyUrl: 'https://calendly.com/nate-coaching/seance-decouverte',
+      certifications: ['BPJEPS AGFF', 'Certification Powerlifting IPF', 'Premiers secours PSC1'],
+      shop: [
+        { id: 's1', name: 'Programme Force 12 semaines', price: 49, badge: 'Best-seller', link: 'https://gumroad.com', available: true },
+        { id: 's2', name: 'Ebook Nutrition Prise de Masse', price: 19, badge: '', link: 'https://gumroad.com', available: true },
+      ],
     },
     { id: 'client-1',   name: 'Alex Client',      email: 'client@ultra.com',         password: 'ultra2024', role: 'client',
       onboardingDone: true, objective: 'Prise de masse', level: 'Intermédiaire',
@@ -90,6 +96,8 @@ const db = {
       specialties: ['Rééquilibrage alimentaire','Nutrition sportive','Perte de poids'], price: 70, rating: 4.8, reviewCount: 98,
       location: { lat: 48.8589, lng: 2.3783, city: 'Paris 11e', address: '34 Rue de la Roquette' },
       available: true, online: true, inPerson: true, avatarColor: '#27ae60', verified: true,
+      instagram: 'sarah.nutrition', calendlyUrl: 'https://calendly.com/sarah-nutrition/bilan',
+      certifications: ['Diététicienne DE', 'DU Nutrition du sport'],
     },
     // ── Coaches supplémentaires ──
     { id: 'coach-2', name: 'Marc Lefevre',    email: 'marc@ultra.com',    password: 'ultra2024', role: 'coach',
@@ -309,8 +317,17 @@ app.get('/api/discover/:id', (req, res) => {
     location: u.location || null, available: u.available !== false,
     online: u.online !== false, inPerson: u.inPerson !== false,
     avatarColor: u.avatarColor || '#a03848', verified: u.verified || false,
-    avatar: u.avatar || null, certifications: u.certifications || [],
-    experience: u.experience || null,
+    avatar: u.avatar || null, banner: u.banner || null,
+    certifications: u.certifications || [], experience: u.experience || null,
+    // Liens & contenus ajoutés par l'expert sur son interface
+    calendlyUrl: u.calendlyUrl || '',
+    instagram:   u.instagram   || '',
+    linkedin:    u.linkedin     || '',
+    photos:      u.photos       || [],
+    videoUrl:    u.videoUrl     || '',
+    videoData:   u.videoData    || null,
+    shop:        u.shop         || [],
+    programCount: db.programs.filter(p => p.coachId === u.id).length,
   })
 })
 

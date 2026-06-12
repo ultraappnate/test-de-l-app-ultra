@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-le
 import { divIcon } from 'leaflet'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { FR_CITIES } from '../data/frCities'
 
 /* ── Custom marker icons (no default-icon hack needed) ── */
 function makeColorIcon(color, emoji) {
@@ -34,11 +35,26 @@ function makeUserIcon() {
   })
 }
 
-/* Re-center map when flyCenter changes */
+/* Re-center map when flyCenter changes ([lat, lng] ou [lat, lng, zoom]).
+   Attend que la carte ait une taille valide (sinon flyTo → NaN → crash). */
 function FlyTo({ center }) {
   const map = useMap()
   useEffect(() => {
-    if (center) map.flyTo(center, 14, { duration: 1 })
+    if (!center) return
+    let cancelled = false, tries = 0
+    const run = () => {
+      if (cancelled) return
+      const size = map.getSize()
+      if ((size.x === 0 || size.y === 0) && tries < 30) {
+        tries++
+        map.invalidateSize()
+        requestAnimationFrame(run)
+        return
+      }
+      try { map.flyTo([center[0], center[1]], center[2] || 14, { duration: 1 }) } catch {}
+    }
+    const t = setTimeout(run, 80)
+    return () => { cancelled = true; clearTimeout(t) }
   }, [center, map])
   return null
 }
@@ -99,6 +115,7 @@ export default function Discover() {
   const [onlineOnly,  setOnlineOnly] = useState(false)
   const [specialty,   setSpecialty]  = useState('')
   const [search,      setSearch]     = useState('')
+  const [cityOpen,    setCityOpen]   = useState(false)
 
   /* Geolocation */
   useEffect(() => {
@@ -149,6 +166,19 @@ export default function Discover() {
   const showList = !isMobile || mobileView === 'list'
   const showMap  = !isMobile || mobileView === 'map'
 
+  /* Suggestions de villes selon la saisie */
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+  const citySuggestions = search.trim().length >= 1
+    ? FR_CITIES.filter(c => norm(c.name).includes(norm(search.trim()))).slice(0, 6)
+    : []
+
+  const selectCity = (city) => {
+    setSearch(city.name)
+    setCityOpen(false)
+    setFlyCenter([city.lat, city.lng, 12])   // recentre la carte sur la ville
+    if (isMobile) setMobileView('map')        // bascule sur la carte (mobile)
+  }
+
   return (
     <div style={{ display: 'flex', height: '100vh', maxHeight: '100vh', overflow: 'hidden', background: 'var(--bg-base)' }}>
 
@@ -197,14 +227,38 @@ export default function Discover() {
           )}
         </div>
 
-        {/* Search */}
-        <div style={{ padding: '10px 16px 0' }}>
-          <input value={search} onChange={e => setSearch(e.target.value)}
+        {/* Search + autocomplétion ville */}
+        <div style={{ padding: '10px 16px 0', position: 'relative' }}>
+          <input value={search}
+            onChange={e => { setSearch(e.target.value); setCityOpen(true) }}
+            onFocus={() => setCityOpen(true)}
+            onBlur={() => setTimeout(() => setCityOpen(false), 150)}
             placeholder="🔍  Nom, ville, spécialité…"
             style={{
               width: '100%', padding: '10px 14px', borderRadius: 12, fontSize: 13, outline: 'none',
               background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', boxSizing: 'border-box',
             }} />
+
+          {cityOpen && citySuggestions.length > 0 && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 16, right: 16, zIndex: 2000, marginTop: 4,
+              background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12,
+              overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
+            }}>
+              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
+                color: 'var(--text-faint)', padding: '8px 12px 4px', margin: 0 }}>Aller à la ville</p>
+              {citySuggestions.map(c => (
+                <button key={c.name} onMouseDown={() => selectCity(c)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+                    padding: '10px 12px', background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <span>📍</span>{c.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Filters */}
