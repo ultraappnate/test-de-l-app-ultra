@@ -41,6 +41,7 @@ import Onboarding from './pages/Onboarding'
 import HealthIntegrations from './pages/HealthIntegrations'
 import Community from './pages/Community'
 import MuscleExplorer from './pages/MuscleExplorer'
+import ExpertProfile from './pages/ExpertProfile'
 
 function PrivateRoute({ children }) {
   const { user } = useStore()
@@ -139,6 +140,7 @@ export default function App() {
           <Route path="/nutri/profile"    element={<PrivateRoute><NutriProfile /></PrivateRoute>} />
           <Route path="/nutri/stats"      element={<PrivateRoute><NutriStats /></PrivateRoute>} />
           <Route path="/discover"   element={<Discover />} />
+          <Route path="/expert/:id" element={<ExpertProfile />} />
           <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
           <Route path="/programs" element={<PrivateRoute><Programs /></PrivateRoute>} />
           <Route path="/programs/:programId" element={<PrivateRoute><ProgramDetail /></PrivateRoute>} />

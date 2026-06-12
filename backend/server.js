@@ -297,6 +297,23 @@ app.get('/api/discover', (req, res) => {
   res.json(experts)
 })
 
+// ─── Profil public d'un expert (coach ou nutritionniste) ──
+app.get('/api/discover/:id', (req, res) => {
+  const u = db.users.find(x => x.id === req.params.id && (x.role === 'coach' || x.role === 'nutritionist'))
+  if (!u) return res.status(404).json({ error: 'Expert introuvable' })
+  const { password, email, ...rest } = u
+  res.json({
+    id: u.id, name: u.name, role: u.role,
+    bio: u.bio || '', specialties: u.specialties || [],
+    price: u.price || 0, rating: u.rating || 4.5, reviewCount: u.reviewCount || 0,
+    location: u.location || null, available: u.available !== false,
+    online: u.online !== false, inPerson: u.inPerson !== false,
+    avatarColor: u.avatarColor || '#a03848', verified: u.verified || false,
+    avatar: u.avatar || null, certifications: u.certifications || [],
+    experience: u.experience || null,
+  })
+})
+
 // ─── Notifications (in-memory seed) ────────────────────
 const NOTIF_SEED = {
   'coach@ultra.com': [

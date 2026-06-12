@@ -66,6 +66,15 @@ export const useStore = create(
         } catch { return [] }
       },
 
+      fetchExpert: async (id) => {
+        try {
+          const { token } = get()
+          const headers = token ? { Authorization: `Bearer ${token}` } : {}
+          const res = await axios.get(`${API}/discover/${id}`, { headers })
+          return res.data
+        } catch { return null }
+      },
+
       fetchPrograms: async () => {
         try {
           const { token } = get()

@@ -274,7 +274,7 @@ export default function Discover() {
           ) : filtered.map(e => (
             <ExpertCard key={e.id} expert={e} selected={selected?.id === e.id}
               onClick={() => handleSelect(e)}
-              onContact={() => navigate(`/register?role=client`)} />
+              onProfile={() => navigate(`/expert/${e.id}`)} />
           ))}
         </div>
       </div>
@@ -286,7 +286,7 @@ export default function Discover() {
         {selected && (
           <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 1000, width: 300 }}>
             <ExpertDetail expert={selected} onClose={() => setSelected(null)}
-              onContact={() => navigate('/register?role=client')} />
+              onProfile={() => navigate(`/expert/${selected.id}`)} />
           </div>
         )}
 
@@ -324,12 +324,20 @@ export default function Discover() {
               eventHandlers={{ click: () => handleSelect(e) }}
             >
               <Popup>
-                <div style={{ minWidth: 160, fontFamily: 'inherit' }}>
+                <div style={{ minWidth: 170, fontFamily: 'inherit' }}>
                   <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 2px' }}>{e.name}</p>
-                  <p style={{ fontSize: 11, color: '#888', margin: 0 }}>{e.location.city}</p>
-                  <p style={{ fontSize: 12, fontWeight: 700, marginTop: 4, color: e.avatarColor || ROLE_COLOR[e.role] }}>
+                  <p style={{ fontSize: 11, color: '#888', margin: 0 }}>
+                    {ROLE_EMOJI[e.role]} {e.role === 'nutritionist' ? 'Nutritionniste' : 'Coach'} · {e.location.city}
+                  </p>
+                  <p style={{ fontSize: 12, fontWeight: 700, margin: '4px 0 8px', color: e.avatarColor || ROLE_COLOR[e.role] }}>
                     {e.price}€/séance &nbsp;⭐ {e.rating}
                   </p>
+                  <button onClick={() => navigate(`/expert/${e.id}`)}
+                    style={{ width: '100%', padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 800,
+                      cursor: 'pointer', border: 'none', color: '#fff',
+                      background: e.avatarColor || ROLE_COLOR[e.role] }}>
+                    Voir le profil →
+                  </button>
                 </div>
               </Popup>
             </Marker>
@@ -372,7 +380,7 @@ export default function Discover() {
 }
 
 /* ── Expert card ────────────────────────────────────── */
-function ExpertCard({ expert: e, selected, onClick, onContact }) {
+function ExpertCard({ expert: e, selected, onClick, onProfile }) {
   const color = e.avatarColor || ROLE_COLOR[e.role]
   return (
     <div onClick={onClick}
@@ -426,12 +434,19 @@ function ExpertCard({ expert: e, selected, onClick, onContact }) {
           </div>
         </div>
       </div>
+
+      {/* Voir le profil */}
+      <button onClick={(ev) => { ev.stopPropagation(); onProfile?.() }}
+        style={{ width: '100%', marginTop: 10, padding: '8px 0', borderRadius: 10, fontSize: 12, fontWeight: 800,
+          cursor: 'pointer', background: 'var(--bg-base)', border: `1px solid ${color}`, color }}>
+        Voir le profil →
+      </button>
     </div>
   )
 }
 
 /* ── Expert detail overlay ──────────────────────────── */
-function ExpertDetail({ expert: e, onClose, onContact }) {
+function ExpertDetail({ expert: e, onClose, onProfile }) {
   const color = e.avatarColor || ROLE_COLOR[e.role]
   return (
     <div style={{ borderRadius: 20, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.25)', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
@@ -485,13 +500,12 @@ function ExpertDetail({ expert: e, onClose, onContact }) {
         </div>
 
         {/* CTA */}
-        <button onClick={onContact}
+        <button onClick={onProfile}
           style={{
-            width: '100%', padding: '11px', borderRadius: 14, fontSize: 13, fontWeight: 700,
-            color: 'white', background: color, border: 'none', cursor: e.available ? 'pointer' : 'not-allowed',
-            opacity: e.available ? 1 : 0.5,
+            width: '100%', padding: '11px', borderRadius: 14, fontSize: 13, fontWeight: 800,
+            color: 'white', background: color, border: 'none', cursor: 'pointer',
           }}>
-          {e.available ? 'Contacter & Réserver →' : 'Actuellement indisponible'}
+          Voir le profil complet →
         </button>
       </div>
     </div>
