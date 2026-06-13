@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 
-const ROLE_LABEL = { coach: 'Coach sportif', nutritionist: 'Nutritionniste' }
-const ROLE_EMOJI = { coach: '🎓', nutritionist: '🥗' }
+const ROLE_LABEL = { coach: 'Coach sportif', nutritionist: 'Nutritionniste', health_pro: 'Professionnel de santé' }
+const ROLE_EMOJI = { coach: '🎓', nutritionist: '🥗', health_pro: '🩺' }
 
 /* Normalise un handle/URL Instagram → URL complète + @handle d'affichage */
 function instaInfo(value) {
@@ -103,10 +103,19 @@ export default function ExpertProfile() {
                   background: 'rgba(74,144,217,0.15)', color: '#4a90d9' }}>✓ Vérifié</span>
               )}
             </div>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-              {ROLE_EMOJI[expert.role]} {ROLE_LABEL[expert.role] || expert.role}
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+              {ROLE_EMOJI[expert.role]} {expert.profession || ROLE_LABEL[expert.role] || expert.role}
               {expert.location?.city && <> · 📍 {expert.location.city}</>}
             </p>
+            {/* Badge RPPS pour les pros de santé (gage de sérieux) */}
+            {expert.role === 'health_pro' && expert.rpps && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 12,
+                padding: '4px 12px', borderRadius: 99, background: 'rgba(14,165,233,0.12)',
+                border: '1px solid rgba(14,165,233,0.3)' }}>
+                <span style={{ fontSize: 12 }}>🛡️</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#0ea5e9' }}>N° RPPS {expert.rpps}</span>
+              </div>
+            )}
 
             {/* Stats rapides */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>

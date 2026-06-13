@@ -228,4 +228,37 @@ export const ROLE_DATA = {
       ],
     ],
   },
+  health_pro: {
+    tagline: 'Espace Professionnel de Sante',
+    cta: 'Creer mon espace sante',
+    subtitle: 'Kine, osteo, medecin du sport : connecte-toi a tout l\'ecosysteme.',
+    roleLabel: 'Ma profession',
+    headlines: [
+      { lines: ['Soigne,', 'previens.', 'Accompagne', 'la performance.'], accent: 'Accompagne' },
+      { lines: ['Ton expertise', 'medicale.', 'Au cœur', 'du sport.'], accent: 'Au cœur' },
+      { lines: ['Collabore', 'avec les coachs.', 'Optimise', 'la recuperation.'], accent: 'Optimise' },
+    ],
+    subs: [
+      'Rejoins la plateforme qui relie les pros de sante, les coachs et leurs patients sportifs.',
+      'Partage tes bilans avec les coachs, suis tes patients, developpe ta patientele sportive.',
+      'La premiere plateforme ou kines, osteos et medecins du sport travaillent avec les coachs.',
+    ],
+    testimonials: [
+      { text: "Je partage mes bilans directement avec les coachs de mes patients. Le suivi est enfin coordonne.", author: '— Dr. Julien F., Kinesitherapeute · Sur ULTRA depuis 2024' },
+      { text: "Mes patients sportifs me trouvent via la carte ULTRA. Ma patientele a double en 6 mois.", author: '— Camille R., Osteopathe · Sur ULTRA depuis 2023' },
+      { text: "Pouvoir adapter le programme du coach selon mon diagnostic, c'est la medecine du futur.", author: '— Dr. Nadia B., Medecin du sport · Sur ULTRA depuis 2024' },
+    ],
+    features: [
+      [
+        { icon: '🩺', title: 'Profil verifie', desc: 'Ton numero RPPS atteste de ton serieux aupres des patients.' },
+        { icon: '🗺', title: 'Visible sur la carte', desc: 'Les sportifs te trouvent pres de chez eux.' },
+        { icon: '🤝', title: 'Lien avec les coachs', desc: 'Partage tes bilans, adapte les programmes.' },
+      ],
+      [
+        { icon: '📋', title: 'Dossiers partages', desc: 'Avec l\'accord du patient, collabore en toute securite.' },
+        { icon: '📅', title: 'Agenda & Calendly', desc: 'Les patients reservent en deux clics.' },
+        { icon: '🛡️', title: 'Conforme & securise', desc: 'Confidentialite des donnees de sante respectee.' },
+      ],
+    ],
+  },
 }

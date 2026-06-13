@@ -110,8 +110,9 @@ function ResizeFix({ active }) {
 }
 
 /* ── Constants ──────────────────────────────────────── */
-const ROLE_COLOR = { coach: '#a03848', nutritionist: '#27ae60' }
-const ROLE_EMOJI = { coach: '🎓', nutritionist: '🥗' }
+const ROLE_COLOR = { coach: '#a03848', nutritionist: '#27ae60', health_pro: '#0ea5e9' }
+const ROLE_EMOJI = { coach: '🎓', nutritionist: '🥗', health_pro: '🩺' }
+const ROLE_LABEL = { coach: 'Coach', nutritionist: 'Nutritionniste', health_pro: 'Santé' }
 const SPECIALTIES = ['Force','HIIT','Cardio','Yoga','Mobilité','Running','Boxe','Powerlifting','Nutrition sportive','Rééquilibrage','Végétarisme','Triathlon','Perte de poids','Prise de masse']
 const PARIS = { lat: 48.8566, lng: 2.3522 }
 
@@ -303,10 +304,10 @@ export default function Discover() {
         <div style={{ padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {/* Role tabs */}
           <div style={{ display: 'flex', gap: 6 }}>
-            {[['all','Tous 🌟'], ['coach','Coaches 🎓'], ['nutritionist','Nutritionnistes 🥗']].map(([v, label]) => (
+            {[['all','Tous'], ['coach','Coachs 🎓'], ['nutritionist','Nutri 🥗'], ['health_pro','Santé 🩺']].map(([v, label]) => (
               <button key={v} onClick={() => setRoleFilter(v)}
                 style={{
-                  flex: 1, padding: '7px 4px', borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  flex: 1, padding: '7px 4px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, cursor: 'pointer',
                   background: roleFilter === v ? 'var(--accent)' : 'var(--bg-card)',
                   color: roleFilter === v ? '#fff' : 'var(--text-secondary)',
                   border: `1px solid ${roleFilter === v ? 'var(--accent)' : 'var(--border)'}`,
@@ -434,7 +435,7 @@ export default function Discover() {
                 <div style={{ minWidth: 170, fontFamily: 'inherit' }}>
                   <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 2px' }}>{e.name}</p>
                   <p style={{ fontSize: 11, color: '#888', margin: 0 }}>
-                    {ROLE_EMOJI[e.role]} {e.role === 'nutritionist' ? 'Nutritionniste' : 'Coach'} · {e.location.city}
+                    {ROLE_EMOJI[e.role]} {e.profession || (e.role === 'nutritionist' ? 'Nutritionniste' : 'Coach')} · {e.location.city}
                   </p>
                   <p style={{ fontSize: 12, fontWeight: 700, margin: '4px 0 8px', color: e.avatarColor || ROLE_COLOR[e.role] }}>
                     {e.price}€/séance &nbsp;⭐ {e.rating}
@@ -516,7 +517,7 @@ function ExpertCard({ expert: e, selected, onClick, onProfile }) {
           </div>
 
           <p style={{ fontSize: 10, color: 'var(--text-faint)', margin: '0 0 6px' }}>
-            {ROLE_EMOJI[e.role]} {e.role === 'nutritionist' ? 'Nutritionniste' : 'Coach'} · 📍 {e.location?.city}
+            {ROLE_EMOJI[e.role]} {e.profession || (e.role === 'nutritionist' ? 'Nutritionniste' : 'Coach')} · 📍 {e.location?.city}
           </p>
 
           {/* Price + rating + distance */}
@@ -572,7 +573,7 @@ function ExpertDetail({ expert: e, onClose, onProfile }) {
           }}>{e.name[0]}</div>
           <div>
             <p style={{ fontWeight: 900, color: 'white', fontSize: 15, margin: 0 }}>{e.name}</p>
-            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, margin: '2px 0 0' }}>{ROLE_EMOJI[e.role]} {e.role === 'nutritionist' ? 'Nutritionniste' : 'Coach'}</p>
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, margin: '2px 0 0' }}>{ROLE_EMOJI[e.role]} {e.profession || (e.role === 'nutritionist' ? 'Nutritionniste' : 'Coach')}</p>
             <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, margin: 0 }}>📍 {e.location?.city}</p>
           </div>
         </div>

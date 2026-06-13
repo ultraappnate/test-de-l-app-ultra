@@ -24,9 +24,9 @@ export const useStore = create(
         }
       },
 
-      register: async (email, password, name, role) => {
+      register: async (email, password, name, role, extra = {}) => {
         try {
-          const res = await axios.post(`${API}/auth/register`, { email, password, name, role })
+          const res = await axios.post(`${API}/auth/register`, { email, password, name, role, ...extra })
           set({ user: res.data.user, token: res.data.token })
           return { success: true }
         } catch (err) {

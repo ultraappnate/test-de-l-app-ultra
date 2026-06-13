@@ -45,6 +45,14 @@ const NAV_NUTRITIONIST = [
   { to: '/revenue',          label: 'Revenus',              icon: '◇' },
   { to: '/calendar',         label: 'Calendrier',           icon: '▤' },
 ]
+const NAV_HEALTH_PRO = [
+  { to: '/pro/dashboard', label: 'Accueil',       icon: '⌂', short: 'Accueil' },
+  { to: '/pro/profile',   label: 'Mon profil',    icon: '◈', short: 'Profil' },
+  { to: '/discover',      label: 'Carte sportifs',icon: '🗺', short: 'Carte' },
+  { to: '/chat',          label: 'Messages',      icon: '◉', short: 'Messages' },
+  { to: '/calendar',      label: 'Calendrier',    icon: '▦', short: 'Agenda' },
+  { to: '/community',     label: 'Communauté',    icon: '🌐', short: 'Commu' },
+]
 const NAV_ADMIN = [
   { to: '/admin',     label: 'Panneau admin', icon: '👑' },
   { to: '/programs',  label: 'Programmes',    icon: '◉' },
@@ -62,6 +70,7 @@ const MOBILE_NAV = {
 function getNav(role) {
   if (role === 'coach') return NAV_COACH
   if (role === 'nutritionist') return NAV_NUTRITIONIST
+  if (role === 'health_pro') return NAV_HEALTH_PRO
   if (role === 'admin') return NAV_ADMIN
   return NAV_CLIENT
 }
@@ -69,6 +78,7 @@ function getNav(role) {
 function getRoleLabel(role) {
   if (role === 'coach') return 'Espace Coach'
   if (role === 'nutritionist') return 'Espace Nutrition'
+  if (role === 'health_pro') return 'Espace Santé'
   if (role === 'admin') return 'Administration'
   return 'Coaching & Nutrition'
 }

@@ -162,6 +162,34 @@ const db = {
       location: { lat: 48.8044, lng: 2.1204, city: 'Versailles', address: '4 Rue des Réservoirs' },
       available: true, online: true, inPerson: false, avatarColor: '#e8a020', verified: true,
     },
+    // ── Professionnels de santé ──
+    { id: 'pro-1', name: 'Dr. Julien Faure',  email: 'julien.kine@ultra.com', password: 'ultra2024', role: 'health_pro',
+      profession: 'Kinésithérapeute', rpps: '10100456789',
+      bio: 'Masseur-kinésithérapeute DE, spécialisé rééducation sportive et prévention des blessures. Travaille main dans la main avec ton coach.',
+      specialties: ['Rééducation','Prévention blessures','Sport'], price: 55, rating: 4.9, reviewCount: 88,
+      location: { lat: 48.8698, lng: 2.3078, city: 'Paris 8e', address: '24 Rue de Miromesnil' },
+      available: true, online: false, inPerson: true, avatarColor: '#0ea5e9', verified: true,
+      certifications: ['Diplôme d\'État de Masseur-Kinésithérapeute', 'DU Rééducation du sportif'],
+      calendlyUrl: 'https://calendly.com/julien-kine/bilan',
+    },
+    { id: 'pro-2', name: 'Camille Roy',  email: 'camille.osteo@ultra.com', password: 'ultra2024', role: 'health_pro',
+      profession: 'Ostéopathe', rpps: '10100987654',
+      bio: 'Ostéopathe DO. Prise en charge des douleurs chroniques, mobilité articulaire et accompagnement de la performance sportive.',
+      specialties: ['Ostéopathie','Mobilité','Douleurs chroniques'], price: 60, rating: 4.8, reviewCount: 121,
+      location: { lat: 48.8530, lng: 2.3499, city: 'Paris 4e', address: '8 Rue de Rivoli' },
+      available: true, online: false, inPerson: true, avatarColor: '#14b8a6', verified: true,
+      certifications: ['Diplôme d\'Ostéopathie (DO)', '6 ans de formation'],
+      calendlyUrl: 'https://calendly.com/camille-osteo/consultation',
+    },
+    { id: 'pro-3', name: 'Dr. Nadia Belkacem', email: 'nadia.medecin@ultra.com', password: 'ultra2024', role: 'health_pro',
+      profession: 'Médecin du sport', rpps: '10100112233',
+      bio: 'Médecin du sport. Bilans d\'aptitude, suivi cardiologique de l\'effort, certificats médicaux et prévention.',
+      specialties: ['Bilan d\'aptitude','Cardiologie du sport','Certificat médical'], price: 80, rating: 5.0, reviewCount: 64,
+      location: { lat: 48.8417, lng: 2.3222, city: 'Paris 14e', address: '3 Rue d\'Alésia' },
+      available: true, online: true, inPerson: true, avatarColor: '#6366f1', verified: true,
+      certifications: ['Docteur en Médecine', 'Capacité de Médecine du Sport'],
+      calendlyUrl: 'https://calendly.com/dr-nadia/bilan-aptitude',
+    },
   ]
   for (const u of seed) {
     if (!db.users.find(x => x.email === u.email)) {
@@ -198,7 +226,7 @@ function auth(req, res, next) {
 // ─── AUTH ───────────────────────────────────────────────
 
 app.post('/api/auth/register', async (req, res) => {
-  const { email, password, name, role } = req.body
+  const { email, password, name, role, profession, rpps } = req.body
   if (!email || !password || !name) {
     return res.status(400).json({ message: 'Tous les champs sont requis' })
   }
@@ -212,6 +240,8 @@ app.post('/api/auth/register', async (req, res) => {
     password: hash,
     name,
     role: role || 'client',
+    // Champs professionnel de santé
+    ...(role === 'health_pro' && { profession: profession || 'Professionnel de santé', rpps: rpps || '', verified: false }),
     createdAt: new Date().toISOString(),
   }
   db.users.push(user)
@@ -293,7 +323,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 app.get('/api/discover', (req, res) => {
   const { lat, lng, radius = 30, role, specialty, maxPrice, online } = req.query
   const experts = db.users
-    .filter(u => u.role === 'coach' || u.role === 'nutritionist')
+    .filter(u => u.role === 'coach' || u.role === 'nutritionist' || u.role === 'health_pro')
     .filter(u => u.location)
     .map(({ password, ...u }) => {
       const dist = (lat && lng)
@@ -301,6 +331,7 @@ app.get('/api/discover', (req, res) => {
         : null
       return {
         id: u.id, name: u.name, role: u.role,
+        profession: u.profession || null,
         bio: u.bio || '', specialties: u.specialties || [],
         price: u.price || 0, rating: u.rating || 4.5, reviewCount: u.reviewCount || 0,
         location: u.location, available: u.available !== false,
@@ -320,11 +351,12 @@ app.get('/api/discover', (req, res) => {
 
 // ─── Profil public d'un expert (coach ou nutritionniste) ──
 app.get('/api/discover/:id', (req, res) => {
-  const u = db.users.find(x => x.id === req.params.id && (x.role === 'coach' || x.role === 'nutritionist'))
+  const u = db.users.find(x => x.id === req.params.id && (x.role === 'coach' || x.role === 'nutritionist' || x.role === 'health_pro'))
   if (!u) return res.status(404).json({ error: 'Expert introuvable' })
   const { password, email, ...rest } = u
   res.json({
     id: u.id, name: u.name, role: u.role,
+    profession: u.profession || null, rpps: u.rpps || '',
     bio: u.bio || '', specialties: u.specialties || [],
     price: u.price || 0, rating: u.rating || 4.5, reviewCount: u.reviewCount || 0,
     location: u.location || null, available: u.available !== false,
@@ -401,7 +433,8 @@ app.put('/api/profile', auth, (req, res) => {
   const idx = db.users.findIndex(u => u.id === req.user.id)
   if (idx === -1) return res.status(404).json({ message: 'Utilisateur introuvable' })
   const { name, bio, specialties, calendlyUrl, avatar, banner, instagram, photos, videoUrl, videoData, shop,
-          certifications, tarifConsultation, tarifSuivi, linkedin } = req.body
+          certifications, tarifConsultation, tarifSuivi, linkedin,
+          profession, rpps, location, price } = req.body
   db.users[idx] = {
     ...db.users[idx],
     name:               name               ? name.trim() : db.users[idx].name,
@@ -419,6 +452,10 @@ app.put('/api/profile', auth, (req, res) => {
     tarifConsultation:  tarifConsultation  ?? db.users[idx].tarifConsultation ?? '',
     tarifSuivi:         tarifSuivi         ?? db.users[idx].tarifSuivi ?? '',
     linkedin:           linkedin           ?? db.users[idx].linkedin ?? '',
+    profession:         profession         ?? db.users[idx].profession,
+    rpps:               rpps               ?? db.users[idx].rpps,
+    location:           location           ?? db.users[idx].location,
+    price:              price              ?? db.users[idx].price,
     updatedAt: new Date().toISOString(),
   }
   const { password, ...safe } = db.users[idx]

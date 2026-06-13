@@ -42,6 +42,8 @@ import HealthIntegrations from './pages/HealthIntegrations'
 import Community from './pages/Community'
 import MuscleExplorer from './pages/MuscleExplorer'
 import ExpertProfile from './pages/ExpertProfile'
+import HealthProDashboard from './pages/pro/HealthProDashboard'
+import HealthProProfile from './pages/pro/HealthProProfile'
 
 function PrivateRoute({ children }) {
   const { user } = useStore()
@@ -51,6 +53,7 @@ function PrivateRoute({ children }) {
 function NutriRedirect({ children }) {
   const { user } = useStore()
   if (user?.role === 'nutritionist') return <Navigate to="/nutri/dashboard" replace />
+  if (user?.role === 'health_pro') return <Navigate to="/pro/dashboard" replace />
   return children
 }
 
@@ -58,6 +61,7 @@ function LandingOrDashboard({ theme, setTheme }) {
   const { user } = useStore()
   if (!user) return <Landing theme={theme} setTheme={setTheme} />
   if (user.role === 'nutritionist') return <Navigate to="/nutri/dashboard" replace />
+  if (user.role === 'health_pro') return <Navigate to="/pro/dashboard" replace />
   if (user.role === 'client' && !user.onboardingDone) return <Navigate to="/onboarding" replace />
   return <Navigate to="/dashboard" replace />
 }
@@ -141,6 +145,9 @@ export default function App() {
           <Route path="/nutri/stats"      element={<PrivateRoute><NutriStats /></PrivateRoute>} />
           <Route path="/discover"   element={<Discover />} />
           <Route path="/expert/:id" element={<ExpertProfile />} />
+          {/* ── Espace Professionnel de santé ── */}
+          <Route path="/pro/dashboard" element={<PrivateRoute><HealthProDashboard /></PrivateRoute>} />
+          <Route path="/pro/profile"   element={<PrivateRoute><HealthProProfile /></PrivateRoute>} />
           <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
           <Route path="/programs" element={<PrivateRoute><Programs /></PrivateRoute>} />
           <Route path="/programs/:programId" element={<PrivateRoute><ProgramDetail /></PrivateRoute>} />
