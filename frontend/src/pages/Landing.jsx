@@ -595,7 +595,7 @@ export default function Landing({ theme, setTheme }) {
               </GlowButton>
             </div>
             <p className="text-sm text-center" style={{ color: 'var(--text-faint)' }}>
-              Sans engagement · Accès immédiat · Aucune CB requise
+              Accès immédiat
             </p>
 
             <div className="grid grid-cols-3 gap-4 mt-16 max-w-xl mx-auto">
@@ -930,7 +930,6 @@ export default function Landing({ theme, setTheme }) {
             <GlowButton onClick={() => navigate('/register')} className="px-10 py-4 text-base mx-auto">
               Créer mon compte gratuitement →
             </GlowButton>
-            <p className="mt-3 text-sm" style={{ color: 'var(--text-faint)' }}>Sans engagement · Aucune CB requise</p>
           </div>
         </Reveal>
       </section>
@@ -1105,12 +1104,12 @@ export default function Landing({ theme, setTheme }) {
               >
                 Rejoindre ULTRA gratuitement →
               </GlowButton>
-              <p className="mt-4 text-sm" style={{ color: 'rgba(255,255,255,0.30)' }}>Sans engagement · Aucune CB requise</p>
-              <div className="flex justify-center gap-12 mt-12 pt-10" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+              <div className="mt-12 pt-10" style={{ borderTop: '1px solid rgba(255,255,255,0.10)',
+                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 {[['2 400+', 'Membres actifs'], ['98%', 'Satisfaction'], ['3 profils', 'Client · Coach · Nutritionniste']].map(([v, l]) => (
-                  <div key={l}>
-                    <p className="text-2xl font-black text-white">{v}</p>
-                    <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>{l}</p>
+                  <div key={l} style={{ textAlign: 'center', minWidth: 0 }}>
+                    <p className="font-black text-white" style={{ fontSize: 'clamp(20px, 5vw, 28px)', whiteSpace: 'nowrap' }}>{v}</p>
+                    <p className="mt-1" style={{ color: 'rgba(255,255,255,0.35)', fontSize: 'clamp(11px, 2.8vw, 14px)' }}>{l}</p>
                   </div>
                 ))}
               </div>

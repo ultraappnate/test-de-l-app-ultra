@@ -23,8 +23,11 @@ function fmtDate(d) {
 /* ── Shared components ── */
 function RoleBadge({ role }) {
   const c = ROLE_COLOR[role] || '#6b7280'
-  return <span style={{ background:`${c}18`, color:c, border:`1px solid ${c}40`, padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:700 }}>
-    {ROLE_ICON[role]} {ROLE_LABEL[role] || role}
+  return <span style={{ display:'inline-flex', alignItems:'center', gap:5, whiteSpace:'nowrap',
+    background:`${c}18`, color:c, border:`1px solid ${c}40`, padding:'4px 11px', borderRadius:99,
+    fontSize:11, fontWeight:700, lineHeight:1.2, maxWidth:'100%' }}>
+    <span>{ROLE_ICON[role]}</span>
+    <span>{ROLE_LABEL[role] || role}</span>
   </span>
 }
 
@@ -468,7 +471,7 @@ function TabPrograms({ programs, token, onDelete, onCreated }) {
       {showForm && (
         <div style={{ background:'var(--bg-card)', border:'2px solid var(--accent)', borderRadius:20, padding:24, marginBottom:20 }}>
           <p style={{ fontSize:14, fontWeight:900, color:'var(--text-primary)', marginBottom:16 }}>🆕 Créer un programme générique ULTRA</p>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:12 }}>
             <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
               placeholder="Titre du programme *"
               style={{ gridColumn:'1/-1', padding:'10px 14px', borderRadius:12, fontSize:13, outline:'none',
@@ -824,7 +827,7 @@ function TabActivity({ stats }) {
   ]
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:20 }}>
       <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24 }}>
         <p style={{ fontSize:12, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--text-faint)', marginBottom:20 }}>⚡ Événements récents</p>
         {EVENTS.map((e,i) => (
@@ -1035,7 +1038,7 @@ export default function AdminDashboard() {
               <KpiCard icon="💶" label="Revenus" value={`${stats.totalRevenue?.toFixed(0)}€`} color="#f59e0b" delay={300}/>
               <KpiCard icon="🚫" label="Bannis" value={stats.bannedUsers} color={stats.bannedUsers>0?'#ef4444':'var(--text-faint)'} delay={350}/>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:20 }}>
               <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:20, padding:24 }}>
                 <p style={{ fontSize:12, fontWeight:800, letterSpacing:'0.12em', textTransform:'uppercase', color:'var(--text-faint)', marginBottom:20 }}>Répartition des rôles</p>
                 {[['coach',stats.coaches,'#2980b9'],['client',stats.clients,'var(--accent)'],['nutritionist',stats.nutritionists,'#8e44ad']].map(([role,count,c])=>{
