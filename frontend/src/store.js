@@ -111,6 +111,13 @@ export const useStore = create(
           return { success: true, record: res.data }
         } catch (err) { return { success: false, error: err.response?.data?.message || 'Erreur' } }
       },
+      fetchRecordFile: async (id) => {
+        try {
+          const { token } = get()
+          const res = await axios.get(`${API}/records/${id}/file`, { headers: { Authorization: `Bearer ${token}` } })
+          return res.data  // { fileName, fileData }
+        } catch { return null }
+      },
 
       fetchPrograms: async () => {
         try {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../store'
 
 export default function ClientHealthAccess() {
-  const { fetchConsents, createConsent, revokeConsent, fetchDiscoverExperts, fetchCoaches, fetchRecords } = useStore()
+  const { fetchConsents, createConsent, revokeConsent, fetchDiscoverExperts, fetchCoaches, fetchRecords, fetchRecordFile } = useStore()
   const [consents, setConsents] = useState([])
   const [records, setRecords]   = useState([])
   const [pros, setPros]   = useState([])
@@ -11,6 +11,17 @@ export default function ClientHealthAccess() {
   const [coachId, setCoachId] = useState('')
   const [saving, setSaving]   = useState(false)
   const [toast, setToast]     = useState('')
+  const [fileView, setFileView] = useState(null)
+  const [fileLoading, setFileLoading] = useState(null)
+
+  const openFile = async (record) => {
+    setFileLoading(record.id)
+    const f = await fetchRecordFile(record.id)
+    setFileLoading(null)
+    if (!f?.fileData) return
+    if (f.fileData.startsWith('data:image')) setFileView({ name: f.fileName, data: f.fileData })
+    else { const a = document.createElement('a'); a.href = f.fileData; a.download = f.fileName || 'document'; a.click() }
+  }
 
   const load = async () => {
     const [c, r] = await Promise.all([fetchConsents(), fetchRecords()])
@@ -114,13 +125,39 @@ export default function ClientHealthAccess() {
                   <p className="text-sm font-black" style={{ color: 'var(--text-primary)' }}>{r.title}</p>
                   <span className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{new Date(r.createdAt).toLocaleDateString('fr-FR')}</span>
                 </div>
-                <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{r.note}</p>
-                <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>Par {r.proName} ({r.proProfession}) · partagé à ton coach</p>
+                <p className="text-xs mb-2" style={{ color: 'var(--text-secondary)' }}>{r.note}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px]" style={{ color: 'var(--text-faint)' }}>Par {r.proName} ({r.proProfession}) · partagé à ton coach</span>
+                  {r.hasFile && (
+                    <button onClick={() => openFile(r)} disabled={fileLoading === r.id}
+                      className="text-[11px] font-bold px-2.5 py-1 rounded-full"
+                      style={{ background: 'rgba(14,165,233,0.1)', color: '#0ea5e9', border: '1px solid rgba(14,165,233,0.3)', cursor: 'pointer' }}>
+                      {fileLoading === r.id ? '⟳…' : `📎 ${r.fileName}`}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Lightbox aperçu image */}
+      {fileView && (
+        <div onClick={() => setFileView(null)}
+          style={{ position:'fixed', inset:0, zIndex:2000, background:'rgba(0,0,0,0.85)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth:'100%', maxHeight:'90vh', display:'flex', flexDirection:'column', gap:10 }}>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-bold text-white truncate">{fileView.name}</p>
+              <div className="flex gap-2">
+                <a href={fileView.data} download={fileView.name} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background:'rgba(255,255,255,0.15)', color:'#fff', textDecoration:'none' }}>⬇ Télécharger</a>
+                <button onClick={() => setFileView(null)} className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background:'rgba(255,255,255,0.15)', color:'#fff', border:'none', cursor:'pointer' }}>✕ Fermer</button>
+              </div>
+            </div>
+            <img src={fileView.data} alt={fileView.name} style={{ maxWidth:'100%', maxHeight:'80vh', objectFit:'contain', borderRadius:12 }} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

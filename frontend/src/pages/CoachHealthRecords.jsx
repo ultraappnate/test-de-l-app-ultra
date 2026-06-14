@@ -2,16 +2,33 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../store'
 
 export default function CoachHealthRecords() {
-  const { fetchRecords, fetchConsents } = useStore()
+  const { fetchRecords, fetchConsents, fetchRecordFile } = useStore()
   const [records, setRecords]   = useState([])
   const [consents, setConsents] = useState([])
   const [loading, setLoading]   = useState(true)
+  const [fileView, setFileView] = useState(null)   // { name, data, isImage }
+  const [fileLoading, setFileLoading] = useState(null)
 
   useEffect(() => {
     Promise.all([fetchRecords(), fetchConsents()]).then(([r, c]) => {
       setRecords(r); setConsents(c); setLoading(false)
     })
   }, [])
+
+  const openFile = async (record) => {
+    setFileLoading(record.id)
+    const f = await fetchRecordFile(record.id)
+    setFileLoading(null)
+    if (!f?.fileData) return
+    const isImage = f.fileData.startsWith('data:image')
+    if (isImage) {
+      setFileView({ name: f.fileName, data: f.fileData, isImage: true })
+    } else {
+      // PDF / autre : téléchargement
+      const a = document.createElement('a')
+      a.href = f.fileData; a.download = f.fileName || 'document'; a.click()
+    }
+  }
 
   // Grouper les bilans par patient
   const byClient = {}
@@ -67,7 +84,13 @@ export default function CoachHealthRecords() {
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(14,165,233,0.12)', color: '#0ea5e9' }}>
                           🩺 {r.proName} · {r.proProfession}
                         </span>
-                        {r.hasFile && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-base)', color: 'var(--text-faint)', border: '1px solid var(--border)' }}>📎 {r.fileName}</span>}
+                        {r.hasFile && (
+                          <button onClick={() => openFile(r)} disabled={fileLoading === r.id}
+                            className="text-[11px] font-bold px-2.5 py-1 rounded-full transition"
+                            style={{ background: 'rgba(14,165,233,0.1)', color: '#0ea5e9', border: '1px solid rgba(14,165,233,0.3)', cursor: 'pointer' }}>
+                            {fileLoading === r.id ? '⟳ Ouverture…' : `📎 ${r.fileName}`}
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -77,6 +100,30 @@ export default function CoachHealthRecords() {
           </div>
         )}
       </div>
+
+      {/* Lightbox aperçu image */}
+      {fileView?.isImage && (
+        <div onClick={() => setFileView(null)}
+          style={{ position:'fixed', inset:0, zIndex:2000, background:'rgba(0,0,0,0.85)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth:'100%', maxHeight:'90vh', display:'flex', flexDirection:'column', gap:10 }}>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-bold text-white truncate">{fileView.name}</p>
+              <div className="flex gap-2">
+                <a href={fileView.data} download={fileView.name}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background:'rgba(255,255,255,0.15)', color:'#fff', textDecoration:'none' }}>
+                  ⬇ Télécharger
+                </a>
+                <button onClick={() => setFileView(null)}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg" style={{ background:'rgba(255,255,255,0.15)', color:'#fff', border:'none', cursor:'pointer' }}>
+                  ✕ Fermer
+                </button>
+              </div>
+            </div>
+            <img src={fileView.data} alt={fileView.name}
+              style={{ maxWidth:'100%', maxHeight:'80vh', objectFit:'contain', borderRadius:12 }} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
