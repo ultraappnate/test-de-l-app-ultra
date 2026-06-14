@@ -17,7 +17,7 @@ const NAV_CLIENT = [
 ]
 const NAV_COACH = [
   { to: '/dashboard',        label: 'Accueil',          icon: '⌂', short: 'Accueil' },
-  { to: '/coach/profile',    label: 'Mon profil',       icon: '◈', short: 'Profil' },
+  { to: '/coach/profile',    label: 'Profil',            icon: '◈', short: 'Profil' },
   { to: '/programs',         label: 'Catalogue',        icon: '◉', short: 'Catal.' },
   { to: '/coach/programs',   label: 'Mes programmes',   icon: '▦', short: 'Prog' },
   { to: '/discover',         label: 'Carte experts',    icon: '🗺', short: 'Carte' },
@@ -34,7 +34,7 @@ const NAV_COACH = [
 ]
 const NAV_NUTRITIONIST = [
   { to: '/nutri/dashboard',  label: 'Accueil',              icon: '⌂', short: 'Accueil' },
-  { to: '/nutri/profile',    label: 'Mon profil',           icon: '◈', short: 'Profil' },
+  { to: '/nutri/profile',    label: 'Profil',               icon: '◈', short: 'Profil' },
   { to: '/nutri/clients',    label: 'Mes clients',          icon: '❯❯', short: 'Clients' },
   { to: '/nutri/plans',      label: 'Plans nutritionnels',  icon: '◎', short: 'Plans' },
   { to: '/discover',         label: 'Carte experts',        icon: '🗺' },
@@ -49,7 +49,7 @@ const NAV_NUTRITIONIST = [
 ]
 const NAV_HEALTH_PRO = [
   { to: '/pro/dashboard', label: 'Accueil',       icon: '⌂', short: 'Accueil' },
-  { to: '/pro/profile',   label: 'Mon profil',    icon: '◈', short: 'Profil' },
+  { to: '/pro/profile',   label: 'Profil',        icon: '◈', short: 'Profil' },
   { to: '/pro/patients',  label: 'Mes patients',  icon: '👥', short: 'Patients' },
   { to: '/discover',      label: 'Carte sportifs',icon: '🗺', short: 'Carte' },
   { to: '/chat',          label: 'Messages',      icon: '◉', short: 'Messages' },

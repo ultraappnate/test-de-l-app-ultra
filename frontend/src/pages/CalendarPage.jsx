@@ -5,11 +5,11 @@ const DAYS_FR   = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 
 const EVENT_TYPES = {
-  call:     { icon: '📅', color: '#3a52a8', bg: 'rgba(58,82,168,0.15)',  label: 'Appel' },
-  session:  { icon: '💪', color: 'var(--accent)', bg: 'rgba(160,56,72,0.15)', label: 'Séance' },
-  checkin:  { icon: '📊', color: '#27ae60', bg: 'rgba(39,174,96,0.15)', label: 'Bilan' },
-  rest:     { icon: '😴', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', label: 'Repos' },
-  nutrition:{ icon: '🥗', color: '#e8a020', bg: 'rgba(232,160,32,0.15)', label: 'Nutrition' },
+  call:     { icon: '📅', color: '#3a52a8', bg: 'rgba(58,82,168,0.12)',  label: 'Appel' },
+  session:  { icon: '💪', color: 'var(--accent)', bg: 'rgba(160,56,72,0.12)', label: 'Séance' },
+  checkin:  { icon: '📊', color: '#27ae60', bg: 'rgba(39,174,96,0.12)', label: 'Bilan' },
+  rest:     { icon: '😴', color: '#6b7280', bg: 'rgba(107,114,128,0.08)', label: 'Repos' },
+  nutrition:{ icon: '🥗', color: '#e8a020', bg: 'rgba(232,160,32,0.12)', label: 'Nutrition' },
 }
 
 function buildEvents(year, month) {
@@ -47,8 +47,8 @@ export default function CalendarPage() {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const events      = buildEvents(year, month)
 
-  const eventsForDay    = d => events.filter(e => e.day === d)
-  const selectedEvents  = eventsForDay(selectedDay)
+  const eventsForDay   = d => events.filter(e => e.day === d)
+  const selectedEvents = eventsForDay(selectedDay)
 
   const prevMonth = () => { if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1) }
   const nextMonth = () => { if (month === 11) { setYear(y => y + 1); setMonth(0) } else setMonth(m => m + 1) }
@@ -59,50 +59,61 @@ export default function CalendarPage() {
     .slice(0, 5)
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-base)', padding: 'clamp(16px, 4vw, 32px)' }}>
-      <div style={{ maxWidth: 1024, margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', padding: 'clamp(16px, 4vw, 32px)' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto' }}>
 
         {/* Header */}
-        <div className={`mb-6 transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--gold)' }}>
+        <div className={`transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          style={{ marginBottom: 24 }}>
+          <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.3em', textTransform: 'uppercase',
+            color: 'var(--gold)', marginBottom: 4 }}>
             {user?.role === 'coach' ? 'Coach' : 'Client'}
           </p>
-          <h1 className="font-black" style={{ color: 'var(--text-primary)', fontSize: 'clamp(22px, 6vw, 36px)' }}>Calendrier</h1>
+          <h1 style={{ fontWeight: 900, color: 'var(--text-primary)', fontSize: 'clamp(22px,6vw,36px)', margin: 0 }}>
+            Calendrier
+          </h1>
         </div>
 
-        {/* Layout: colonne sur mobile, 2 colonnes sur desktop */}
+        {/* ── Layout : grille + panneau latéral ── */}
         <div className="cal-layout">
 
-          {/* ── Grille du calendrier ── */}
-          <div className="rounded-2xl p-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          {/* ── Grille ── */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)',
+            borderRadius: 24, padding: 'clamp(14px,4vw,24px)', minWidth: 0 }}>
 
             {/* Navigation mois */}
-            <div className="flex items-center justify-between mb-4">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <button onClick={prevMonth}
-                className="w-9 h-9 rounded-xl flex items-center justify-center transition font-bold text-lg"
-                style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: 20, fontWeight: 700, cursor: 'pointer',
+                  background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                 ‹
               </button>
-              <h2 className="font-black text-base" style={{ color: 'var(--text-primary)' }}>
-                {MONTHS_FR[month]} {year}
-              </h2>
+              <div style={{ textAlign: 'center' }}>
+                <h2 style={{ fontWeight: 900, fontSize: 16, color: 'var(--text-primary)', margin: 0 }}>
+                  {MONTHS_FR[month]}
+                </h2>
+                <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>{year}</p>
+              </div>
               <button onClick={nextMonth}
-                className="w-9 h-9 rounded-xl flex items-center justify-center transition font-bold text-lg"
-                style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                style={{ width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', fontSize: 20, fontWeight: 700, cursor: 'pointer',
+                  background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                 ›
               </button>
             </div>
 
             {/* En-têtes jours */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
               {DAYS_FR.map(d => (
-                <div key={d} className="text-center text-[10px] font-black py-1" style={{ color: 'var(--text-muted)' }}>{d}</div>
+                <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 900,
+                  padding: '4px 0', color: 'var(--text-faint)', letterSpacing: '0.05em' }}>{d}</div>
               ))}
             </div>
 
             {/* Jours */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-              {Array(startOffset).fill(null).map((_, i) => <div key={`e${i}`}/>)}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+              {Array(startOffset).fill(null).map((_, i) => <div key={`e${i}`} />)}
               {Array(daysInMonth).fill(null).map((_, i) => {
                 const d = i + 1
                 const dayEvents = eventsForDay(d)
@@ -110,21 +121,26 @@ export default function CalendarPage() {
                 const isSelected = d === selectedDay
                 return (
                   <button key={d} onClick={() => setSelectedDay(d)}
-                    className="relative rounded-xl text-center transition-all duration-150 flex flex-col items-center justify-center"
                     style={{
-                      padding: '6px 2px',
-                      minHeight: 44,
+                      position: 'relative', padding: '8px 2px 6px', minHeight: 52,
+                      borderRadius: 14, display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'flex-start', cursor: 'pointer',
+                      border: isSelected ? '2px solid var(--accent)' : isToday ? '2px solid var(--accent)' : '2px solid transparent',
                       background: isSelected ? 'var(--accent)' : isToday ? 'var(--accent-subtle)' : 'transparent',
-                      border: `1px solid ${isSelected ? 'var(--accent)' : isToday ? 'var(--accent)' : 'transparent'}`,
+                      transition: 'all 0.15s',
                     }}>
-                    <span className="text-xs font-black"
-                      style={{ color: isSelected ? '#fff' : isToday ? 'var(--accent)' : 'var(--text-primary)' }}>
+                    <span style={{ fontSize: 13, fontWeight: 900, lineHeight: 1,
+                      color: isSelected ? '#fff' : isToday ? 'var(--accent)' : 'var(--text-primary)' }}>
                       {d}
                     </span>
+                    {/* Event dots */}
                     {dayEvents.length > 0 && (
-                      <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
-                        {dayEvents.slice(0, 2).map((ev, ei) => (
-                          <span key={ei} style={{ fontSize: 8 }}>{EVENT_TYPES[ev.type].icon}</span>
+                      <div style={{ display: 'flex', gap: 2, marginTop: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {dayEvents.slice(0, 3).map((ev, ei) => (
+                          <span key={ei} style={{
+                            width: 5, height: 5, borderRadius: '50%',
+                            background: isSelected ? 'rgba(255,255,255,0.7)' : EVENT_TYPES[ev.type].color,
+                          }} />
                         ))}
                       </div>
                     )}
@@ -132,33 +148,64 @@ export default function CalendarPage() {
                 )
               })}
             </div>
+
+            {/* Types d'événements — chips compact */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 18, paddingTop: 16,
+              borderTop: '1px solid var(--border)' }}>
+              {Object.entries(EVENT_TYPES).map(([key, t]) => (
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4,
+                  padding: '3px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700,
+                  background: t.bg, border: `1px solid ${t.color}40`, color: t.color }}>
+                  <span style={{ fontSize: 9 }}>{t.icon}</span>{t.label}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* ── Panneau droite ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
 
-            {/* Événements du jour sélectionné */}
-            <div className="rounded-2xl p-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-              <p className="text-[10px] font-black tracking-widest uppercase mb-3" style={{ color: 'var(--text-muted)' }}>
-                {selectedDay} {MONTHS_FR[month]}
-              </p>
+            {/* Jour sélectionné */}
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: 24, padding: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 16 }}>
+                <span style={{ fontSize: 32, fontWeight: 900, color: 'var(--accent)', lineHeight: 1 }}>{selectedDay}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                  {MONTHS_FR[month]} {year}
+                </span>
+              </div>
+
               {selectedEvents.length === 0 ? (
-                <div className="text-center py-4">
-                  <p className="text-2xl mb-1">🗓</p>
-                  <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Rien de prévu</p>
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <p style={{ fontSize: 28, margin: '0 0 6px' }}>🗓</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: 0 }}>Rien de prévu ce jour</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {selectedEvents.map((ev, i) => {
                     const t = EVENT_TYPES[ev.type]
                     return (
-                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl"
-                        style={{ background: t.bg, border: `1px solid ${t.color}30` }}>
-                        <span className="text-base flex-shrink-0">{t.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-black truncate" style={{ color: 'var(--text-primary)' }}>{ev.title}</p>
-                          {ev.time && <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{ev.time}</p>}
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 14px', borderRadius: 16, background: t.bg,
+                        border: `1px solid ${t.color}30` }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, display: 'flex',
+                          alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0,
+                          background: `${t.color}20` }}>
+                          {t.icon}
                         </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)',
+                            margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {ev.title}
+                          </p>
+                          {ev.time && (
+                            <p style={{ fontSize: 11, color: t.color, margin: 0, fontWeight: 700 }}>{ev.time}</p>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 99, fontWeight: 700,
+                          background: `${t.color}15`, color: t.color, flexShrink: 0 }}>
+                          {t.label}
+                        </span>
                       </div>
                     )
                   })}
@@ -167,23 +214,30 @@ export default function CalendarPage() {
             </div>
 
             {/* À venir */}
-            <div className="rounded-2xl p-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', flex: 1 }}>
-              <p className="text-[10px] font-black tracking-widest uppercase mb-3" style={{ color: 'var(--text-muted)' }}>À venir</p>
-              <div className="space-y-2">
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: 24, padding: 20, flex: 1 }}>
+              <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase',
+                color: 'var(--text-faint)', margin: '0 0 14px' }}>À venir</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {upcoming.map((ev, i) => {
                   const t = EVENT_TYPES[ev.type]
                   return (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-sm"
-                        style={{ background: t.bg }}>
-                        {t.icon}
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {/* Date badge */}
+                      <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                        background: 'var(--bg-base)', border: '1px solid var(--border)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: 13, fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{ev.day}</span>
+                        <span style={{ fontSize: 8, color: 'var(--text-faint)', fontWeight: 700 }}>{MONTHS_FR[month].slice(0,3)}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>{ev.title}</p>
-                        <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>
-                          {MONTHS_FR[month].slice(0,3)} {ev.day}{ev.time ? ` · ${ev.time}` : ''}
-                        </p>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', margin: 0,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.title}</p>
+                        {ev.time && (
+                          <p style={{ fontSize: 10, color: 'var(--text-faint)', margin: '2px 0 0' }}>{ev.time}</p>
+                        )}
                       </div>
+                      <span style={{ fontSize: 15, flexShrink: 0 }}>{t.icon}</span>
                     </div>
                   )
                 })}
@@ -198,11 +252,11 @@ export default function CalendarPage() {
         .cal-layout {
           display: grid;
           grid-template-columns: 1fr;
-          gap: 12px;
+          gap: 14px;
         }
-        @media (min-width: 768px) {
+        @media (min-width: 780px) {
           .cal-layout {
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: minmax(0,1.6fr) minmax(0,1fr);
             gap: 20px;
           }
         }

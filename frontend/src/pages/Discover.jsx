@@ -116,10 +116,9 @@ const ROLE_LABEL = { coach: 'Coach', nutritionist: 'Nutritionniste', health_pro:
 const SPECIALTIES = ['Force','HIIT','Cardio','Yoga','Mobilité','Running','Boxe','Powerlifting','Nutrition sportive','Rééquilibrage','Végétarisme','Triathlon','Perte de poids','Prise de masse']
 const PARIS = { lat: 48.8566, lng: 2.3522 }
 
-/* Carte simple & fluide façon Apple Plans / Waze (CartoDB Positron clair).
-   Sans retina {r} → 4× moins de données = bien plus fluide. */
+/* Tuiles minimalistes sans labels — sobre, premium */
 const MAP_TILES = {
-  url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+  url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png',
   attribution: '&copy; OpenStreetMap &copy; CARTO',
 }
 
@@ -238,8 +237,8 @@ export default function Discover() {
               <p style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 2 }}>résultats</p>
             </div>
           </div>
-          {/* Geo status badge (fermable) */}
-          {!geoHidden && (
+          {/* Geo status badge (caché sur mobile — pas de place) */}
+          {!geoHidden && !isMobile && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 10, fontSize: 11,
               background: locStatus === 'ok' ? 'rgba(39,174,96,0.1)' : 'rgba(232,160,32,0.1)',
@@ -562,8 +561,9 @@ function ExpertDetail({ expert: e, onClose, onProfile }) {
       <div style={{ padding: 18, background: `linear-gradient(135deg, ${color}dd, ${color}88)`, position: 'relative' }}>
         <button onClick={onClose}
           style={{
-            position: 'absolute', top: 10, right: 10, width: 26, height: 26, borderRadius: '50%',
-            background: 'rgba(0,0,0,0.3)', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 700, fontSize: 12,
+            position: 'absolute', top: 8, right: 8, width: 36, height: 36, borderRadius: '50%',
+            background: 'rgba(0,0,0,0.4)', border: 'none', color: 'white', cursor: 'pointer', fontWeight: 800, fontSize: 16,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>✕</button>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <div style={{
