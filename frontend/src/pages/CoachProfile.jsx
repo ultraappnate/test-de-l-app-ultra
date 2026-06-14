@@ -8,7 +8,7 @@ const ICONS = { Force: '🏋️', Nutrition: '🥗', Combiné: '⚡', Cardio: '�
 export default function CoachProfile() {
   const { coachId } = useParams()
   const navigate = useNavigate()
-  const { fetchCoachPublic, enrollProgram, fetchMyEnrollments, user } = useStore()
+  const { fetchCoachPublic, enrollProgram, fetchMyEnrollments, startCheckoutProgram, user } = useStore()
 
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -36,6 +36,13 @@ export default function CoachProfile() {
   const handleEnroll = async (program) => {
     if (enrolling) return
     setEnrolling(program.id)
+
+    // Programme coach payant → Stripe Checkout
+    if (program.price > 0) {
+      await startCheckoutProgram(program.id)
+      return // redirect
+    }
+
     const res = await enrollProgram(program.id)
     setEnrolling(null)
 

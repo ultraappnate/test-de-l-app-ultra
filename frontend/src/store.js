@@ -352,6 +352,46 @@ export const useStore = create(
           return res.data
         } catch { return null }
       },
+
+      // Rafraîchit le profil user depuis l'API (après webhook Stripe)
+      fetchMe: async () => {
+        try {
+          const { token } = get()
+          if (!token) return
+          const res = await axios.get(`${API}/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          set({ user: res.data })
+        } catch {}
+      },
+
+      // Redirige vers Stripe Checkout pour le Premium
+      startCheckoutPremium: async () => {
+        try {
+          const { token } = get()
+          const res = await axios.post(`${API}/stripe/checkout-premium`, {}, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          window.location.href = res.data.url
+          return { success: true }
+        } catch (err) {
+          return { success: false, error: err.response?.data?.error || 'Stripe non disponible' }
+        }
+      },
+
+      // Redirige vers Stripe Checkout pour un programme
+      startCheckoutProgram: async (programId) => {
+        try {
+          const { token } = get()
+          const res = await axios.post(`${API}/stripe/checkout-program/${programId}`, {}, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          window.location.href = res.data.url
+          return { success: true }
+        } catch (err) {
+          return { success: false, error: err.response?.data?.error || 'Stripe non disponible' }
+        }
+      },
     }),
     {
       name: 'ultra-storage',

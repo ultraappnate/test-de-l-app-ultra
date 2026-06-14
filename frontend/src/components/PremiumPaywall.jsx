@@ -10,15 +10,31 @@ const FEATURES = [
   { icon: '🔔', label: 'Notifications personnalisées' },
 ]
 
+const PAYMENT_METHODS = [
+  { icon: '💳', label: 'Carte bancaire' },
+  { icon: '🍎', label: 'Apple Pay' },
+  { icon: 'G', label: 'Google Pay', style: { fontWeight: 900, fontSize: 13, color: '#4285f4' } },
+  { icon: '🏦', label: 'SEPA' },
+]
+
 export default function PremiumPaywall({ onClose, onSuccess }) {
-  const { activatePremium } = useStore()
+  const { startCheckoutPremium, activatePremium } = useStore()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleActivate = async () => {
     setLoading(true)
-    const res = await activatePremium()
-    setLoading(false)
-    if (res.success) onSuccess?.()
+    setError('')
+    // Essaye Stripe en priorité
+    const res = await startCheckoutPremium()
+    if (!res.success) {
+      // Fallback simulation si Stripe non configuré
+      const fallback = await activatePremium()
+      setLoading(false)
+      if (fallback.success) onSuccess?.()
+      else setError('Erreur lors de l\'activation')
+    }
+    // Si Stripe OK → redirect, pas besoin de setLoading(false)
   }
 
   return (
@@ -66,14 +82,29 @@ export default function PremiumPaywall({ onClose, onSuccess }) {
           ))}
         </div>
 
+        {/* Moyens de paiement */}
+        <div className="flex items-center gap-2 mb-5 justify-center flex-wrap">
+          {PAYMENT_METHODS.map(({ icon, label, style }) => (
+            <div key={label} className="flex items-center gap-1 px-2.5 py-1 rounded-lg"
+              style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}>
+              <span style={style || { fontSize: 13 }}>{icon}</span>
+              <span className="text-[10px] font-bold" style={{ color: 'var(--text-faint)' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <p className="text-xs text-center mb-3 font-bold" style={{ color: '#ef4444' }}>{error}</p>
+        )}
+
         {/* CTA */}
         <button onClick={handleActivate} disabled={loading}
           className="w-full py-4 rounded-2xl font-black text-white text-base"
-          style={{ background: 'var(--accent)', opacity: loading ? 0.7 : 1 }}>
-          {loading ? 'Activation…' : '★ Activer Premium — 9,99 €/mois'}
+          style={{ background: 'linear-gradient(135deg, var(--gold) 0%, #c9952a 100%)', opacity: loading ? 0.7 : 1 }}>
+          {loading ? '→ Redirection vers le paiement…' : '★ Activer Premium — 9,99 €/mois'}
         </button>
         <p className="text-center text-xs mt-3" style={{ color: 'var(--text-faint)' }}>
-          Démo — aucun paiement réel requis
+          Paiement sécurisé Stripe · Résiliable à tout moment
         </p>
       </div>
     </div>

@@ -7,10 +7,15 @@ import { v4 as uuidv4 } from 'uuid'
 import Anthropic from '@anthropic-ai/sdk'
 import webpush from 'web-push'
 import cron from 'node-cron'
+import Stripe from 'stripe'
+
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 
 const app = express()
 const PORT = 5001
 const JWT_SECRET = 'ultra-secret-key-change-in-prod'
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://test-de-l-app-ultra.vercel.app'
 
 app.use(cors({
   origin: [
@@ -21,7 +26,11 @@ app.use(cors({
   ].filter(Boolean),
   credentials: true,
 }))
-app.use(express.json({ limit: '50mb' }))      // base64 photos/vidéo
+
+// Raw body requis pour la vérification de signature Stripe webhook
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }))
+
+app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
 
 // In-memory DB (remplace par Firestore/Postgres en prod)
@@ -1412,6 +1421,152 @@ cron.schedule('0 12 * * *', () => {
 cron.schedule('0 18 * * *', () => {
   Object.keys(db.pushSubscriptions).forEach(userId => sendPushToUser(userId, 'communaute'))
 }, { timezone: 'Europe/Paris' })
+
+// ─── STRIPE ─────────────────────────────────────────────
+
+// Config publique (publishable key)
+app.get('/api/stripe/config', (req, res) => {
+  res.json({ publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null })
+})
+
+// Checkout Premium — abonnement mensuel 9,99€
+app.post('/api/stripe/checkout-premium', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Stripe non configuré' })
+  const user = db.users.find(u => u.id === req.user.id)
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' })
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      payment_method_options: {
+        card: { request_three_d_secure: 'automatic' },
+      },
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          recurring: { interval: 'month' },
+          product_data: {
+            name: '★ ULTRA Premium',
+            description: 'Accès illimité à tous les programmes, Atlas 3D, analytics, communauté',
+            images: [],
+          },
+          unit_amount: 999, // 9,99€ en centimes
+        },
+        quantity: 1,
+      }],
+      customer_email: user.email,
+      metadata: { userId: user.id, type: 'premium' },
+      success_url: `${FRONTEND_URL}/payment/success?type=premium&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${FRONTEND_URL}/payment/cancel`,
+      locale: 'fr',
+      allow_promotion_codes: true,
+    })
+    res.json({ url: session.url })
+  } catch (err) {
+    console.error('Stripe error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Checkout Programme — paiement unique
+app.post('/api/stripe/checkout-program/:programId', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Stripe non configuré' })
+  const user = db.users.find(u => u.id === req.user.id)
+  const program = db.programs.find(p => p.id === req.params.programId)
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' })
+  if (!program) return res.status(404).json({ error: 'Programme introuvable' })
+  if (program.price === 0) return res.status(400).json({ error: 'Programme gratuit' })
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          product_data: {
+            name: program.title,
+            description: program.description?.slice(0, 255) || '',
+          },
+          unit_amount: Math.round(program.price * 100),
+        },
+        quantity: 1,
+      }],
+      customer_email: user.email,
+      metadata: { userId: user.id, programId: program.id, type: 'program' },
+      success_url: `${FRONTEND_URL}/payment/success?type=program&programId=${program.id}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${FRONTEND_URL}/payment/cancel`,
+      locale: 'fr',
+      allow_promotion_codes: true,
+    })
+    res.json({ url: session.url })
+  } catch (err) {
+    console.error('Stripe error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Webhook Stripe — confirmation paiement
+app.post('/api/stripe/webhook', (req, res) => {
+  const sig = req.headers['stripe-signature']
+  const secret = process.env.STRIPE_WEBHOOK_SECRET
+  if (!stripe || !secret) return res.json({ received: true })
+
+  let event
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, secret)
+  } catch (err) {
+    console.error('Webhook signature error:', err.message)
+    return res.status(400).json({ error: `Webhook error: ${err.message}` })
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object
+    const { userId, type, programId } = session.metadata || {}
+
+    if (type === 'premium' && userId) {
+      const user = db.users.find(u => u.id === userId)
+      if (user) {
+        user.isPremium = true
+        user.premiumSince = new Date().toISOString()
+        user.stripeCustomerId = session.customer
+        user.stripeSubscriptionId = session.subscription
+        console.log(`Premium activé pour ${user.email}`)
+      }
+    }
+
+    if (type === 'program' && userId && programId) {
+      const already = db.enrollments.find(e => e.userId === userId && e.programId === programId)
+      if (!already) {
+        const program = db.programs.find(p => p.id === programId)
+        db.enrollments.push({
+          id: uuidv4(),
+          userId,
+          programId,
+          paidViaStripe: true,
+          stripeSessionId: session.id,
+          enrolledAt: new Date().toISOString(),
+        })
+        if (program) program.enrollmentCount = (program.enrollmentCount || 0) + 1
+        console.log(`Inscription programme ${programId} pour user ${userId}`)
+      }
+    }
+  }
+
+  res.json({ received: true })
+})
+
+// Vérifier le statut d'une session Stripe (après redirect success)
+app.get('/api/stripe/session/:sessionId', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Stripe non configuré' })
+  try {
+    const session = await stripe.checkout.sessions.retrieve(req.params.sessionId)
+    res.json({ status: session.payment_status, metadata: session.metadata })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
 // ─── START ──────────────────────────────────────────────
 

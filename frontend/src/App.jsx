@@ -49,6 +49,8 @@ import ClientHealthAccess from './pages/ClientHealthAccess'
 import CoachHealthRecords from './pages/CoachHealthRecords'
 import ClientProfile from './pages/ClientProfile'
 import Settings from './pages/Settings'
+import PaymentSuccess from './pages/PaymentSuccess'
+import PaymentCancel from './pages/PaymentCancel'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -191,6 +193,8 @@ export default function App() {
           <Route path="/muscles" element={<PrivateRoute><MuscleExplorer /></PrivateRoute>} />
           <Route path="/client/:id" element={<PrivateRoute><ClientProfile /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+          <Route path="/payment/success" element={<PaymentSuccess />} />
+          <Route path="/payment/cancel" element={<PaymentCancel />} />
         </Routes>
       </Layout>
     </BrowserRouter>

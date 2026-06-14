@@ -116,7 +116,7 @@ export default function ProgramDetail() {
   const [enrolled, setEnrolled] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
-  const { enrollProgram, fetchMyEnrollments } = useStore()
+  const { enrollProgram, fetchMyEnrollments, startCheckoutProgram } = useStore()
 
   useEffect(() => {
     const load = async () => {
@@ -136,6 +136,13 @@ export default function ProgramDetail() {
   const handleStart = async () => {
     if (enrolled) { navigate('/dashboard'); return }
     setEnrolling(true)
+
+    // Programme payant coach → Stripe
+    if (program.price > 0 && program.source !== 'admin') {
+      await startCheckoutProgram(resolvedId)
+      return // redirect, pas besoin de continuer
+    }
+
     const res = await enrollProgram(resolvedId)
     setEnrolling(false)
     if (res.success) {
