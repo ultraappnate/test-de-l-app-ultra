@@ -75,6 +75,43 @@ export const useStore = create(
         } catch { return null }
       },
 
+      // ── Dossiers partagés (consentements + bilans) ──
+      fetchConsents: async () => {
+        try {
+          const { token } = get()
+          const res = await axios.get(`${API}/consents`, { headers: { Authorization: `Bearer ${token}` } })
+          return res.data
+        } catch { return [] }
+      },
+      createConsent: async (proId, coachId) => {
+        try {
+          const { token } = get()
+          const res = await axios.post(`${API}/consents`, { proId, coachId }, { headers: { Authorization: `Bearer ${token}` } })
+          return { success: true, consent: res.data }
+        } catch (err) { return { success: false, error: err.response?.data?.message || 'Erreur' } }
+      },
+      revokeConsent: async (id) => {
+        try {
+          const { token } = get()
+          await axios.delete(`${API}/consents/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+          return { success: true }
+        } catch { return { success: false } }
+      },
+      fetchRecords: async () => {
+        try {
+          const { token } = get()
+          const res = await axios.get(`${API}/records`, { headers: { Authorization: `Bearer ${token}` } })
+          return res.data
+        } catch { return [] }
+      },
+      createRecord: async (data) => {
+        try {
+          const { token } = get()
+          const res = await axios.post(`${API}/records`, data, { headers: { Authorization: `Bearer ${token}` } })
+          return { success: true, record: res.data }
+        } catch (err) { return { success: false, error: err.response?.data?.message || 'Erreur' } }
+      },
+
       fetchPrograms: async () => {
         try {
           const { token } = get()

@@ -9,10 +9,11 @@ const NAV_CLIENT = [
   { to: '/muscles',    label: 'Muscles 3D',        icon: '🦾', short: 'Muscles' },
   { to: '/nutrition',  label: 'Mon Tracker',       icon: '◎', short: 'Tracker' },
   { to: '/progress',   label: 'Ma progression',    icon: '↑', short: 'Progrès' },
-  { to: '/health',     label: 'Applis Santé',      icon: '🔗' },
-  { to: '/community',  label: 'Communauté',        icon: '🌐' },
-  { to: '/chat',       label: 'Messages',          icon: '◉' },
-  { to: '/calendar',   label: 'Calendrier',        icon: '▦' },
+  { to: '/health',       label: 'Applis Santé',    icon: '🔗' },
+  { to: '/health-access',label: 'Pros de santé',   icon: '🩺', short: 'Santé' },
+  { to: '/community',    label: 'Communauté',      icon: '🌐' },
+  { to: '/chat',         label: 'Messages',        icon: '◉' },
+  { to: '/calendar',     label: 'Calendrier',      icon: '▦' },
 ]
 const NAV_COACH = [
   { to: '/dashboard',        label: 'Accueil',          icon: '⌂', short: 'Accueil' },
@@ -22,6 +23,7 @@ const NAV_COACH = [
   { to: '/discover',         label: 'Carte experts',    icon: '🗺', short: 'Carte' },
   { to: '/muscles',          label: 'Muscles 3D',       icon: '🦾' },
   { to: '/coach/nutrition',  label: 'Suivi Nutrition',  icon: '◎' },
+  { to: '/coach/sante',      label: 'Bilans santé',     icon: '🩺' },
   { to: '/clients',          label: 'Mes clients',      icon: '❯❯' },
   { to: '/health',           label: 'Applis Santé',     icon: '🔗' },
   { to: '/community',        label: 'Communauté',       icon: '🌐' },
@@ -48,6 +50,7 @@ const NAV_NUTRITIONIST = [
 const NAV_HEALTH_PRO = [
   { to: '/pro/dashboard', label: 'Accueil',       icon: '⌂', short: 'Accueil' },
   { to: '/pro/profile',   label: 'Mon profil',    icon: '◈', short: 'Profil' },
+  { to: '/pro/patients',  label: 'Mes patients',  icon: '👥', short: 'Patients' },
   { to: '/discover',      label: 'Carte sportifs',icon: '🗺', short: 'Carte' },
   { to: '/chat',          label: 'Messages',      icon: '◉', short: 'Messages' },
   { to: '/calendar',      label: 'Calendrier',    icon: '▦', short: 'Agenda' },

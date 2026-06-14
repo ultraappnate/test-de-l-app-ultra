@@ -44,6 +44,9 @@ import MuscleExplorer from './pages/MuscleExplorer'
 import ExpertProfile from './pages/ExpertProfile'
 import HealthProDashboard from './pages/pro/HealthProDashboard'
 import HealthProProfile from './pages/pro/HealthProProfile'
+import HealthProPatients from './pages/pro/HealthProPatients'
+import ClientHealthAccess from './pages/ClientHealthAccess'
+import CoachHealthRecords from './pages/CoachHealthRecords'
 
 function PrivateRoute({ children }) {
   const { user } = useStore()
@@ -148,6 +151,10 @@ export default function App() {
           {/* ── Espace Professionnel de santé ── */}
           <Route path="/pro/dashboard" element={<PrivateRoute><HealthProDashboard /></PrivateRoute>} />
           <Route path="/pro/profile"   element={<PrivateRoute><HealthProProfile /></PrivateRoute>} />
+          <Route path="/pro/patients"  element={<PrivateRoute><HealthProPatients /></PrivateRoute>} />
+          {/* ── Dossiers partagés ── */}
+          <Route path="/health-access" element={<PrivateRoute><ClientHealthAccess /></PrivateRoute>} />
+          <Route path="/coach/sante"   element={<PrivateRoute><CoachHealthRecords /></PrivateRoute>} />
           <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
           <Route path="/programs" element={<PrivateRoute><Programs /></PrivateRoute>} />
           <Route path="/programs/:programId" element={<PrivateRoute><ProgramDetail /></PrivateRoute>} />

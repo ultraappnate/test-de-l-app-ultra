@@ -56,6 +56,8 @@ const db = {
   ],
   messages: [],
   healthConnections: {}, // { userId: { strava:{connected,token,lastSync}, garmin:{...}, ... } }
+  consents: [],          // { id, clientId, clientName, proId, proName, coachId, coachName, createdAt }
+  healthRecords: [],     // { id, proId, proName, proProfession, clientId, clientName, coachId, title, note, fileName, fileData, createdAt }
   posts: [],             // fil communauté
   postLikes: {},         // { postId: Set<userId> }
   postComments: {},      // { postId: [{id,userId,userName,userAvatar,userRole,text,createdAt}] }
@@ -397,19 +399,22 @@ const NOTIF_SEED = {
 }
 
 app.get('/api/notifications', auth, (req, res) => {
-  const notifs = NOTIF_SEED[req.user.email] || []
-  res.json(notifs)
+  const seed = NOTIF_SEED[req.user.email] || []
+  const dynamic = (db.notifs && db.notifs[req.user.id]) || []
+  res.json([...dynamic, ...seed])
 })
 
 app.put('/api/notifications/:id/read', auth, (req, res) => {
-  const list = NOTIF_SEED[req.user.email] || []
+  const dynamic = (db.notifs && db.notifs[req.user.id]) || []
+  const list = [...dynamic, ...(NOTIF_SEED[req.user.email] || [])]
   const n = list.find(x => x.id === req.params.id)
   if (n) n.read = true
   res.json({ success: true })
 })
 
 app.put('/api/notifications/read-all', auth, (req, res) => {
-  const list = NOTIF_SEED[req.user.email] || []
+  const dynamic = (db.notifs && db.notifs[req.user.id]) || []
+  const list = [...dynamic, ...(NOTIF_SEED[req.user.email] || [])]
   list.forEach(n => n.read = true)
   res.json({ success: true })
 })
@@ -426,6 +431,104 @@ app.get('/api/coaches', auth, (req, res) => {
       programCount: db.programs.filter(p => p.coachId === u.id).length,
     }))
   res.json(coaches)
+})
+
+// ════════════════════════════════════════════════════════════
+//  DOSSIERS PARTAGÉS — consentement client + bilans pro→coach
+// ════════════════════════════════════════════════════════════
+
+if (!db.notifs) db.notifs = {}  // { userId: [{ id,type,title,body,read,time,link,createdAt }] }
+function pushNotif(userId, notif) {
+  if (!db.notifs[userId]) db.notifs[userId] = []
+  db.notifs[userId].unshift({ id: uuidv4(), read: false, createdAt: new Date().toISOString(), ...notif })
+}
+function userPublic(id) {
+  const u = db.users.find(x => x.id === id)
+  if (!u) return null
+  const { password, ...rest } = u
+  return rest
+}
+
+// ── Consentements ──
+// Le client autorise un pro de santé à partager des bilans avec un coach
+app.post('/api/consents', auth, (req, res) => {
+  if (req.user.role !== 'client') return res.status(403).json({ message: 'Réservé aux clients' })
+  const { proId, coachId } = req.body
+  const pro   = db.users.find(u => u.id === proId && u.role === 'health_pro')
+  const coach = db.users.find(u => u.id === coachId && u.role === 'coach')
+  if (!pro || !coach) return res.status(400).json({ message: 'Professionnel ou coach introuvable' })
+  if (db.consents.find(c => c.clientId === req.user.id && c.proId === proId && c.coachId === coachId))
+    return res.status(400).json({ message: 'Autorisation déjà accordée' })
+  const me = userPublic(req.user.id)
+  const consent = {
+    id: uuidv4(), clientId: req.user.id, clientName: me?.name || '',
+    proId, proName: pro.name, proProfession: pro.profession || '',
+    coachId, coachName: coach.name, createdAt: new Date().toISOString(),
+  }
+  db.consents.push(consent)
+  // Notifie le pro et le coach
+  pushNotif(proId,   { type: 'client', title: 'Nouvelle autorisation', body: `${consent.clientName} t'autorise à partager ses bilans`, time: 'à l\'instant', link: '/pro/patients' })
+  pushNotif(coachId, { type: 'client', title: 'Suivi santé activé',     body: `${consent.clientName} a connecté ${pro.name} (${pro.profession})`, time: 'à l\'instant', link: '/coach/sante' })
+  res.status(201).json(consent)
+})
+
+app.get('/api/consents', auth, (req, res) => {
+  const { id, role } = req.user
+  let list = []
+  if (role === 'client')      list = db.consents.filter(c => c.clientId === id)
+  else if (role === 'health_pro') list = db.consents.filter(c => c.proId === id)
+  else if (role === 'coach')  list = db.consents.filter(c => c.coachId === id)
+  res.json(list)
+})
+
+app.delete('/api/consents/:id', auth, (req, res) => {
+  const c = db.consents.find(x => x.id === req.params.id)
+  if (!c) return res.status(404).json({ message: 'Introuvable' })
+  if (c.clientId !== req.user.id) return res.status(403).json({ message: 'Non autorisé' })
+  db.consents = db.consents.filter(x => x.id !== req.params.id)
+  res.json({ success: true })
+})
+
+// ── Bilans (dossiers) ──
+// Le pro de santé dépose un bilan pour un patient → partagé au coach lié
+app.post('/api/records', auth, (req, res) => {
+  if (req.user.role !== 'health_pro') return res.status(403).json({ message: 'Réservé aux professionnels de santé' })
+  const { consentId, title, note, fileName, fileData } = req.body
+  const consent = db.consents.find(c => c.id === consentId && c.proId === req.user.id)
+  if (!consent) return res.status(400).json({ message: 'Autorisation patient introuvable' })
+  if (!title || !note) return res.status(400).json({ message: 'Titre et note requis' })
+  const me = db.users.find(u => u.id === req.user.id)
+  const record = {
+    id: uuidv4(), proId: req.user.id, proName: me?.name || '', proProfession: me?.profession || '',
+    clientId: consent.clientId, clientName: consent.clientName,
+    coachId: consent.coachId, title, note,
+    fileName: fileName || null, fileData: fileData || null,
+    createdAt: new Date().toISOString(),
+  }
+  db.healthRecords.push(record)
+  // Notifie le coach + le client
+  pushNotif(consent.coachId,  { type: 'reminder', title: 'Nouveau bilan santé', body: `${me?.name} a partagé un bilan pour ${consent.clientName} : "${title}"`, time: 'à l\'instant', link: '/coach/sante' })
+  pushNotif(consent.clientId, { type: 'reminder', title: 'Bilan ajouté à ton dossier', body: `${me?.name} a déposé "${title}" et l'a partagé à ton coach`, time: 'à l\'instant', link: '/dashboard' })
+  const { fileData: _, ...safe } = record
+  res.status(201).json(safe)
+})
+
+app.get('/api/records', auth, (req, res) => {
+  const { id, role } = req.user
+  let list = []
+  if (role === 'health_pro') list = db.healthRecords.filter(r => r.proId === id)
+  else if (role === 'coach') list = db.healthRecords.filter(r => r.coachId === id)
+  else if (role === 'client') list = db.healthRecords.filter(r => r.clientId === id)
+  // on n'envoie pas le fichier base64 dans la liste
+  res.json(list.map(({ fileData, ...r }) => ({ ...r, hasFile: !!fileData })).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)))
+})
+
+// Télécharger le fichier d'un bilan (accès réservé aux parties concernées)
+app.get('/api/records/:id/file', auth, (req, res) => {
+  const r = db.healthRecords.find(x => x.id === req.params.id)
+  if (!r || !r.fileData) return res.status(404).json({ message: 'Aucun fichier' })
+  if (![r.proId, r.coachId, r.clientId].includes(req.user.id)) return res.status(403).json({ message: 'Non autorisé' })
+  res.json({ fileName: r.fileName, fileData: r.fileData })
 })
 
 // Mettre à jour son profil coach
