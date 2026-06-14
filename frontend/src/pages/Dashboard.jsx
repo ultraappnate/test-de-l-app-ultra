@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useStore } from '../store'
 import { useNavigate } from 'react-router-dom'
 import AIInsights from '../components/AIInsights'
+import StreakWidget from '../components/StreakWidget'
 
 /* ─── Helpers ──────────────────────────────────────────── */
 function ytEmbed(url) {
@@ -409,6 +410,19 @@ function ClientDashboard({ user, navigate }) {
         </p>
         <h1 className="font-black leading-snug" style={{ color: 'var(--text-primary)', fontSize: 'clamp(20px,5vw,30px)' }}>{phrase}</h1>
       </div>
+      {/* Streak + accès rapide AI */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <StreakWidget />
+        <button onClick={() => navigate('/ai-coach')}
+          className="p-4 rounded-2xl text-left relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #1a0a0f 0%, #6b1a2e 60%, var(--accent) 100%)', border: '1px solid var(--accent)' }}>
+          <div className="absolute top-2 right-3 text-3xl opacity-30">🤖</div>
+          <p className="text-[10px] font-black tracking-[0.2em] uppercase mb-1" style={{ color: 'rgba(255,255,255,0.6)' }}>Nouveau</p>
+          <p className="text-sm font-black text-white leading-tight">Coach IA</p>
+          <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.65)' }}>Disponible 24h/24</p>
+        </button>
+      </div>
+
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }} className="client-kpi">
         <MetricCard label="Programmes actifs" value="0" color="var(--accent)" icon="💪" delay={200}/>
         <MetricCard label="Coaches" value="0" color="var(--gold)" icon="🏆" delay={300}/>

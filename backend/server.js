@@ -71,6 +71,8 @@ const db = {
   healthRecords: [],     // { id, proId, proName, proProfession, clientId, clientName, coachId, title, note, fileName, fileData, createdAt }
   pushSubscriptions: {}, // { userId: { subscription, prefs: { nutrition, programme, communaute } } }
   enrollments: [],       // { id, userId, programId, coachId, enrolledAt }
+  streaks: {},           // { userId: { current, longest, lastDate, history: ['YYYY-MM-DD'] } }
+  workoutLogs: [],       // { id, userId, programId, exerciseLogs, completedAt }
   posts: [],             // fil communauté
   postLikes: {},         // { postId: Set<userId> }
   postComments: {},      // { postId: [{id,userId,userName,userAvatar,userRole,text,createdAt}] }
@@ -846,9 +848,28 @@ Tu parles français, tu es direct, motivant, précis et bienveillant.
 Tu adaptes tes réponses au profil de l'utilisateur (coach ou athlète).
 Tu donnes des conseils concrets, basés sur des données scientifiques récentes.
 Tu ne donnes jamais de conseils médicaux — tu recommandes de consulter un professionnel pour les blessures graves.
-Tes réponses sont concises mais complètes. Tu utilises des emojis avec parcimonie.`
+Tes réponses sont concises mais complètes. Tu utilises des emojis avec parcimonie.
+Format: utilise du markdown (gras, listes) pour structurer tes réponses quand c'est utile.`
 
-// Chat IA — streaming SSE
+function buildCoachContext(user) {
+  const enrollments = db.enrollments.filter(e => e.userId === user.id)
+  const streak = db.streaks[user.id] || { current: 0, longest: 0 }
+  const recentLogs = db.workoutLogs.filter(l => l.userId === user.id).slice(-5)
+  const programs = enrollments.map(e => db.programs.find(p => p.id === e.programId)).filter(Boolean)
+
+  return `
+PROFIL ATHLÈTE:
+- Nom: ${user.name}
+- Objectif: ${user.objective || 'non renseigné'}
+- Niveau: ${user.level || 'non renseigné'}
+- Streak actuel: ${streak.current} jour(s) consécutifs (record: ${streak.longest})
+- Programmes en cours: ${programs.map(p => p.title).join(', ') || 'aucun'}
+- Dernières séances: ${recentLogs.length} séance(s) récente(s)
+- Premium: ${user.isPremium ? 'oui' : 'non'}
+`.trim()
+}
+
+// Chat IA — streaming SSE (générique)
 app.post('/api/ai/chat', auth, async (req, res) => {
   const { messages, context } = req.body
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -866,6 +887,37 @@ app.post('/api/ai/chat', auth, async (req, res) => {
       model: 'claude-haiku-4-5',
       max_tokens: 1024,
       system: ULTRA_SYSTEM + '\n\nContexte: ' + userCtx,
+      messages: messages.map(m => ({ role: m.role, content: m.content })),
+    })
+    stream.on('text', text => res.write(`data: ${JSON.stringify({ text })}\n\n`))
+    stream.on('finalMessage', () => { res.write('data: [DONE]\n\n'); res.end() })
+    stream.on('error', err => { res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`); res.end() })
+  } catch (err) {
+    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`)
+    res.end()
+  }
+})
+
+// Chat AI Coach — streaming SSE avec contexte athlète complet
+app.post('/api/ai/coach-chat', auth, async (req, res) => {
+  const { messages } = req.body
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ message: 'Clé API Anthropic non configurée.' })
+  }
+  const user = db.users.find(u => u.id === req.user.id)
+  if (!user) return res.status(404).json({ message: 'Utilisateur introuvable' })
+
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+
+  const systemPrompt = ULTRA_SYSTEM + '\n\n' + buildCoachContext(user)
+
+  try {
+    const stream = anthropic.messages.stream({
+      model: 'claude-haiku-4-5',
+      max_tokens: 1500,
+      system: systemPrompt,
       messages: messages.map(m => ({ role: m.role, content: m.content })),
     })
     stream.on('text', text => res.write(`data: ${JSON.stringify({ text })}\n\n`))
@@ -1421,6 +1473,58 @@ cron.schedule('0 12 * * *', () => {
 cron.schedule('0 18 * * *', () => {
   Object.keys(db.pushSubscriptions).forEach(userId => sendPushToUser(userId, 'communaute'))
 }, { timezone: 'Europe/Paris' })
+
+// ─── STREAK ─────────────────────────────────────────────
+
+app.get('/api/streak', auth, (req, res) => {
+  const s = db.streaks[req.user.id] || { current: 0, longest: 0, lastDate: null, history: [] }
+  res.json(s)
+})
+
+app.post('/api/streak/log', auth, (req, res) => {
+  const today = new Date().toISOString().slice(0, 10)
+  let s = db.streaks[req.user.id]
+  if (!s) s = db.streaks[req.user.id] = { current: 0, longest: 0, lastDate: null, history: [] }
+
+  if (s.lastDate === today) return res.json({ ...s, alreadyLogged: true })
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  s.current = s.lastDate === yesterday ? s.current + 1 : 1
+  s.longest = Math.max(s.longest, s.current)
+  s.lastDate = today
+  if (!s.history.includes(today)) s.history.push(today)
+  // Garde les 90 derniers jours
+  if (s.history.length > 90) s.history = s.history.slice(-90)
+
+  res.json(s)
+})
+
+// Log de séance complète
+app.post('/api/workout/log', auth, (req, res) => {
+  const { programId, exerciseLogs } = req.body
+  const log = { id: uuidv4(), userId: req.user.id, programId, exerciseLogs: exerciseLogs || [], completedAt: new Date().toISOString() }
+  db.workoutLogs.push(log)
+
+  // Auto-log streak
+  const today = new Date().toISOString().slice(0, 10)
+  let s = db.streaks[req.user.id]
+  if (!s) s = db.streaks[req.user.id] = { current: 0, longest: 0, lastDate: null, history: [] }
+  if (s.lastDate !== today) {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+    s.current = s.lastDate === yesterday ? s.current + 1 : 1
+    s.longest = Math.max(s.longest, s.current)
+    s.lastDate = today
+    if (!s.history.includes(today)) s.history.push(today)
+    if (s.history.length > 90) s.history = s.history.slice(-90)
+  }
+
+  res.json({ success: true, log, streak: s })
+})
+
+app.get('/api/workout/logs', auth, (req, res) => {
+  const logs = db.workoutLogs.filter(l => l.userId === req.user.id)
+  res.json(logs)
+})
 
 // ─── STRIPE ─────────────────────────────────────────────
 

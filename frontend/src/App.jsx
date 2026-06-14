@@ -51,6 +51,7 @@ import ClientProfile from './pages/ClientProfile'
 import Settings from './pages/Settings'
 import PaymentSuccess from './pages/PaymentSuccess'
 import PaymentCancel from './pages/PaymentCancel'
+import AICoachPage from './pages/AICoachPage'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -195,6 +196,7 @@ export default function App() {
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
+          <Route path="/ai-coach" element={<PrivateRoute><AICoachPage /></PrivateRoute>} />
         </Routes>
       </Layout>
     </BrowserRouter>
