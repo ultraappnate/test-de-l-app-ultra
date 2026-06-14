@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../store'
 
 export default function HealthProPatients() {
+  const navigate = useNavigate()
   const { fetchConsents, fetchRecords, createRecord } = useStore()
   const [consents, setConsents] = useState([])
   const [records, setRecords]   = useState([])
@@ -70,11 +72,18 @@ export default function HealthProPatients() {
                       <p className="text-sm font-black truncate" style={{ color: 'var(--text-primary)' }}>{c.clientName}</p>
                       <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Coach : 🎓 {c.coachName} · {recs.length} bilan{recs.length !== 1 ? 's' : ''}</p>
                     </div>
-                    <button onClick={() => { setActive(c); setForm({ title:'', note:'', fileName:null, fileData:null }) }}
-                      className="text-xs font-bold px-3 py-2 rounded-lg flex-shrink-0"
-                      style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
-                      + Déposer un bilan
-                    </button>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button onClick={() => navigate(`/client/${c.clientId}`)}
+                        className="text-xs font-bold px-3 py-2 rounded-lg"
+                        style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                        👤 Profil
+                      </button>
+                      <button onClick={() => { setActive(c); setForm({ title:'', note:'', fileName:null, fileData:null }) }}
+                        className="text-xs font-bold px-3 py-2 rounded-lg"
+                        style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
+                        + Déposer un bilan
+                      </button>
+                    </div>
                   </div>
                   {recs.length > 0 && (
                     <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: '1px solid var(--border)' }}>

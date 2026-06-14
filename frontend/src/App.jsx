@@ -47,6 +47,9 @@ import HealthProProfile from './pages/pro/HealthProProfile'
 import HealthProPatients from './pages/pro/HealthProPatients'
 import ClientHealthAccess from './pages/ClientHealthAccess'
 import CoachHealthRecords from './pages/CoachHealthRecords'
+import ClientProfile from './pages/ClientProfile'
+import Settings from './pages/Settings'
+import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
   const { user } = useStore()
@@ -80,10 +83,17 @@ function useIsMobile() {
 }
 
 function Layout({ theme, setTheme, children }) {
-  const { user } = useStore()
+  const { user, token } = useStore()
   const { pathname } = useLocation()
   const [collapsed, setCollapsed] = useState(false)
   const isMobile = useIsMobile()
+
+  // Demande permission push au premier login (silencieux si déjà accordé/refusé)
+  useEffect(() => {
+    if (user && token && Notification.permission === 'default') {
+      registerPush(token)
+    }
+  }, [user?.id, token])
   const isAuthPage = pathname === '/login' || pathname === '/register' || pathname === '/'
   const isBuilderPage = pathname.startsWith('/coach/programs/') || pathname === '/coach/programs/new'
   const isFullscreen = pathname === '/discover'
@@ -179,6 +189,8 @@ export default function App() {
           <Route path="/health" element={<PrivateRoute><HealthIntegrations /></PrivateRoute>} />
           <Route path="/community" element={<PrivateRoute><Community /></PrivateRoute>} />
           <Route path="/muscles" element={<PrivateRoute><MuscleExplorer /></PrivateRoute>} />
+          <Route path="/client/:id" element={<PrivateRoute><ClientProfile /></PrivateRoute>} />
+          <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
         </Routes>
       </Layout>
     </BrowserRouter>

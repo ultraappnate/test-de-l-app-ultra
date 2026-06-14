@@ -36,7 +36,7 @@ function CircleProgress({ value, size = 44, stroke = 3, color }) {
   )
 }
 
-function ClientCard({ client, onMessage, onNutrition }) {
+function ClientCard({ client, onMessage, onNutrition, onProfile }) {
   const badge = statusBadge(client.status)
   const cc = complianceColor(client.compliance)
   const pct = client.totalWeeks ? Math.round((client.week / client.totalWeeks) * 100) : 0
@@ -103,6 +103,11 @@ function ClientCard({ client, onMessage, onNutrition }) {
       <div className="flex items-center justify-between">
         <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>⏱ {client.lastActive}</p>
         <div className="flex gap-2">
+          <button onClick={() => onProfile(client)}
+            className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition"
+            style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+            👤 Profil
+          </button>
           <button onClick={() => onNutrition(client)}
             className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition"
             style={{ background: 'rgba(39,174,96,0.1)', color: '#4ade80', border: '1px solid rgba(39,174,96,0.2)' }}
@@ -203,6 +208,7 @@ export default function Clients() {
             <div key={c.id} className={`transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
               style={{ transitionDelay: `${200 + i * 60}ms` }}>
               <ClientCard client={c}
+                onProfile={cl => navigate(`/client/${cl.id}`)}
                 onMessage={cl => navigate(`/chat/${cl.id}`)}
                 onNutrition={cl => navigate('/coach/nutrition')}/>
             </div>

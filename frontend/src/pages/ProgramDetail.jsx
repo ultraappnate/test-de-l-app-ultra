@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import MuscleMap from '../components/MuscleMap'
+import PremiumPaywall from '../components/PremiumPaywall'
 
 const LEVEL_COLORS = {
   'Débutant':      { bg: 'rgba(39,174,96,0.15)',   text: '#27ae60', border: 'rgba(39,174,96,0.4)' },
@@ -114,6 +115,8 @@ export default function ProgramDetail() {
   const [enrolling, setEnrolling] = useState(false)
   const [enrolled, setEnrolled] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
+  const { enrollProgram, fetchMyEnrollments } = useStore()
 
   useEffect(() => {
     const load = async () => {
@@ -123,18 +126,25 @@ export default function ProgramDetail() {
       const found = (list || []).find(p => String(p.id) === String(resolvedId))
       setProgram(found || null)
       setLoading(false)
+      // Vérifie si déjà inscrit
+      const enrollments = await fetchMyEnrollments()
+      if (enrollments.some(e => String(e.id) === String(resolvedId))) setEnrolled(true)
     }
     load()
   }, [resolvedId])
 
   const handleStart = async () => {
-    if (enrolled) { navigate('/nutrition'); return }
+    if (enrolled) { navigate('/dashboard'); return }
     setEnrolling(true)
-    await new Promise(r => setTimeout(r, 800))
-    setEnrolled(true)
+    const res = await enrollProgram(resolvedId)
     setEnrolling(false)
-    setShowSuccess(true)
-    setTimeout(() => setShowSuccess(false), 4000)
+    if (res.success) {
+      setEnrolled(true)
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 4000)
+    } else if (res.error === 'premium_required') {
+      setShowPaywall(true)
+    }
   }
 
   if (loading) return (
@@ -163,9 +173,16 @@ export default function ProgramDetail() {
   const weeks = program.sections || program.weeks || []
   const sessionCount = weeks.reduce((s, w) => s + (w.days?.length || 0), 0) || program.sessions || '—'
   const isCoach = user?.role === 'coach'
+  const isPremiumRequired = program.source === 'admin' && program.price > 0 && !user?.isPremium
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
+      {showPaywall && (
+        <PremiumPaywall
+          onClose={() => setShowPaywall(false)}
+          onSuccess={() => { setShowPaywall(false); handleStart() }}
+        />
+      )}
 
       {/* ── Toast succès ── */}
       {showSuccess && (
@@ -259,13 +276,23 @@ export default function ProgramDetail() {
 
         {/* CTA */}
         {!isCoach && (
-          <div className="mb-8 p-6 rounded-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div className="mb-8 p-6 rounded-2xl"
+            style={{ background: 'var(--bg-card)', border: `1px solid ${isPremiumRequired ? 'rgba(212,175,55,0.4)' : 'var(--border)'}` }}>
+            {isPremiumRequired && (
+              <div className="flex items-center gap-2 justify-center mb-3 px-3 py-2 rounded-xl"
+                style={{ background: 'rgba(212,175,55,0.1)' }}>
+                <span style={{ color: 'var(--gold)' }}>★</span>
+                <p className="text-xs font-black" style={{ color: 'var(--gold)' }}>
+                  Ce programme est réservé aux membres Premium
+                </p>
+              </div>
+            )}
             <p className="text-sm mb-4 text-center" style={{ color: 'var(--text-secondary)' }}>
               {enrolled ? '🎉 Tu suis déjà ce programme — continue comme ça !' : 'Prêt à transformer ta forme ? Lance-toi dès maintenant.'}
             </p>
             <button onClick={handleStart} disabled={enrolling}
               className="w-full py-4 rounded-xl text-base font-black text-white transition-all duration-200"
-              style={{ background: enrolled ? '#27ae60' : 'var(--accent)', opacity: enrolling ? 0.7 : 1 }}
+              style={{ background: enrolled ? '#27ae60' : isPremiumRequired ? 'linear-gradient(135deg, #b8960c, #d4af37)' : 'var(--accent)', opacity: enrolling ? 0.7 : 1 }}
               onMouseEnter={e => { if (!enrolling) e.currentTarget.style.opacity = '0.88' }}
               onMouseLeave={e => { if (!enrolling) e.currentTarget.style.opacity = '1' }}>
               {enrolling
@@ -273,11 +300,18 @@ export default function ProgramDetail() {
                     <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />
                     Démarrage…
                   </span>
-                : enrolled ? '▶ Continuer le programme' : '🚀 Commencer maintenant'}
+                : enrolled ? '▶ Continuer le programme'
+                : isPremiumRequired ? '★ Passer Premium pour accéder'
+                : '🚀 Commencer maintenant'}
             </button>
-            {!enrolled && program.price > 0 && (
+            {!enrolled && program.price > 0 && !isPremiumRequired && (
               <p className="text-xs mt-3 text-center" style={{ color: 'var(--text-faint)' }}>
                 Accès complet · Satisfait ou remboursé
+              </p>
+            )}
+            {isPremiumRequired && (
+              <p className="text-xs mt-3 text-center" style={{ color: 'var(--text-faint)' }}>
+                Premium à 9,99 €/mois · Accès à tous les programmes Admin
               </p>
             )}
           </div>

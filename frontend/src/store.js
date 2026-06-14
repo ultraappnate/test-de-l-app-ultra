@@ -309,6 +309,49 @@ export const useStore = create(
           return { success: false, error: err.response?.data?.message || 'Erreur envoi message' }
         }
       },
+
+      enrollProgram: async (programId) => {
+        try {
+          const { token } = get()
+          const res = await axios.post(`${API}/programs/${programId}/enroll`, {}, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          return { success: true, enrollment: res.data.enrollment }
+        } catch (err) {
+          const error = err.response?.data?.error || 'Erreur'
+          return { success: false, error }
+        }
+      },
+
+      fetchMyEnrollments: async () => {
+        try {
+          const { token } = get()
+          const res = await axios.get(`${API}/my/enrollments`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          return res.data
+        } catch { return [] }
+      },
+
+      activatePremium: async () => {
+        try {
+          const { token } = get()
+          const res = await axios.post(`${API}/premium/activate`, {}, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          set({ user: res.data.user })
+          return { success: true }
+        } catch (err) {
+          return { success: false, error: err.response?.data?.error || 'Erreur' }
+        }
+      },
+
+      fetchCoachPublic: async (coachId) => {
+        try {
+          const res = await axios.get(`${API}/coach/${coachId}/public`)
+          return res.data
+        } catch { return null }
+      },
     }),
     {
       name: 'ultra-storage',

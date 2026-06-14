@@ -5,6 +5,8 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { v4 as uuidv4 } from 'uuid'
 import Anthropic from '@anthropic-ai/sdk'
+import webpush from 'web-push'
+import cron from 'node-cron'
 
 const app = express()
 const PORT = 5001
@@ -29,7 +31,7 @@ const db = {
   nutritionGoals: {},  // { clientId: { calories, protein, carbs, fat, setBy, updatedAt } }
   programs: [
     // ── Force (4)
-    { id: 'prog-f1', title: 'Force Absolue', description: 'Développe une force brute en 12 semaines. Squat, deadlift, bench — les 3 piliers de la puissance.', price: 49, duration: '12 semaines', category: 'Force', level: 'Intermédiaire', sessions: '4x/semaine', nutrition: false, enrollmentCount: 124, gradient: 'linear-gradient(135deg, #1a0a0d 0%, #7d2d38 60%, #a03848 100%)' },
+    { id: 'prog-f1', source: 'admin', title: 'Force Absolue', description: 'Développe une force brute en 12 semaines. Squat, deadlift, bench — les 3 piliers de la puissance.', price: 49, duration: '12 semaines', category: 'Force', level: 'Intermédiaire', sessions: '4x/semaine', nutrition: false, enrollmentCount: 124, gradient: 'linear-gradient(135deg, #1a0a0d 0%, #7d2d38 60%, #a03848 100%)' },
     { id: 'prog-f2', title: 'Powerlifting 8 Semaines', description: 'Préparation compétition powerlifting. Peak de force sur squat, bench et deadlift avec périodisation conjuguée.', price: 69, duration: '8 semaines', category: 'Force', level: 'Avancé', sessions: '4x/semaine', nutrition: false, enrollmentCount: 58, gradient: 'linear-gradient(135deg, #0d0505 0%, #5c1a24 50%, #8b2635 100%)' },
     { id: 'prog-f3', title: 'Force Débutant', description: 'Programme Starting Strength adapté. Progressions linéaires sur les mouvements fondamentaux — idéal pour construire des bases solides.', price: 0, duration: '6 semaines', category: 'Force', level: 'Débutant', sessions: '3x/semaine', nutrition: false, enrollmentCount: 312, gradient: 'linear-gradient(135deg, #1a0f10 0%, #6b3040 60%, #9b4a5a 100%)' },
     { id: 'prog-f4', title: 'Upper/Lower Split', description: 'Programme 4 jours haut/bas du corps. Hypertrophie et force combinées pour un physique fonctionnel et esthétique.', price: 39, duration: '10 semaines', category: 'Force', level: 'Intermédiaire', sessions: '4x/semaine', nutrition: false, enrollmentCount: 89, gradient: 'linear-gradient(135deg, #150810 0%, #8b1a2e 50%, #c42840 100%)' },
@@ -58,6 +60,8 @@ const db = {
   healthConnections: {}, // { userId: { strava:{connected,token,lastSync}, garmin:{...}, ... } }
   consents: [],          // { id, clientId, clientName, proId, proName, coachId, coachName, createdAt }
   healthRecords: [],     // { id, proId, proName, proProfession, clientId, clientName, coachId, title, note, fileName, fileData, createdAt }
+  pushSubscriptions: {}, // { userId: { subscription, prefs: { nutrition, programme, communaute } } }
+  enrollments: [],       // { id, userId, programId, coachId, enrolledAt }
   posts: [],             // fil communauté
   postLikes: {},         // { postId: Set<userId> }
   postComments: {},      // { postId: [{id,userId,userName,userAvatar,userRole,text,createdAt}] }
@@ -242,6 +246,8 @@ app.post('/api/auth/register', async (req, res) => {
     password: hash,
     name,
     role: role || 'client',
+    isPremium: false,
+    premiumSince: null,
     // Champs professionnel de santé
     ...(role === 'health_pro' && { profession: profession || 'Professionnel de santé', rpps: rpps || '', verified: false }),
     createdAt: new Date().toISOString(),
@@ -263,6 +269,9 @@ app.post('/api/auth/login', async (req, res) => {
   res.json({ user: safeUser, token })
 })
 
+// Marquer tous les programmes sans source comme 'admin'
+db.programs.forEach(p => { if (!p.source) p.source = 'admin' })
+
 // ─── PROGRAMS ───────────────────────────────────────────
 
 app.get('/api/programs', auth, (req, res) => {
@@ -279,7 +288,8 @@ app.post('/api/programs', auth, (req, res) => {
   if (!['coach', 'admin'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Accès refusé' })
   }
-  const program = { id: uuidv4(), ...req.body, coachId: req.user.id, enrollmentCount: 0, sections: req.body.sections || [], createdAt: new Date().toISOString() }
+  const source = req.user.role === 'admin' ? 'admin' : 'coach'
+  const program = { id: uuidv4(), ...req.body, source, coachId: req.user.id, enrollmentCount: 0, sections: req.body.sections || [], createdAt: new Date().toISOString() }
   db.programs.push(program)
   res.status(201).json(program)
 })
@@ -1205,6 +1215,203 @@ app.delete('/api/community/posts/:id', auth, (req, res) => {
   delete db.postComments[req.params.id]
   res.json({ success: true })
 })
+
+// ─── ENROLLMENTS & PREMIUM ──────────────────────────────
+
+// S'inscrire à un programme (coach ou admin)
+app.post('/api/programs/:id/enroll', auth, (req, res) => {
+  const program = db.programs.find(p => p.id === req.params.id)
+  if (!program) return res.status(404).json({ error: 'Programme introuvable' })
+
+  // Règles d'accès
+  if (program.source === 'admin' && program.price > 0) {
+    const user = db.users.find(u => u.id === req.user.id)
+    if (!user?.isPremium) return res.status(403).json({ error: 'premium_required' })
+  }
+  // Programmes coach : accès libre (gratuit ou payant simulé)
+
+  const already = db.enrollments.find(e => e.userId === req.user.id && e.programId === program.id)
+  if (already) return res.json({ success: true, enrollment: already })
+
+  const enrollment = {
+    id: uuidv4(),
+    userId: req.user.id,
+    programId: program.id,
+    coachId: program.coachId || null,
+    source: program.source,
+    enrolledAt: new Date().toISOString(),
+  }
+  db.enrollments.push(enrollment)
+  program.enrollmentCount = (program.enrollmentCount || 0) + 1
+  res.json({ success: true, enrollment })
+})
+
+// Mes inscriptions
+app.get('/api/my/enrollments', auth, (req, res) => {
+  const userEnrollments = db.enrollments.filter(e => e.userId === req.user.id)
+  const programs = userEnrollments.map(e => {
+    const prog = db.programs.find(p => p.id === e.programId)
+    return prog ? { ...prog, enrolledAt: e.enrolledAt } : null
+  }).filter(Boolean)
+  res.json(programs)
+})
+
+// Clients inscrits aux programmes d'un coach
+app.get('/api/coach/enrollments', auth, (req, res) => {
+  if (!['coach', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Accès refusé' })
+  const coachPrograms = db.programs.filter(p => p.coachId === req.user.id).map(p => p.id)
+  const enrollments = db.enrollments
+    .filter(e => coachPrograms.includes(e.programId))
+    .map(e => {
+      const user = db.users.find(u => u.id === e.userId)
+      const prog = db.programs.find(p => p.id === e.programId)
+      return user ? { ...e, clientName: user.name, clientEmail: user.email, programTitle: prog?.title } : null
+    }).filter(Boolean)
+  res.json(enrollments)
+})
+
+// Profil public d'un coach (avec ses programmes)
+app.get('/api/coach/:coachId/public', (req, res) => {
+  const coach = db.users.find(u => u.id === req.params.coachId && u.role === 'coach')
+  if (!coach) return res.status(404).json({ error: 'Coach introuvable' })
+  const { password: _, ...safeCoach } = coach
+  const programs = db.programs.filter(p => p.coachId === coach.id && p.source === 'coach')
+  res.json({ coach: safeCoach, programs })
+})
+
+// Activer Premium (simulation — à remplacer par Stripe en prod)
+app.post('/api/premium/activate', auth, (req, res) => {
+  const user = db.users.find(u => u.id === req.user.id)
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' })
+  user.isPremium = true
+  user.premiumSince = new Date().toISOString()
+  const { password: _, ...safeUser } = user
+  res.json({ success: true, user: safeUser })
+})
+
+// Statut premium
+app.get('/api/premium/status', auth, (req, res) => {
+  const user = db.users.find(u => u.id === req.user.id)
+  res.json({ isPremium: user?.isPremium || false, premiumSince: user?.premiumSince || null })
+})
+
+// ─── PUSH NOTIFICATIONS ─────────────────────────────────
+
+const VAPID_PUBLIC  = process.env.VAPID_PUBLIC_KEY  || 'BINEkEZkg3_KRlLa2clPDQLCBqqHvdMOrXZac4F0aho1cuEG_YKkcholxO3YsMQAX1QrAAgUId05uWTQfFAIbNs'
+const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '7hp05q9glG1X1l5zeQCJRqqmZdipo2qWR1Mw1NZcSsM'
+
+webpush.setVapidDetails('mailto:contact@ultra-app.com', VAPID_PUBLIC, VAPID_PRIVATE)
+
+const NOTIF_MESSAGES = {
+  nutrition: [
+    { title: '🥗 C\'est l\'heure de logger !', body: 'Tu n\'as pas encore enregistré ton repas. 2 min suffisent.' },
+    { title: '💧 Hydratation check', body: 'Tu as bu suffisamment aujourd\'hui ? L\'eau c\'est la base de la performance.' },
+    { title: '🎯 Objectif calories', body: 'Vérifie où tu en es sur tes macros du jour. Chaque repas compte.' },
+    { title: '🥩 Protéines du jour', body: 'Assure-toi d\'atteindre ton apport protéique aujourd\'hui pour la récupération.' },
+    { title: '🍎 Anti-gaspi calorie', body: 'Ton coach a ajusté ton plan nutrition. Jette un œil aux nouvelles recommandations.' },
+    { title: '⚡ Énergie en berne ?', body: 'Pense à manger avant ta prochaine séance. Les glucides sont tes alliés.' },
+    { title: '📊 Bilan nutrition', body: 'Comment s\'est passée ton alimentation cette semaine ? Regarde tes stats.' },
+    { title: '🌙 Dîner ce soir', body: 'N\'oublie pas de logger ton dîner pour clôturer ta journée nutritionnelle.' },
+    { title: '🔥 Reste dans le plan', body: 'Tu es à 80% de tes objectifs aujourd\'hui. Un dernier effort !' },
+    { title: '🍽️ Repas post-séance', body: 'La fenêtre anabolique est courte — pense à manger dans l\'heure qui suit.' },
+  ],
+  programme: [
+    { title: '💪 Séance du jour', body: 'Ta séance t\'attend. Même 20 min c\'est mieux que zéro.' },
+    { title: '🏋️ C\'est jour d\'entraînement !', body: 'Ton programme est prêt. Lance-toi, tu le regretteras jamais.' },
+    { title: '🔥 Streak en jeu !', body: 'Ne casse pas ta série. Une séance aujourd\'hui et tu restes dans la course.' },
+    { title: '📈 Progression cette semaine', body: 'Regarde combien tu as progressé depuis le début. Motivant, non ?' },
+    { title: '⏱️ Récup\' active', body: 'Jour de repos ? Profites-en pour 10 min de mobilité ou une marche.' },
+    { title: '🎯 Prochaine étape', body: 'Tu es à mi-chemin de ton programme. Continue comme ça !' },
+    { title: '🧠 Mental > physique', body: 'Les jours où t\'as pas envie, c\'est là que ça se passe. Enfile tes shoes.' },
+    { title: '💥 Nouveau record ?', body: 'La semaine passée tu t\'es dépassé. Aujourd\'hui tu peux faire encore mieux.' },
+    { title: '🌅 Routine matinale', body: 'Une séance le matin booste ton énergie pour toute la journée. Go !' },
+    { title: '📋 Ton coach a mis à jour', body: 'Regarde les ajustements de programme de cette semaine avant de t\'entraîner.' },
+  ],
+  communaute: [
+    { title: '🌍 La communauté t\'attend', body: 'Partage ta séance du jour — tu vas motiver quelqu\'un sans le savoir.' },
+    { title: '💬 Nouveau dans la communauté', body: 'Des athlètes ont posté des résultats incroyables. Va jeter un œil !' },
+    { title: '🏆 Partage ta victoire', body: 'Une petite victoire aujourd\'hui ? Poste-la, elles comptent toutes.' },
+    { title: '🤝 Soutiens un athlète', body: 'Quelqu\'un dans la communauté a besoin d\'encouragements. Un like peut tout changer.' },
+    { title: '📸 Story de la semaine', body: 'Partage une photo de ta progression. La communauté adore voir l\'évolution.' },
+    { title: '💡 Tip du jour', body: 'Tu as une astuce qui t\'a aidé ? Partage-la avec la communauté ULTRA.' },
+    { title: '🔥 Challenge en cours', body: 'Un challenge communautaire est actif cette semaine. Tu es de la partie ?' },
+    { title: '🎙️ Ta voix compte', body: 'Donne un avis sur un programme ou une recette. Aide les autres à choisir.' },
+    { title: '🌟 Inspire les nouveaux', body: 'Les nouveaux membres ont besoin de modèles. Montre-leur comment c\'est fait.' },
+    { title: '📣 Rappel communauté', body: 'Tu n\'as pas posté depuis un moment. La communauté attend de tes nouvelles.' },
+  ],
+}
+
+function pickMessage(category) {
+  const msgs = NOTIF_MESSAGES[category]
+  return msgs[Math.floor(Math.random() * msgs.length)]
+}
+
+async function sendPushToUser(userId, category) {
+  const entry = db.pushSubscriptions[userId]
+  if (!entry) return
+  if (!entry.prefs[category]) return  // catégorie en sourdine
+  const { title, body } = pickMessage(category)
+  try {
+    await webpush.sendNotification(entry.subscription, JSON.stringify({
+      title,
+      body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      category,
+    }))
+  } catch (err) {
+    if (err.statusCode === 410) delete db.pushSubscriptions[userId]  // subscription expirée
+  }
+}
+
+// Clé publique VAPID (pour le frontend)
+app.get('/api/vapid-public-key', (req, res) => {
+  res.json({ publicKey: VAPID_PUBLIC })
+})
+
+// Enregistrer/mettre à jour la subscription push
+app.post('/api/push/subscribe', auth, (req, res) => {
+  const { subscription } = req.body
+  if (!subscription) return res.status(400).json({ error: 'subscription manquante' })
+  const existing = db.pushSubscriptions[req.user.id]
+  db.pushSubscriptions[req.user.id] = {
+    subscription,
+    prefs: existing?.prefs ?? { nutrition: true, programme: true, communaute: true },
+  }
+  res.json({ success: true })
+})
+
+// Lire les préférences notif
+app.get('/api/push/prefs', auth, (req, res) => {
+  const entry = db.pushSubscriptions[req.user.id]
+  res.json(entry?.prefs ?? { nutrition: true, programme: true, communaute: true })
+})
+
+// Mettre à jour les préférences notif
+app.put('/api/push/prefs', auth, (req, res) => {
+  const { nutrition, programme, communaute } = req.body
+  if (!db.pushSubscriptions[req.user.id]) {
+    db.pushSubscriptions[req.user.id] = { subscription: null, prefs: { nutrition: true, programme: true, communaute: true } }
+  }
+  db.pushSubscriptions[req.user.id].prefs = { nutrition: !!nutrition, programme: !!programme, communaute: !!communaute }
+  res.json({ success: true })
+})
+
+// Cron jobs — tous les jours
+// 07h00 → programme
+cron.schedule('0 7 * * *', () => {
+  Object.keys(db.pushSubscriptions).forEach(userId => sendPushToUser(userId, 'programme'))
+}, { timezone: 'Europe/Paris' })
+
+// 12h00 → nutrition
+cron.schedule('0 12 * * *', () => {
+  Object.keys(db.pushSubscriptions).forEach(userId => sendPushToUser(userId, 'nutrition'))
+}, { timezone: 'Europe/Paris' })
+
+// 18h00 → communauté
+cron.schedule('0 18 * * *', () => {
+  Object.keys(db.pushSubscriptions).forEach(userId => sendPushToUser(userId, 'communaute'))
+}, { timezone: 'Europe/Paris' })
 
 // ─── START ──────────────────────────────────────────────
 

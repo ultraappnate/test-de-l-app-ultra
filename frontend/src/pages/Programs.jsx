@@ -110,6 +110,12 @@ function RowCard({ program, onClick }) {
             🥗
           </div>
         )}
+        {program.source === 'admin' && program.price > 0 && (
+          <div className="absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold"
+            style={{ background: 'rgba(212,175,55,0.45)', color: '#d4af37', border: '1px solid rgba(212,175,55,0.5)' }}>
+            ★
+          </div>
+        )}
       </div>
       <div className="p-3">
         <p className="text-xs font-black leading-tight mb-1.5" style={{ color: 'var(--text-primary)' }}>{program.title}</p>
@@ -359,7 +365,7 @@ function AccompagnementTab() {
    PAGE PRINCIPALE avec onglets
 ════════════════════════════════════════════════════════ */
 export default function Programs() {
-  const { programs, fetchPrograms } = useStore()
+  const { programs, fetchPrograms, user } = useStore()
   const navigate = useNavigate()
   const [loading, setLoading]   = useState(true)
   const [tab,     setTab]       = useState('programmes') // 'programmes' | 'accompagnement'

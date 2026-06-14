@@ -14,6 +14,7 @@ const NAV_CLIENT = [
   { to: '/community',    label: 'Communauté',      icon: '🌐' },
   { to: '/chat',         label: 'Messages',        icon: '◉' },
   { to: '/calendar',     label: 'Calendrier',      icon: '▦' },
+  { to: '/settings',     label: 'Paramètres',      icon: '⚙️' },
 ]
 const NAV_COACH = [
   { to: '/dashboard',        label: 'Accueil',          icon: '⌂', short: 'Accueil' },
@@ -31,6 +32,7 @@ const NAV_COACH = [
   { to: '/analytics',        label: 'Statistiques',     icon: '↑' },
   { to: '/revenue',          label: 'Revenus',          icon: '◇' },
   { to: '/calendar',         label: 'Calendrier',       icon: '▤' },
+  { to: '/settings',         label: 'Paramètres',       icon: '⚙️' },
 ]
 const NAV_NUTRITIONIST = [
   { to: '/nutri/dashboard',  label: 'Accueil',              icon: '⌂', short: 'Accueil' },
@@ -46,6 +48,7 @@ const NAV_NUTRITIONIST = [
   { to: '/nutri/stats',      label: 'Statistiques',         icon: '↑' },
   { to: '/revenue',          label: 'Revenus',              icon: '◇' },
   { to: '/calendar',         label: 'Calendrier',           icon: '▤' },
+  { to: '/settings',         label: 'Paramètres',           icon: '⚙️' },
 ]
 const NAV_HEALTH_PRO = [
   { to: '/pro/dashboard', label: 'Accueil',       icon: '⌂', short: 'Accueil' },
@@ -55,6 +58,7 @@ const NAV_HEALTH_PRO = [
   { to: '/chat',          label: 'Messages',      icon: '◉', short: 'Messages' },
   { to: '/calendar',      label: 'Calendrier',    icon: '▦', short: 'Agenda' },
   { to: '/community',     label: 'Communauté',    icon: '🌐', short: 'Commu' },
+  { to: '/settings',     label: 'Paramètres',    icon: '⚙️', short: 'Params' },
 ]
 const NAV_ADMIN = [
   { to: '/admin',     label: 'Panneau admin', icon: '👑' },

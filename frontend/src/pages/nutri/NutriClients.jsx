@@ -70,8 +70,9 @@ export default function NutriClients() {
         {/* Liste */}
         <div className="w-80 flex-shrink-0 overflow-y-auto border-r" style={{ borderColor: 'var(--border)' }}>
           {filtered.map(c => (
-            <button key={c.id} onClick={() => setSelected(c.id)}
-              className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition border-b"
+            <div key={c.id} className="border-b" style={{ borderColor: 'var(--border)' }}>
+            <button onClick={() => setSelected(c.id)}
+              className="w-full flex items-start gap-3 px-4 py-3.5 text-left transition"
               style={{
                 background: selected === c.id ? 'var(--accent-subtle)' : 'transparent',
                 borderColor: 'var(--border)',
@@ -92,6 +93,14 @@ export default function NutriClients() {
                 </p>
               </div>
             </button>
+            <div className="px-4 pb-2.5 flex justify-end">
+              <button onClick={() => navigate(`/client/${c.id}`)}
+                className="text-[10px] font-bold px-2.5 py-1 rounded-lg"
+                style={{ background: 'var(--bg-base)', color: 'var(--text-faint)', border: '1px solid var(--border)' }}>
+                👤 Voir profil
+              </button>
+            </div>
+            </div>
           ))}
         </div>
 
