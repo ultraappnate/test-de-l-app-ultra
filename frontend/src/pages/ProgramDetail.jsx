@@ -298,7 +298,7 @@ export default function ProgramDetail() {
               {enrolled ? '🎉 Tu suis déjà ce programme — continue comme ça !' : 'Prêt à transformer ta forme ? Lance-toi dès maintenant.'}
             </p>
             <button onClick={handleStart} disabled={enrolling}
-              className="w-full py-4 rounded-xl text-base font-black text-white transition-all duration-200"
+              className="w-full py-4 rounded-xl text-base font-black text-white transition-all duration-200 mb-2"
               style={{ background: enrolled ? '#27ae60' : isPremiumRequired ? 'linear-gradient(135deg, #b8960c, #d4af37)' : 'var(--accent)', opacity: enrolling ? 0.7 : 1 }}
               onMouseEnter={e => { if (!enrolling) e.currentTarget.style.opacity = '0.88' }}
               onMouseLeave={e => { if (!enrolling) e.currentTarget.style.opacity = '1' }}>
@@ -311,6 +311,19 @@ export default function ProgramDetail() {
                 : isPremiumRequired ? '★ Passer Premium pour accéder'
                 : '🚀 Commencer maintenant'}
             </button>
+            {enrolled && weeks.length > 0 && (
+              <button
+                onClick={() => {
+                  const firstDay = weeks[0]?.days?.[0]
+                  const exercises = (firstDay?.blocks || []).filter(b => b.type === 'exercise' || b.title)
+                  sessionStorage.setItem('workout_exercises', JSON.stringify(exercises))
+                  navigate(`/workout?program=${resolvedId}&day=${encodeURIComponent(firstDay?.label || 'Séance 1')}`)
+                }}
+                className="w-full py-3 rounded-xl text-sm font-black"
+                style={{ background: 'var(--bg-base)', border: '1px solid var(--accent)', color: 'var(--accent)' }}>
+                🏋️ Démarrer une séance maintenant
+              </button>
+            )}
             {!enrolled && program.price > 0 && !isPremiumRequired && (
               <p className="text-xs mt-3 text-center" style={{ color: 'var(--text-faint)' }}>
                 Accès complet · Satisfait ou remboursé

@@ -128,12 +128,18 @@ function ClientCard({ client, onMessage, onNutrition, onProfile }) {
   )
 }
 
+const COACH_LIMIT_FREE = 3
+
 export default function Clients() {
   const navigate = useNavigate()
+  const { user } = useStore()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [visible, setVisible] = useState(false)
   useEffect(() => { const t = setTimeout(() => setVisible(true), 60); return () => clearTimeout(t) }, [])
+
+  const isFreePlan = !user?.coachPlan || user?.coachPlan === 'free'
+  const atLimit = isFreePlan && MOCK_CLIENTS.length >= COACH_LIMIT_FREE
 
   const filters = [
     { id: 'all',      label: 'Tous' },
@@ -161,6 +167,26 @@ export default function Clients() {
           <h1 className="font-black" style={{ color: 'var(--text-primary)', fontSize:'clamp(22px,6vw,36px)' }}>Mes clients</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{MOCK_CLIENTS.length} clients · {active} actifs en ce moment</p>
         </div>
+
+        {/* Bannière limite plan gratuit */}
+        {isFreePlan && (
+          <div className="mb-5 p-4 rounded-2xl flex items-center justify-between gap-3"
+            style={{ background: atLimit ? 'rgba(160,56,72,0.12)' : 'var(--bg-card)', border: `1px solid ${atLimit ? 'var(--accent)' : 'var(--border)'}` }}>
+            <div>
+              <p className="text-sm font-black" style={{ color: atLimit ? 'var(--accent)' : 'var(--text-primary)' }}>
+                {atLimit ? '⚠️ Limite atteinte — plan Gratuit' : `Plan Gratuit · ${MOCK_CLIENTS.length}/${COACH_LIMIT_FREE} clients`}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>
+                {atLimit ? 'Passe au Pro pour accueillir jusqu\'à 50 clients.' : `Il te reste ${COACH_LIMIT_FREE - MOCK_CLIENTS.length} place(s).`}
+              </p>
+            </div>
+            <button onClick={() => navigate('/coach/upgrade')}
+              className="px-4 py-2 rounded-xl text-xs font-black text-white flex-shrink-0"
+              style={{ background: 'var(--accent)' }}>
+              Passer Pro
+            </button>
+          </div>
+        )}
 
         {/* Summary stats — 2 cols mobile, 4 desktop */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:20 }} className="cli-stats">

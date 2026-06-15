@@ -33,6 +33,7 @@ const NAV_COACH = [
   { to: '/chat',             label: 'Messages',         icon: '◆' },
   { to: '/analytics',        label: 'Statistiques',     icon: '↑' },
   { to: '/revenue',          label: 'Revenus',          icon: '◇' },
+  { to: '/coach/upgrade',    label: 'Plan Coach',       icon: '★' },
   { to: '/calendar',         label: 'Calendrier',       icon: '▤' },
   { to: '/settings',         label: 'Paramètres',       icon: '⚙️' },
 ]

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../store'
+import StreakWidget from '../components/StreakWidget'
+import ShareCard from '../components/ShareCard'
 
 /* ─── Sparkline ────────────────────────────────────────── */
 function Sparkline({ data, color, height = 40, width = 120 }) {
@@ -58,6 +60,7 @@ export default function Progress() {
   const { user } = useStore()
   const [visible, setVisible] = useState(false)
   const [activeMetric, setActiveMetric] = useState('weight')
+  const [showShare, setShowShare] = useState(false)
   useEffect(() => { const t = setTimeout(() => setVisible(true), 60); return () => clearTimeout(t) }, [])
 
   const metrics = { weight: WEIGHT_DATA, bodyfat: BODYFAT_DATA, muscle: MUSCLE_DATA }
@@ -76,11 +79,27 @@ export default function Progress() {
     <div className="min-h-screen" style={{ background: 'var(--bg-base)', padding: 'clamp(16px,4vw,32px)' }}>
       <div style={{ maxWidth:1024, margin:'0 auto' }}>
 
+        {showShare && <ShareCard program={null} streak={null} onClose={() => setShowShare(false)} />}
+
         {/* Header */}
         <div className={`mb-6 transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--gold)' }}>Athlète</p>
-          <h1 className="font-black" style={{ color: 'var(--text-primary)', fontSize:'clamp(22px,6vw,36px)' }}>Ma Progression</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Suivi de tes performances depuis le début</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--gold)' }}>Athlète</p>
+              <h1 className="font-black" style={{ color: 'var(--text-primary)', fontSize:'clamp(22px,6vw,36px)' }}>Ma Progression</h1>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Suivi de tes performances depuis le début</p>
+            </div>
+            <button onClick={() => setShowShare(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black text-white flex-shrink-0"
+              style={{ background: 'var(--accent)' }}>
+              ↗ Partager
+            </button>
+          </div>
+        </div>
+
+        {/* Streak */}
+        <div className="mb-5">
+          <StreakWidget />
         </div>
 
         {/* Program progress rings — empilé mobile */}

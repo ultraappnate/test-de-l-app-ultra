@@ -91,8 +91,8 @@ const db = {
 // ─── SEED comptes par défaut ────────────────────────────
 ;(async () => {
   const seed = [
-    { id: 'coach-nate', name: 'nate',             email: 'natecoaching97@gmail.com', password: 'ultra2024', role: 'coach'         },
-    { id: 'coach-1',    name: 'Nate Coach',       email: 'coach@ultra.com',          password: 'ultra2024', role: 'coach',
+    { id: 'coach-nate', name: 'nate',             email: 'natecoaching97@gmail.com', password: 'ultra2024', role: 'coach', coachPlan: 'pro', coachPlanSince: new Date().toISOString() },
+    { id: 'coach-1',    name: 'Nate Coach',       email: 'coach@ultra.com',          password: 'ultra2024', role: 'coach', coachPlan: 'free', coachPlanSince: null,
       bio: 'Coach certifié BPJEPS, spécialisé force et prise de masse. 8 ans d\'expérience, 200+ clients transformés.',
       specialties: ['Force','Prise de masse','Powerlifting'], price: 80, rating: 4.9, reviewCount: 142,
       location: { lat: 48.8748, lng: 2.3098, city: 'Paris 8e', address: '12 Rue du Faubourg Saint-Honoré' },
@@ -259,6 +259,8 @@ app.post('/api/auth/register', async (req, res) => {
     role: role || 'client',
     isPremium: false,
     premiumSince: null,
+    coachPlan: role === 'coach' ? 'free' : null, // free | pro | elite
+    coachPlanSince: null,
     // Champs professionnel de santé
     ...(role === 'health_pro' && { profession: profession || 'Professionnel de santé', rpps: rpps || '', verified: false }),
     createdAt: new Date().toISOString(),
@@ -1526,6 +1528,77 @@ app.get('/api/workout/logs', auth, (req, res) => {
   res.json(logs)
 })
 
+// Progression par exercice (pour les graphiques)
+app.get('/api/workout/exercise-progress/:exerciseName', auth, (req, res) => {
+  const name = decodeURIComponent(req.params.exerciseName)
+  const logs = db.workoutLogs.filter(l => l.userId === req.user.id)
+  const points = []
+  for (const log of logs) {
+    const ex = (log.exerciseLogs || []).find(e => e.name === name)
+    if (ex) {
+      const bestSet = (ex.sets || []).reduce((best, s) => {
+        const w = parseFloat(s.weight) || 0
+        return w > (parseFloat(best?.weight) || 0) ? s : best
+      }, null)
+      if (bestSet) points.push({ date: log.completedAt.slice(0, 10), weight: parseFloat(bestSet.weight), reps: parseInt(bestSet.reps) || 0 })
+    }
+  }
+  res.json(points)
+})
+
+// ─── COACH PLANS ────────────────────────────────────────
+
+const COACH_LIMITS = { free: 3, pro: 50, elite: Infinity }
+
+app.get('/api/coach/plan', auth, (req, res) => {
+  const user = db.users.find(u => u.id === req.user.id)
+  if (!user || user.role !== 'coach') return res.status(403).json({ error: 'Non autorisé' })
+  const clientCount = db.users.filter(u => u.coachId === req.user.id).length
+  const plan = user.coachPlan || 'free'
+  res.json({ plan, clientCount, limit: COACH_LIMITS[plan], planSince: user.coachPlanSince })
+})
+
+// Checkout Stripe pour plan coach Pro (49€/mois)
+app.post('/api/stripe/checkout-coach-pro', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Stripe non configuré' })
+  const user = db.users.find(u => u.id === req.user.id)
+  if (!user || user.role !== 'coach') return res.status(403).json({ error: 'Non autorisé' })
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: 'eur',
+          recurring: { interval: 'month' },
+          product_data: { name: '🏋️ ULTRA Coach Pro', description: 'Jusqu\'à 50 clients · Analytics avancés · Badge vérifié' },
+          unit_amount: 4900,
+        },
+        quantity: 1,
+      }],
+      customer_email: user.email,
+      metadata: { userId: user.id, type: 'coach_pro' },
+      success_url: `${FRONTEND_URL}/payment/success?type=coach_pro&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${FRONTEND_URL}/coach/upgrade`,
+      locale: 'fr',
+    })
+    res.json({ url: session.url })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Activer plan coach (simulation sans Stripe)
+app.post('/api/coach/plan/activate', auth, (req, res) => {
+  const { plan } = req.body
+  const user = db.users.find(u => u.id === req.user.id)
+  if (!user || user.role !== 'coach') return res.status(403).json({ error: 'Non autorisé' })
+  user.coachPlan = plan || 'pro'
+  user.coachPlanSince = new Date().toISOString()
+  const { password: _, ...safeUser } = user
+  res.json({ success: true, user: safeUser })
+})
+
 // ─── STRIPE ─────────────────────────────────────────────
 
 // Config publique (publishable key)
@@ -1637,6 +1710,16 @@ app.post('/api/stripe/webhook', (req, res) => {
         user.stripeCustomerId = session.customer
         user.stripeSubscriptionId = session.subscription
         console.log(`Premium activé pour ${user.email}`)
+      }
+    }
+
+    if (type === 'coach_pro' && userId) {
+      const user = db.users.find(u => u.id === userId)
+      if (user) {
+        user.coachPlan = 'pro'
+        user.coachPlanSince = new Date().toISOString()
+        user.stripeCoachSubId = session.subscription
+        console.log(`Coach Pro activé pour ${user.email}`)
       }
     }
 
