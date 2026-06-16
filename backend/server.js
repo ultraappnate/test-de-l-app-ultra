@@ -1872,6 +1872,13 @@ app.get('/api/stripe/session/:sessionId', auth, async (req, res) => {
   }
 })
 
+// Commission variable selon le plan coach
+function getCommissionRate(coachPlan) {
+  if (coachPlan === 'elite') return 0.08  // 8% — Elite 99€/mois
+  if (coachPlan === 'pro')   return 0.10  // 10% — Pro 49€/mois
+  return 0.12                             // 12% — Free
+}
+
 // ─── MARKETPLACE ────────────────────────────────────────
 
 // Liste tous les pros (coaches, nutri, health_pro) avec filtres
@@ -1943,15 +1950,16 @@ app.post('/api/marketplace/review/:id', auth, (req, res) => {
   res.status(201).json(review)
 })
 
-// Engager un pro (simulation + commission 15%)
+// Engager un pro (commission variable selon plan coach)
 app.post('/api/marketplace/hire/:id', auth, async (req, res) => {
   if (req.user.role !== 'client') return res.status(403).json({ error: 'Client uniquement' })
   const pro = db.users.find(u => u.id === req.params.id)
   if (!pro) return res.status(404).json({ error: 'Pro introuvable' })
   const { duration = 1 } = req.body // durée en mois
 
+  const rate = getCommissionRate(pro.coachPlan)
   const basePrice = (pro.price || 80) * duration
-  const commission = Math.round(basePrice * 0.10)
+  const commission = Math.round(basePrice * rate)
   const proEarns = basePrice - commission
 
   // Si Stripe configuré → Checkout
@@ -1965,7 +1973,7 @@ app.post('/api/marketplace/hire/:id', auth, async (req, res) => {
             currency: 'eur',
             product_data: {
               name: `Coaching avec ${pro.name} — ${duration} mois`,
-              description: `Commission ULTRA 15% incluse. Coach encaisse ${proEarns}€.`,
+              description: `Coaching ULTRA — ${duration} mois`,
             },
             unit_amount: basePrice * 100,
           },
