@@ -73,6 +73,8 @@ const db = {
   enrollments: [],       // { id, userId, programId, coachId, enrolledAt }
   streaks: {},           // { userId: { current, longest, lastDate, history: ['YYYY-MM-DD'] } }
   workoutLogs: [],       // { id, userId, programId, exerciseLogs, completedAt }
+  exerciseLibrary: [],   // { id, name, muscles, category, equipment, imageUrl, videoId, tips, createdAt }
+  postureAnalyses: [],   // { id, userId, userName, imageBase64, analysis, createdAt, sharedWithPros }
   posts: [],             // fil communauté
   postLikes: {},         // { postId: Set<userId> }
   postComments: {},      // { postId: [{id,userId,userName,userAvatar,userRole,text,createdAt}] }
@@ -1849,6 +1851,187 @@ app.get('/api/stripe/session/:sessionId', auth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+// ─── BIBLIOTHÈQUE D'EXERCICES (admin) ───────────────────
+
+app.get('/api/exercise-library', auth, (req, res) => {
+  res.json(db.exerciseLibrary)
+})
+
+app.post('/api/exercise-library', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
+  const { name, muscles, category, equipment, imageUrl, videoId, tips } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
+  const ex = {
+    id: `ex-${Date.now()}`,
+    name: name.trim(),
+    muscles: muscles || [],
+    category: category || 'Force',
+    equipment: equipment || '',
+    imageUrl: imageUrl || '',
+    videoId: videoId || '',
+    tips: tips || '',
+    createdAt: new Date().toISOString(),
+  }
+  db.exerciseLibrary.push(ex)
+  res.status(201).json(ex)
+})
+
+app.put('/api/exercise-library/:id', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
+  const idx = db.exerciseLibrary.findIndex(e => e.id === req.params.id)
+  if (idx === -1) return res.status(404).json({ error: 'Exercice introuvable' })
+  db.exerciseLibrary[idx] = { ...db.exerciseLibrary[idx], ...req.body, id: req.params.id }
+  res.json(db.exerciseLibrary[idx])
+})
+
+app.delete('/api/exercise-library/:id', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
+  db.exerciseLibrary = db.exerciseLibrary.filter(e => e.id !== req.params.id)
+  res.json({ ok: true })
+})
+
+// ─── ANALYSE POSTURALE IA ───────────────────────────────
+
+app.post('/api/posture/analyze', auth, async (req, res) => {
+  if (!anthropic) return res.status(503).json({ error: 'IA non configurée (ANTHROPIC_API_KEY manquant)' })
+
+  const { imageBase64, mimeType = 'image/jpeg' } = req.body
+  if (!imageBase64) return res.status(400).json({ error: 'Image requise' })
+
+  // Supprimer le préfixe data:image/... si présent
+  const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '')
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: mimeType, data: base64Data },
+          },
+          {
+            type: 'text',
+            text: `Tu es un expert en biomécanique, kinésiologie et analyse posturale avec 20 ans d'expérience clinique. Analyse cette photo avec la rigueur d'un bilan posturologique complet.
+
+Fournis une analyse détaillée en JSON avec exactement cette structure :
+
+{
+  "scoreGlobal": <0-100, score posture globale>,
+  "resume": "<phrase de synthèse de 2 lignes>",
+  "zones": [
+    {
+      "zone": "<nom de la zone: Tête/Nuque | Épaules | Colonne thoracique | Lombaires | Bassin | Genoux | Pieds>",
+      "statut": "<Optimal | Léger désalignement | Désalignement modéré | Désalignement important>",
+      "severite": <1-4>,
+      "observations": "<description clinique précise>",
+      "muscles_impliques": ["<muscle1>", "<muscle2>"]
+    }
+  ],
+  "asymetries": [
+    {
+      "type": "<Épaule gauche/droite | Hanche | Rotation cervicale | Inclinaison tronc | etc>",
+      "description": "<mesure estimée et sens de l'asymétrie>",
+      "impact": "<impact fonctionnel potentiel>"
+    }
+  ],
+  "longueurs": {
+    "jambes": "<Apparente égalité | Jambe gauche légèrement plus courte | Jambe droite légèrement plus courte | Différence significative estimée>",
+    "bras": "<Apparente égalité | Asymétrie légère côté [G/D] | etc>",
+    "commentaire": "<contexte clinique>"
+  },
+  "courburbes_rachis": {
+    "lordose_cervicale": "<Normale | Rectifiée | Accentuée>",
+    "cyphose_thoracique": "<Normale | Rectifiée | Accentuée>",
+    "lordose_lombaire": "<Normale | Effacée | Hyperlordose>",
+    "commentaire": "<analyse globale du rachis>"
+  },
+  "recommandations": [
+    {
+      "priorite": <1-5, 1 = urgent>,
+      "type": "<Renforcement | Étirement | Correction posturale | Consultation spécialiste | Ergonomie>",
+      "action": "<description de l'action recommandée>",
+      "professionnel": "<null | Kinésithérapeute | Ostéopathe | Médecin du sport | Podologue>"
+    }
+  ],
+  "orientation_pro": {
+    "consultation_recommandee": <true/false>,
+    "specialistes": ["<liste des spécialistes à consulter si nécessaire>"],
+    "urgence": "<Pas d'urgence | Consultation conseillée dans les 3 mois | Consultation recommandée rapidement>"
+  }
+}
+
+Sois précis, cliniquement rigoureux, et bienveillant. Si la photo ne permet pas d'analyser certains aspects (angle de vue, qualité), indique-le dans les observations.`,
+          },
+        ],
+      }],
+    })
+
+    let analysis
+    try {
+      const text = response.content[0].text
+      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : { raw: text }
+    } catch {
+      analysis = { raw: response.content[0].text }
+    }
+
+    const record = {
+      id: `posture-${Date.now()}`,
+      userId: req.user.id,
+      userName: req.user.name,
+      imageBase64: base64Data.substring(0, 100) + '…', // stocker seulement un extrait (RAM)
+      analysis,
+      createdAt: new Date().toISOString(),
+      sharedWithPros: [],
+    }
+    db.postureAnalyses.push(record)
+
+    res.json({ id: record.id, analysis, createdAt: record.createdAt })
+  } catch (err) {
+    console.error('Posture analysis error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Historique des analyses d'un client
+app.get('/api/posture/my-analyses', auth, (req, res) => {
+  const analyses = db.postureAnalyses
+    .filter(a => a.userId === req.user.id)
+    .map(({ imageBase64, ...rest }) => rest) // ne pas renvoyer l'image
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  res.json(analyses)
+})
+
+// Partager une analyse avec un pro de santé
+app.post('/api/posture/share/:id', auth, (req, res) => {
+  const analysis = db.postureAnalyses.find(a => a.id === req.params.id && a.userId === req.user.id)
+  if (!analysis) return res.status(404).json({ error: 'Analyse introuvable' })
+  const { proId } = req.body
+  if (!analysis.sharedWithPros.includes(proId)) analysis.sharedWithPros.push(proId)
+  res.json({ ok: true })
+})
+
+// Pro de santé : voir les analyses partagées par ses patients
+app.get('/api/posture/pro-analyses', auth, (req, res) => {
+  if (!['health_pro', 'coach', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({ error: 'Accès réservé aux professionnels' })
+  }
+  const analyses = db.postureAnalyses
+    .filter(a => a.sharedWithPros.includes(req.user.id))
+    .map(({ imageBase64, ...rest }) => rest)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  res.json(analyses)
+})
+
+// Admin : toutes les analyses
+app.get('/api/posture/admin-all', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
+  res.json(db.postureAnalyses.map(({ imageBase64, ...rest }) => rest))
 })
 
 // ─── START ──────────────────────────────────────────────

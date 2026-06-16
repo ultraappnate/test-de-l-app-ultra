@@ -57,6 +57,8 @@ import CoachUpgrade from './pages/CoachUpgrade'
 import MyPrograms from './pages/MyPrograms'
 import ClientProgramBuilder from './pages/ClientProgramBuilder'
 import ClientProgramView from './pages/ClientProgramView'
+import PostureAnalysis from './pages/PostureAnalysis'
+import AdminExerciseLibrary from './pages/AdminExerciseLibrary'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -208,6 +210,8 @@ export default function App() {
           <Route path="/my-programs/new" element={<PrivateRoute><ClientProgramBuilder /></PrivateRoute>} />
           <Route path="/my-programs/:id" element={<PrivateRoute><ClientProgramView /></PrivateRoute>} />
           <Route path="/my-programs/:id/session" element={<PrivateRoute><ClientProgramView /></PrivateRoute>} />
+          <Route path="/posture" element={<PrivateRoute><PostureAnalysis /></PrivateRoute>} />
+          <Route path="/admin/exercises" element={<PrivateRoute><AdminExerciseLibrary /></PrivateRoute>} />
         </Routes>
       </Layout>
     </BrowserRouter>

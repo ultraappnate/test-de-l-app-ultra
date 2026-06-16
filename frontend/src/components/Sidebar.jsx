@@ -5,6 +5,7 @@ import { useStore } from '../store'
 const NAV_CLIENT = [
   { to: '/dashboard',  label: 'Accueil',          icon: '⌂' },
   { to: '/ai-coach',   label: 'Coach IA',          icon: '🤖', short: 'Coach IA', highlight: true },
+  { to: '/posture',    label: 'Analyse posturale', icon: '🧍', short: 'Posture' },
   { to: '/discover',   label: 'Découvrir',         icon: '🗺' },
   { to: '/programs',    label: 'Programmes',        icon: '◈', short: 'Prog' },
   { to: '/my-programs', label: 'Mes créations',   icon: '✏️', short: 'Créa' },
@@ -65,9 +66,10 @@ const NAV_HEALTH_PRO = [
   { to: '/settings',     label: 'Paramètres',    icon: '⚙️', short: 'Params' },
 ]
 const NAV_ADMIN = [
-  { to: '/admin',     label: 'Panneau admin', icon: '👑' },
-  { to: '/programs',  label: 'Programmes',    icon: '◉' },
-  { to: '/analytics', label: 'Analytiques',   icon: '↑' },
+  { to: '/admin',             label: 'Panneau admin',      icon: '👑' },
+  { to: '/programs',          label: 'Programmes',         icon: '◉' },
+  { to: '/admin/exercises',   label: 'Biblio. exercices',  icon: '🏋️' },
+  { to: '/analytics',         label: 'Analytiques',        icon: '↑' },
 ]
 
 // Raccourcis bottom nav mobile (5 max)
