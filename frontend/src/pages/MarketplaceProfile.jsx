@@ -154,7 +154,7 @@ export default function MarketplaceProfile() {
     const disc = months === 3 ? 0.95 : months === 6 ? 0.90 : months === 12 ? 0.85 : 1
     return Math.round((pro.price || 80) * months * disc)
   }
-  const commission = Math.round(discountedPrice(duration) * 0.15)
+  const commission = Math.round(discountedPrice(duration) * 0.10)
   const proEarns = discountedPrice(duration) - commission
 
   return (
@@ -388,23 +388,14 @@ export default function MarketplaceProfile() {
               })}
             </div>
 
-            {/* Résumé commission */}
+            {/* Total simple, sans détail commission */}
             <div style={{
               background: 'var(--bg-base)', borderRadius: 12, padding: '12px 14px',
               marginBottom: 16, fontSize: 12,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Total à payer</span>
-                <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{discountedPrice(duration)}€</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Commission ULTRA (15%)</span>
-                <span style={{ color: 'var(--text-faint)' }}>{commission}€</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px solid var(--border-soft)' }}>
-                <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>{pro.name} reçoit</span>
-                <span style={{ fontWeight: 800, color: '#22c55e' }}>{proEarns}€</span>
-              </div>
+              <span style={{ color: 'var(--text-muted)' }}>Total à payer</span>
+              <span style={{ fontWeight: 900, fontSize: 18, color: 'var(--text-primary)' }}>{discountedPrice(duration)}€</span>
             </div>
 
             <button onClick={handleHire} disabled={hiring} style={{

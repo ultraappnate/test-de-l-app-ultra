@@ -1951,7 +1951,7 @@ app.post('/api/marketplace/hire/:id', auth, async (req, res) => {
   const { duration = 1 } = req.body // durée en mois
 
   const basePrice = (pro.price || 80) * duration
-  const commission = Math.round(basePrice * 0.15)
+  const commission = Math.round(basePrice * 0.10)
   const proEarns = basePrice - commission
 
   // Si Stripe configuré → Checkout
