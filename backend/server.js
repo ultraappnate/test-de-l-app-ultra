@@ -77,6 +77,23 @@ const db = {
   postureAnalyses: [],   // { id, userId, userName, imageBase64, analysis, createdAt, sharedWithPros }
   coachInsights: [],     // { id, coachId, clientId, clientName, type, severite, titre, message, recommandation, action, createdAt, dismissed }
   nutriInsights: [],     // { id, nutriId, clientId, clientName, type, severite, titre, message, recommandation, action, createdAt, dismissed }
+  reviews: [
+    { id: 'r1',  proId: 'coach-1',  clientId: 'c-ext1', clientName: 'Alexandre M.', rating: 5, comment: 'Nate est exceptionnel. En 3 mois j\'ai gagné 8kg de muscle et ma force a explosé. Son suivi est ultra-personnalisé.', specialty: 'Prise de masse', createdAt: new Date(Date.now()-86400000*5).toISOString() },
+    { id: 'r2',  proId: 'coach-1',  clientId: 'c-ext2', clientName: 'Marie D.',     rating: 5, comment: 'Programme parfaitement adapté à mon niveau. Le suivi en temps réel via l\'app est un vrai plus.', specialty: 'Force', createdAt: new Date(Date.now()-86400000*12).toISOString() },
+    { id: 'r3',  proId: 'coach-1',  clientId: 'c-ext3', clientName: 'Lucas P.',     rating: 5, comment: 'Powerlifter amateur confirmé grâce à Nate. Technique au top, mental de compétiteur transmis.', specialty: 'Powerlifting', createdAt: new Date(Date.now()-86400000*20).toISOString() },
+    { id: 'r4',  proId: 'coach-2',  clientId: 'c-ext4', clientName: 'Sophie B.',    rating: 5, comment: 'Marc m\'a aidée à perdre 12kg en 4 mois. Les séances HIIT sont intenses mais les résultats parlent.', specialty: 'Perte de poids', createdAt: new Date(Date.now()-86400000*8).toISOString() },
+    { id: 'r5',  proId: 'coach-2',  clientId: 'c-ext5', clientName: 'Théo L.',      rating: 4, comment: 'Super coach cardio. Toujours disponible sur l\'app pour ajuster les séances.', specialty: 'Cardio', createdAt: new Date(Date.now()-86400000*15).toISOString() },
+    { id: 'r6',  proId: 'coach-3',  clientId: 'c-ext6', clientName: 'Inès R.',      rating: 5, comment: 'Emma comprend exactement ce dont j\'avais besoin. Douce, bienveillante, et les résultats sont là.', specialty: 'Fitness féminin', createdAt: new Date(Date.now()-86400000*3).toISOString() },
+    { id: 'r7',  proId: 'coach-3',  clientId: 'c-ext7', clientName: 'Léa M.',       rating: 5, comment: 'Programme tonification incroyable. Emma est à l\'écoute et adapte tout à mon emploi du temps.', specialty: 'Tonification', createdAt: new Date(Date.now()-86400000*18).toISOString() },
+    { id: 'r8',  proId: 'coach-4',  clientId: 'c-ext8', clientName: 'Jordan K.',    rating: 5, comment: 'Karim m\'a transmis l\'état d\'esprit du champion. La boxe a changé ma vie.', specialty: 'Boxe', createdAt: new Date(Date.now()-86400000*7).toISOString() },
+    { id: 'r9',  proId: 'coach-5',  clientId: 'c-ext9', clientName: 'Camille V.',   rating: 5, comment: 'Julie est fantastique. Mes douleurs chroniques ont disparu en 6 semaines de travail sur la mobilité.', specialty: 'Mobilité', createdAt: new Date(Date.now()-86400000*10).toISOString() },
+    { id: 'r10', proId: 'coach-6',  clientId: 'c-ext10', clientName: 'Kevin T.',    rating: 5, comment: 'Thomas est le meilleur pour le powerlifting. Mon total a augmenté de 45kg en 16 semaines.', specialty: 'Force', createdAt: new Date(Date.now()-86400000*6).toISOString() },
+    { id: 'r11', proId: 'nutri-1',  clientId: 'c-ext11', clientName: 'Emma L.',     rating: 5, comment: 'Sarah a révolutionné mon alimentation. Plus d\'obsession calorique, enfin une relation saine avec la nourriture.', specialty: 'Rééquilibrage', createdAt: new Date(Date.now()-86400000*4).toISOString() },
+    { id: 'r12', proId: 'nutri-2',  clientId: 'c-ext12', clientName: 'Antoine G.',  rating: 5, comment: 'Pierre est le meilleur dans son domaine. A travaillé avec mon équipe pro, résultats mesurables immédiats.', specialty: 'Performance sportive', createdAt: new Date(Date.now()-86400000*9).toISOString() },
+    { id: 'r13', proId: 'pro-1',    clientId: 'c-ext13', clientName: 'Maxime F.',   rating: 5, comment: 'Dr Faure a résolu mes problèmes de genoux que j\'avais depuis 2 ans. Incroyable expertise sportive.', specialty: 'Rééducation', createdAt: new Date(Date.now()-86400000*2).toISOString() },
+    { id: 'r14', proId: 'pro-2',    clientId: 'c-ext14', clientName: 'Laura P.',    rating: 5, comment: 'Camille est une ostéopathe exceptionnelle. Mes douleurs dorsales ont disparu après 3 séances.', specialty: 'Ostéopathie', createdAt: new Date(Date.now()-86400000*11).toISOString() },
+  ],
+  hires: [],             // { id, proId, proName, clientId, clientName, type, duration, amount, commission, status, createdAt }
   posts: [],             // fil communauté
   postLikes: {},         // { postId: Set<userId> }
   postComments: {},      // { postId: [{id,userId,userName,userAvatar,userRole,text,createdAt}] }
@@ -1853,6 +1870,192 @@ app.get('/api/stripe/session/:sessionId', auth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+// ─── MARKETPLACE ────────────────────────────────────────
+
+// Liste tous les pros (coaches, nutri, health_pro) avec filtres
+app.get('/api/marketplace', auth, (req, res) => {
+  const { type, specialty, minRating, maxPrice, available, online } = req.query
+
+  let pros = db.users
+    .filter(u => ['coach', 'nutritionist', 'health_pro'].includes(u.role) && u.rating)
+    .map(u => {
+      const { password, ...safe } = u
+      const userReviews = db.reviews.filter(r => r.proId === u.id)
+      const avgRating = userReviews.length
+        ? Math.round((userReviews.reduce((s, r) => s + r.rating, 0) / userReviews.length) * 10) / 10
+        : (u.rating || 0)
+      const hireCount = db.hires.filter(h => h.proId === u.id && h.status === 'active').length
+      return { ...safe, avgRating, reviewCount: userReviews.length || u.reviewCount || 0, hireCount }
+    })
+
+  if (type && type !== 'tous') pros = pros.filter(p => p.role === type)
+  if (specialty) pros = pros.filter(p => p.specialties?.some(s => s.toLowerCase().includes(specialty.toLowerCase())))
+  if (minRating) pros = pros.filter(p => p.avgRating >= parseFloat(minRating))
+  if (maxPrice) pros = pros.filter(p => p.price <= parseInt(maxPrice))
+  if (available === 'true') pros = pros.filter(p => p.available)
+  if (online === 'true') pros = pros.filter(p => p.online)
+
+  pros.sort((a, b) => {
+    if (b.verified !== a.verified) return b.verified ? 1 : -1
+    return b.avgRating - a.avgRating
+  })
+
+  res.json(pros)
+})
+
+// Profil public complet d'un pro
+app.get('/api/marketplace/:id', auth, (req, res) => {
+  const user = db.users.find(u => u.id === req.params.id)
+  if (!user || !['coach', 'nutritionist', 'health_pro'].includes(user.role)) {
+    return res.status(404).json({ error: 'Introuvable' })
+  }
+  const { password, ...safe } = user
+  const userReviews = db.reviews
+    .filter(r => r.proId === user.id)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  const avgRating = userReviews.length
+    ? Math.round((userReviews.reduce((s, r) => s + r.rating, 0) / userReviews.length) * 10) / 10
+    : (user.rating || 0)
+  const isHiredByMe = db.hires.some(h => h.proId === user.id && h.clientId === req.user.id && h.status === 'active')
+  res.json({ ...safe, avgRating, reviews: userReviews, reviewCount: userReviews.length || user.reviewCount || 0, isHiredByMe })
+})
+
+// Laisser un avis
+app.post('/api/marketplace/review/:id', auth, (req, res) => {
+  if (req.user.role !== 'client') return res.status(403).json({ error: 'Client uniquement' })
+  const { rating, comment, specialty } = req.body
+  if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'Note invalide (1-5)' })
+  const existing = db.reviews.find(r => r.proId === req.params.id && r.clientId === req.user.id)
+  if (existing) return res.status(409).json({ error: 'Avis déjà publié' })
+  const review = {
+    id: `rev-${Date.now()}`,
+    proId: req.params.id,
+    clientId: req.user.id,
+    clientName: req.user.name,
+    rating: parseInt(rating),
+    comment: comment || '',
+    specialty: specialty || '',
+    createdAt: new Date().toISOString(),
+  }
+  db.reviews.push(review)
+  res.status(201).json(review)
+})
+
+// Engager un pro (simulation + commission 15%)
+app.post('/api/marketplace/hire/:id', auth, async (req, res) => {
+  if (req.user.role !== 'client') return res.status(403).json({ error: 'Client uniquement' })
+  const pro = db.users.find(u => u.id === req.params.id)
+  if (!pro) return res.status(404).json({ error: 'Pro introuvable' })
+  const { duration = 1 } = req.body // durée en mois
+
+  const basePrice = (pro.price || 80) * duration
+  const commission = Math.round(basePrice * 0.15)
+  const proEarns = basePrice - commission
+
+  // Si Stripe configuré → Checkout
+  if (stripe) {
+    try {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'payment',
+        line_items: [{
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: `Coaching avec ${pro.name} — ${duration} mois`,
+              description: `Commission ULTRA 15% incluse. Coach encaisse ${proEarns}€.`,
+            },
+            unit_amount: basePrice * 100,
+          },
+          quantity: 1,
+        }],
+        success_url: `${FRONTEND_URL}/marketplace/success?proId=${pro.id}&duration=${duration}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${FRONTEND_URL}/marketplace/${pro.id}`,
+        metadata: { type: 'hire', proId: pro.id, clientId: req.user.id, duration: String(duration), commission: String(commission) },
+      })
+      return res.json({ url: session.url })
+    } catch (err) {
+      console.error('Stripe hire error:', err)
+    }
+  }
+
+  // Fallback sans Stripe
+  const hire = {
+    id: `hire-${Date.now()}`,
+    proId: pro.id,
+    proName: pro.name,
+    clientId: req.user.id,
+    clientName: req.user.name,
+    duration,
+    amount: basePrice,
+    commission,
+    proEarns,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+  }
+  db.hires.push(hire)
+  // Lier le client à ce coach
+  const clientUser = db.users.find(u => u.id === req.user.id)
+  if (clientUser && pro.role === 'coach') clientUser.coachId = pro.id
+  if (clientUser && pro.role === 'nutritionist') clientUser.nutriId = pro.id
+
+  res.json({ ok: true, hire, message: `${pro.name} engagé pour ${duration} mois. ULTRA: ${commission}€ de commission.` })
+})
+
+// Confirmer un hire après paiement Stripe
+app.post('/api/marketplace/hire-confirm', auth, async (req, res) => {
+  const { sessionId } = req.body
+  if (!stripe || !sessionId) return res.status(400).json({ error: 'Session manquante' })
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId)
+    if (session.payment_status !== 'paid') return res.status(402).json({ error: 'Paiement non confirmé' })
+    const { proId, clientId, duration, commission } = session.metadata
+    const pro = db.users.find(u => u.id === proId)
+    const client = db.users.find(u => u.id === clientId)
+    if (!pro || !client) return res.status(404).json({ error: 'Données manquantes' })
+    const existing = db.hires.find(h => h.proId === proId && h.clientId === clientId && h.status === 'active')
+    if (!existing) {
+      const hire = {
+        id: `hire-${Date.now()}`, proId, proName: pro.name,
+        clientId, clientName: client.name,
+        duration: parseInt(duration), amount: session.amount_total / 100,
+        commission: parseInt(commission), status: 'active',
+        createdAt: new Date().toISOString(),
+      }
+      db.hires.push(hire)
+      if (pro.role === 'coach') client.coachId = proId
+      if (pro.role === 'nutritionist') client.nutriId = proId
+    }
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Hires du client connecté
+app.get('/api/marketplace/my-hires', auth, (req, res) => {
+  const hires = db.hires
+    .filter(h => h.clientId === req.user.id)
+    .map(h => {
+      const pro = db.users.find(u => u.id === h.proId)
+      return { ...h, pro: pro ? { id: pro.id, name: pro.name, role: pro.role, specialties: pro.specialties, avatarColor: pro.avatarColor, verified: pro.verified } : null }
+    })
+  res.json(hires)
+})
+
+// Stats marketplace pour l'admin
+app.get('/api/marketplace/admin/stats', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
+  const totalCommission = db.hires.reduce((s, h) => s + (h.commission || 0), 0)
+  res.json({
+    totalHires: db.hires.length,
+    activeHires: db.hires.filter(h => h.status === 'active').length,
+    totalCommission,
+    totalReviews: db.reviews.length,
+    avgRating: db.reviews.length ? Math.round(db.reviews.reduce((s, r) => s + r.rating, 0) / db.reviews.length * 10) / 10 : 0,
+  })
 })
 
 // ─── IA PROACTIVE — COACH INSIGHTS ─────────────────────

@@ -5,6 +5,7 @@ import { useStore } from '../store'
 const NAV_CLIENT = [
   { to: '/dashboard',  label: 'Accueil',          icon: '⌂' },
   { to: '/ai-coach',   label: 'Coach IA',          icon: '🤖', short: 'Coach IA', highlight: true },
+  { to: '/marketplace', label: 'Marketplace',       icon: '🛒', short: 'Market', highlight: true },
   { to: '/posture',    label: 'Analyse posturale', icon: '🧍', short: 'Posture' },
   { to: '/discover',   label: 'Découvrir',         icon: '🗺' },
   { to: '/programs',    label: 'Programmes',        icon: '◈', short: 'Prog' },
