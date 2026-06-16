@@ -22,6 +22,7 @@ const NAV_CLIENT = [
 const NAV_COACH = [
   { to: '/dashboard',        label: 'Accueil',          icon: '⌂', short: 'Accueil' },
   { to: '/ai-coach',         label: 'Coach IA',         icon: '🤖', short: 'Coach IA', highlight: true },
+  { to: '/coach/insights',   label: 'Radar Clients',    icon: '📡', short: 'Radar', highlight: true },
   { to: '/coach/profile',    label: 'Profil',            icon: '◈', short: 'Profil' },
   { to: '/programs',         label: 'Catalogue',        icon: '◉', short: 'Catal.' },
   { to: '/coach/programs',   label: 'Mes programmes',   icon: '▦', short: 'Prog' },

@@ -75,6 +75,7 @@ const db = {
   workoutLogs: [],       // { id, userId, programId, exerciseLogs, completedAt }
   exerciseLibrary: [],   // { id, name, muscles, category, equipment, imageUrl, videoId, tips, createdAt }
   postureAnalyses: [],   // { id, userId, userName, imageBase64, analysis, createdAt, sharedWithPros }
+  coachInsights: [],     // { id, coachId, clientId, clientName, type, severite, titre, message, recommandation, action, createdAt, dismissed }
   posts: [],             // fil communauté
   postLikes: {},         // { postId: Set<userId> }
   postComments: {},      // { postId: [{id,userId,userName,userAvatar,userRole,text,createdAt}] }
@@ -1851,6 +1852,156 @@ app.get('/api/stripe/session/:sessionId', auth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
+})
+
+// ─── IA PROACTIVE — COACH INSIGHTS ─────────────────────
+
+// Génère les insights IA pour tous les clients d'un coach
+app.post('/api/coach/insights/generate', auth, async (req, res) => {
+  if (!['coach', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach uniquement' })
+  if (!anthropic) return res.status(503).json({ error: 'IA non configurée' })
+
+  const coachId = req.user.id
+  const today = new Date().toISOString().split('T')[0]
+
+  // Trouver tous les clients de ce coach
+  const clients = db.users.filter(u => u.role === 'client' && u.coachId === coachId)
+  if (clients.length === 0) {
+    // Fallback : prendre les 3 premiers clients pour la démo
+    const demoClients = db.users.filter(u => u.role === 'client').slice(0, 4)
+    clients.push(...demoClients)
+  }
+
+  if (clients.length === 0) return res.json([])
+
+  // Construire le contexte de chaque client
+  const clientContexts = clients.map(client => {
+    const streak = db.streaks[client.id] || { current: 0, longest: 0, lastDate: null }
+    const logs = db.workoutLogs.filter(l => l.userId === client.id)
+    const logsThisMonth = logs.filter(l => new Date(l.completedAt) > new Date(Date.now() - 30 * 86400000))
+    const lastLog = logs.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0]
+    const daysSinceLastSession = lastLog
+      ? Math.floor((Date.now() - new Date(lastLog.completedAt)) / 86400000)
+      : null
+
+    const volumeThisMonth = logsThisMonth.reduce((s, l) => {
+      return s + (l.exerciseLogs || []).reduce((s2, ex) => {
+        return s2 + (ex.sets || []).reduce((s3, set) => s3 + (set.weight || 0) * (set.reps || 0), 0)
+      }, 0)
+    }, 0)
+
+    const enrollment = db.enrollments?.find(e => e.userId === client.id)
+    const program = enrollment ? db.programs.find(p => p.id === enrollment.programId) : null
+
+    const clientPrograms = (db.clientPrograms || []).filter(p => p.userId === client.id)
+
+    return {
+      id: client.id,
+      name: client.name,
+      objective: client.objective || 'non renseigné',
+      level: client.level || 'non renseigné',
+      streakCurrent: streak.current,
+      streakLongest: streak.longest,
+      lastSessionDate: lastLog?.completedAt || null,
+      daysSinceLastSession,
+      sessionsThisMonth: logsThisMonth.length,
+      volumeThisMonthKg: Math.round(volumeThisMonth),
+      programInProgress: program?.title || (clientPrograms[0]?.title) || 'Aucun',
+      isPremium: client.isPremium || false,
+    }
+  })
+
+  const prompt = `Tu es l'assistant IA de coaching pour ULTRA. Analyse les données de ces ${clientContexts.length} clients et génère des insights actionnables pour le coach.
+
+Données clients :
+${JSON.stringify(clientContexts, null, 2)}
+
+Date du jour : ${today}
+
+Pour CHAQUE client, génère un insight pertinent. Sois précis, concis, cliniquement utile.
+
+Réponds UNIQUEMENT avec un tableau JSON valide, format exact :
+[
+  {
+    "clientId": "<id exact du client>",
+    "clientName": "<prénom>",
+    "type": "<absence|stagnation|surmenage|record|opportunite|engagement>",
+    "severite": <1|2|3>,
+    "titre": "<titre court 4-6 mots>",
+    "message": "<observation précise pour le coach, 1-2 phrases>",
+    "recommandation": "<action concrète et spécifique à prendre>",
+    "action": "<message|ajuster_programme|appel|feliciter|rien>"
+  }
+]
+
+Types :
+- absence : pas de séance depuis >3 jours
+- stagnation : peu de séances ce mois, streak faible
+- surmenage : volume anormalement élevé, risque blessure
+- record : streak élevé, excellente régularité
+- opportunite : prêt à progresser, augmenter la charge
+- engagement : bon comportement à renforcer
+
+Sévérité : 1=info verte, 2=attention orange, 3=urgent rouge`
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    let insights = []
+    try {
+      const text = response.content[0].text
+      const jsonMatch = text.match(/\[[\s\S]*\]/)
+      insights = jsonMatch ? JSON.parse(jsonMatch[0]) : []
+    } catch {
+      return res.status(500).json({ error: 'Erreur parsing IA' })
+    }
+
+    // Supprimer les anciens insights de ce coach et sauvegarder les nouveaux
+    db.coachInsights = db.coachInsights.filter(i => i.coachId !== coachId)
+    const now = new Date().toISOString()
+    insights.forEach(insight => {
+      db.coachInsights.push({
+        id: `insight-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+        coachId,
+        clientId: insight.clientId,
+        clientName: insight.clientName,
+        type: insight.type,
+        severite: insight.severite,
+        titre: insight.titre,
+        message: insight.message,
+        recommandation: insight.recommandation,
+        action: insight.action,
+        createdAt: now,
+        dismissed: false,
+      })
+    })
+
+    res.json(db.coachInsights.filter(i => i.coachId === coachId && !i.dismissed))
+  } catch (err) {
+    console.error('Coach insights error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Récupérer les insights existants
+app.get('/api/coach/insights', auth, (req, res) => {
+  if (!['coach', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach uniquement' })
+  const insights = db.coachInsights
+    .filter(i => i.coachId === req.user.id && !i.dismissed)
+    .sort((a, b) => b.severite - a.severite || new Date(b.createdAt) - new Date(a.createdAt))
+  res.json(insights)
+})
+
+// Marquer un insight comme traité
+app.delete('/api/coach/insights/:id', auth, (req, res) => {
+  const insight = db.coachInsights.find(i => i.id === req.params.id && i.coachId === req.user.id)
+  if (!insight) return res.status(404).json({ error: 'Introuvable' })
+  insight.dismissed = true
+  res.json({ ok: true })
 })
 
 // ─── BIBLIOTHÈQUE D'EXERCICES (admin) ───────────────────

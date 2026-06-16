@@ -3,6 +3,7 @@ import { useStore } from '../store'
 import { useNavigate } from 'react-router-dom'
 import AIInsights from '../components/AIInsights'
 import StreakWidget from '../components/StreakWidget'
+import CoachRadarWidget from '../components/CoachRadarWidget'
 
 /* ─── Helpers ──────────────────────────────────────────── */
 function ytEmbed(url) {
@@ -377,6 +378,9 @@ function CoachDashboard({ user, navigate }) {
             .dash-activity { grid-template-columns: 3fr 2fr !important; }
           }
         `}</style>
+
+        {/* Radar Coach IA */}
+        <CoachRadarWidget/>
 
         {/* AI Insights */}
         <AIInsights/>
