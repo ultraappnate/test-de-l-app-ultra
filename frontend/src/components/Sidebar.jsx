@@ -42,6 +42,7 @@ const NAV_COACH = [
 ]
 const NAV_NUTRITIONIST = [
   { to: '/nutri/dashboard',  label: 'Accueil',              icon: '⌂', short: 'Accueil' },
+  { to: '/nutri/insights',   label: 'Radar Clients',        icon: '📡', short: 'Radar', highlight: true },
   { to: '/nutri/profile',    label: 'Profil',               icon: '◈', short: 'Profil' },
   { to: '/nutri/clients',    label: 'Mes clients',          icon: '❯❯', short: 'Clients' },
   { to: '/nutri/plans',      label: 'Plans nutritionnels',  icon: '◎', short: 'Plans' },

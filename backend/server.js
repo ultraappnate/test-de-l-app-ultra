@@ -76,6 +76,7 @@ const db = {
   exerciseLibrary: [],   // { id, name, muscles, category, equipment, imageUrl, videoId, tips, createdAt }
   postureAnalyses: [],   // { id, userId, userName, imageBase64, analysis, createdAt, sharedWithPros }
   coachInsights: [],     // { id, coachId, clientId, clientName, type, severite, titre, message, recommandation, action, createdAt, dismissed }
+  nutriInsights: [],     // { id, nutriId, clientId, clientName, type, severite, titre, message, recommandation, action, createdAt, dismissed }
   posts: [],             // fil communauté
   postLikes: {},         // { postId: Set<userId> }
   postComments: {},      // { postId: [{id,userId,userName,userAvatar,userRole,text,createdAt}] }
@@ -1999,6 +2000,168 @@ app.get('/api/coach/insights', auth, (req, res) => {
 // Marquer un insight comme traité
 app.delete('/api/coach/insights/:id', auth, (req, res) => {
   const insight = db.coachInsights.find(i => i.id === req.params.id && i.coachId === req.user.id)
+  if (!insight) return res.status(404).json({ error: 'Introuvable' })
+  insight.dismissed = true
+  res.json({ ok: true })
+})
+
+// ─── IA PROACTIVE — NUTRI INSIGHTS ──────────────────────
+
+app.post('/api/nutri/insights/generate', auth, async (req, res) => {
+  if (!['nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Nutritionniste uniquement' })
+  if (!anthropic) return res.status(503).json({ error: 'IA non configurée' })
+
+  const nutriId = req.user.id
+  const today = new Date().toISOString().split('T')[0]
+
+  const clients = db.users.filter(u => u.role === 'client' && u.nutriId === nutriId)
+  if (clients.length === 0) {
+    const demoClients = db.users.filter(u => u.role === 'client').slice(0, 4)
+    clients.push(...demoClients)
+  }
+  if (clients.length === 0) return res.json([])
+
+  // Construire le contexte nutrition de chaque client sur les 14 derniers jours
+  const clientContexts = clients.map(client => {
+    const goals = db.nutritionGoals[client.id] || { calories: 2000, protein: 150, carbs: 220, fat: 70 }
+    const logs = db.nutritionLogs[client.id] || {}
+
+    // Analyser les 14 derniers jours
+    const last14 = []
+    for (let d = 0; d < 14; d++) {
+      const date = new Date(Date.now() - d * 86400000).toISOString().split('T')[0]
+      const log = logs[date]
+      if (log?.meals?.length > 0) {
+        const totals = log.meals.reduce((acc, meal) => ({
+          calories: acc.calories + (meal.calories || 0),
+          protein:  acc.protein  + (meal.protein  || 0),
+          carbs:    acc.carbs    + (meal.carbs    || 0),
+          fat:      acc.fat      + (meal.fat      || 0),
+        }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
+        last14.push({ date, ...totals, mealsCount: log.meals.length })
+      }
+    }
+
+    const daysLogged = last14.length
+    const complianceRate = Math.round((daysLogged / 14) * 100)
+
+    let avgCalories = 0, avgProtein = 0, calorieAdherence = 0, proteinAdherence = 0
+    if (daysLogged > 0) {
+      avgCalories = Math.round(last14.reduce((s, d) => s + d.calories, 0) / daysLogged)
+      avgProtein  = Math.round(last14.reduce((s, d) => s + d.protein, 0) / daysLogged)
+      calorieAdherence = Math.round((avgCalories / goals.calories) * 100)
+      proteinAdherence = Math.round((avgProtein  / goals.protein)  * 100)
+    }
+
+    // Tendance calories semaine 1 vs semaine 2
+    const week1 = last14.filter(d => last14.indexOf(d) < 7)
+    const week2 = last14.filter(d => last14.indexOf(d) >= 7)
+    const avgW1 = week1.length ? Math.round(week1.reduce((s,d) => s+d.calories,0)/week1.length) : 0
+    const avgW2 = week2.length ? Math.round(week2.reduce((s,d) => s+d.calories,0)/week2.length) : 0
+    const calorieTrend = avgW1 > avgW2 + 100 ? 'hausse' : avgW1 < avgW2 - 100 ? 'baisse' : 'stable'
+
+    return {
+      id: client.id,
+      name: client.name,
+      objective: client.objective || 'non renseigné',
+      goals,
+      daysLoggedOnLast14: daysLogged,
+      complianceRate,
+      avgCaloriesPerLoggedDay: avgCalories,
+      avgProteinPerLoggedDay: avgProtein,
+      calorieAdherencePct: calorieAdherence,
+      proteinAdherencePct: proteinAdherence,
+      calorieTrendWeekOverWeek: calorieTrend,
+      isPremium: client.isPremium || false,
+    }
+  })
+
+  const prompt = `Tu es l'assistant IA d'un nutritionniste sur l'app ULTRA. Analyse les données nutrition de ces ${clientContexts.length} clients et génère des insights actionnables pour le nutritionniste.
+
+Données clients :
+${JSON.stringify(clientContexts, null, 2)}
+
+Date du jour : ${today}
+
+Pour CHAQUE client, génère un insight pertinent basé sur sa compliance, ses macros, ses tendances.
+
+Réponds UNIQUEMENT avec un tableau JSON valide :
+[
+  {
+    "clientId": "<id exact>",
+    "clientName": "<prénom>",
+    "type": "<non_compliance|deficit_proteines|surplus_calorique|deficit_calorique|bonne_compliance|plateau|irregularite>",
+    "severite": <1|2|3>,
+    "titre": "<titre court 4-6 mots>",
+    "message": "<observation précise pour le nutritionniste, 1-2 phrases avec les chiffres>",
+    "recommandation": "<ajustement concret et spécifique du plan>",
+    "action": "<ajuster_plan|message|appel|feliciter|rien>"
+  }
+]
+
+Types :
+- non_compliance : moins de 50% des jours loggés → risque de dérive
+- deficit_proteines : apport protéines < 80% de l'objectif en moyenne
+- surplus_calorique : calories > 115% de l'objectif en moyenne
+- deficit_calorique : calories < 80% de l'objectif → risque catabolisme
+- bonne_compliance : compliance ≥ 85% ET macros proches des objectifs → féliciter
+- plateau : compliance correcte mais tendance calories stable depuis 2 semaines sans résultat notable
+- irregularite : compliance moyenne mais gros écarts jour à jour
+
+Sévérité : 1=info verte, 2=attention orange, 3=urgent rouge (risque santé ou dérive sévère)`
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    let insights = []
+    try {
+      const text = response.content[0].text
+      const jsonMatch = text.match(/\[[\s\S]*\]/)
+      insights = jsonMatch ? JSON.parse(jsonMatch[0]) : []
+    } catch {
+      return res.status(500).json({ error: 'Erreur parsing IA' })
+    }
+
+    db.nutriInsights = db.nutriInsights.filter(i => i.nutriId !== nutriId)
+    const now = new Date().toISOString()
+    insights.forEach(insight => {
+      db.nutriInsights.push({
+        id: `ni-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+        nutriId,
+        clientId: insight.clientId,
+        clientName: insight.clientName,
+        type: insight.type,
+        severite: insight.severite,
+        titre: insight.titre,
+        message: insight.message,
+        recommandation: insight.recommandation,
+        action: insight.action,
+        createdAt: now,
+        dismissed: false,
+      })
+    })
+
+    res.json(db.nutriInsights.filter(i => i.nutriId === nutriId && !i.dismissed))
+  } catch (err) {
+    console.error('Nutri insights error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.get('/api/nutri/insights', auth, (req, res) => {
+  if (!['nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Nutritionniste uniquement' })
+  const insights = db.nutriInsights
+    .filter(i => i.nutriId === req.user.id && !i.dismissed)
+    .sort((a, b) => b.severite - a.severite || new Date(b.createdAt) - new Date(a.createdAt))
+  res.json(insights)
+})
+
+app.delete('/api/nutri/insights/:id', auth, (req, res) => {
+  const insight = db.nutriInsights.find(i => i.id === req.params.id && i.nutriId === req.user.id)
   if (!insight) return res.status(404).json({ error: 'Introuvable' })
   insight.dismissed = true
   res.json({ ok: true })

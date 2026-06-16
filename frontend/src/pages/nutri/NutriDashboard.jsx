@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../store'
+import NutriRadarWidget from '../../components/NutriRadarWidget'
 
 const CLIENTS = [
   { id: 1, name: 'Emma Dubois',   initials: 'ED', goal: 'Perte de poids',    compliance: 87, lastLog: 'Aujourd\'hui', kcal: 1650, plan: 'Sèche −500',   alert: false, streak: 12 },
@@ -97,6 +98,9 @@ export default function NutriDashboard() {
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+
+        {/* ── Radar Nutrition IA ─────────────────────────── */}
+        <NutriRadarWidget />
 
         {/* ── KPIs ───────────────────────────────────────── */}
         <div className="grid grid-cols-6 gap-3">

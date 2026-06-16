@@ -60,6 +60,7 @@ import ClientProgramView from './pages/ClientProgramView'
 import PostureAnalysis from './pages/PostureAnalysis'
 import AdminExerciseLibrary from './pages/AdminExerciseLibrary'
 import CoachInsights from './pages/CoachInsights'
+import NutriInsights from './pages/NutriInsights'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -214,6 +215,7 @@ export default function App() {
           <Route path="/posture" element={<PrivateRoute><PostureAnalysis /></PrivateRoute>} />
           <Route path="/admin/exercises" element={<PrivateRoute><AdminExerciseLibrary /></PrivateRoute>} />
           <Route path="/coach/insights" element={<PrivateRoute><CoachInsights /></PrivateRoute>} />
+          <Route path="/nutri/insights" element={<PrivateRoute><NutriInsights /></PrivateRoute>} />
         </Routes>
       </Layout>
     </BrowserRouter>
