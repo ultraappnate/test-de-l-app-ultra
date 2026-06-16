@@ -388,9 +388,12 @@ export default function Programs() {
   })).filter(({ items }) => items.length > 0)
   const free = filtered.filter(p => p.price === 0).sort((a,b) => (b.enrollmentCount||0) - (a.enrollmentCount||0))
 
+  const isClient = user?.role === 'client' || !user?.role
+
   const TABS = [
-    { id: 'programmes',      label: '📚 Programmes',           count: programs.length },
+    { id: 'programmes',      label: '📚 Catalogue',            count: programs.length },
     { id: 'accompagnement',  label: '🤝 Accompagnement',       count: null },
+    ...(isClient ? [{ id: 'mesprog', label: '✏️ Mes créations', count: null }] : []),
   ]
 
   return (
@@ -509,6 +512,25 @@ export default function Programs() {
 
         {/* ── Onglet Accompagnement ── */}
         {tab === 'accompagnement' && <AccompagnementTab/>}
+
+        {/* ── Onglet Mes créations ── */}
+        {tab === 'mesprog' && (
+          <div className="py-4">
+            <div className="p-6 rounded-2xl text-center" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+              <p className="text-4xl mb-3">✏️</p>
+              <p className="font-black text-lg mb-2" style={{ color: 'var(--text-primary)' }}>Crée ton programme sur-mesure</p>
+              <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
+                Conçois ton propre entraînement, log tes séances et suis ta progression.<br/>
+                1 programme gratuit · Illimité avec Premium.
+              </p>
+              <button onClick={() => navigate('/my-programs')}
+                className="px-6 py-3 rounded-xl font-black text-white text-sm"
+                style={{ background: 'var(--accent)' }}>
+                Voir mes programmes →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -54,6 +54,9 @@ import PaymentCancel from './pages/PaymentCancel'
 import AICoachPage from './pages/AICoachPage'
 import WorkoutSession from './pages/WorkoutSession'
 import CoachUpgrade from './pages/CoachUpgrade'
+import MyPrograms from './pages/MyPrograms'
+import ClientProgramBuilder from './pages/ClientProgramBuilder'
+import ClientProgramView from './pages/ClientProgramView'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -201,6 +204,10 @@ export default function App() {
           <Route path="/ai-coach" element={<PrivateRoute><AICoachPage /></PrivateRoute>} />
           <Route path="/workout" element={<PrivateRoute><WorkoutSession /></PrivateRoute>} />
           <Route path="/coach/upgrade" element={<PrivateRoute><CoachUpgrade /></PrivateRoute>} />
+          <Route path="/my-programs" element={<PrivateRoute><MyPrograms /></PrivateRoute>} />
+          <Route path="/my-programs/new" element={<PrivateRoute><ClientProgramBuilder /></PrivateRoute>} />
+          <Route path="/my-programs/:id" element={<PrivateRoute><ClientProgramView /></PrivateRoute>} />
+          <Route path="/my-programs/:id/session" element={<PrivateRoute><ClientProgramView /></PrivateRoute>} />
         </Routes>
       </Layout>
     </BrowserRouter>

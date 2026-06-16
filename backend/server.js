@@ -1476,6 +1476,102 @@ cron.schedule('0 18 * * *', () => {
   Object.keys(db.pushSubscriptions).forEach(userId => sendPushToUser(userId, 'communaute'))
 }, { timezone: 'Europe/Paris' })
 
+// ─── PROGRAMMES CLIENTS ──────────────────────────────────
+// db.clientPrograms = [] est initialisé dans db
+
+app.get('/api/client-programs', auth, (req, res) => {
+  const progs = (db.clientPrograms || []).filter(p => p.userId === req.user.id)
+  res.json(progs)
+})
+
+app.get('/api/client-programs/:id', auth, (req, res) => {
+  const prog = (db.clientPrograms || []).find(p => p.id === req.params.id && p.userId === req.user.id)
+  if (!prog) return res.status(404).json({ error: 'Programme introuvable' })
+  res.json(prog)
+})
+
+app.post('/api/client-programs', auth, (req, res) => {
+  if (!db.clientPrograms) db.clientPrograms = []
+  const user = db.users.find(u => u.id === req.user.id)
+  const existing = db.clientPrograms.filter(p => p.userId === req.user.id)
+
+  // 1 programme gratuit, Premium = illimité
+  if (existing.length >= 1 && !user?.isPremium) {
+    return res.status(403).json({ error: 'premium_required', message: 'Passe Premium pour créer plusieurs programmes.' })
+  }
+
+  const { title, goal, weeks } = req.body
+  if (!title) return res.status(400).json({ error: 'Titre requis' })
+
+  const prog = {
+    id: uuidv4(),
+    userId: req.user.id,
+    title,
+    goal: goal || '',
+    weeks: weeks || [],
+    createdAt: new Date().toISOString(),
+    sessionLogs: [], // { id, weekIdx, dayIdx, date, exerciseLogs: [{name, sets:[{weight,reps}]}], note }
+  }
+  db.clientPrograms.push(prog)
+  res.status(201).json(prog)
+})
+
+app.put('/api/client-programs/:id', auth, (req, res) => {
+  const prog = (db.clientPrograms || []).find(p => p.id === req.params.id && p.userId === req.user.id)
+  if (!prog) return res.status(404).json({ error: 'Programme introuvable' })
+  // Seules les métadonnées éditables (pas les semaines/jours — structure figée après création)
+  if (req.body.title) prog.title = req.body.title
+  if (req.body.goal !== undefined) prog.goal = req.body.goal
+  res.json(prog)
+})
+
+app.delete('/api/client-programs/:id', auth, (req, res) => {
+  if (!db.clientPrograms) return res.status(404).json({ error: 'Introuvable' })
+  const idx = db.clientPrograms.findIndex(p => p.id === req.params.id && p.userId === req.user.id)
+  if (idx === -1) return res.status(404).json({ error: 'Programme introuvable' })
+  db.clientPrograms.splice(idx, 1)
+  res.json({ success: true })
+})
+
+// Logger une séance (poids/reps uniquement — pas de modif de structure)
+app.post('/api/client-programs/:id/session', auth, (req, res) => {
+  const prog = (db.clientPrograms || []).find(p => p.id === req.params.id && p.userId === req.user.id)
+  if (!prog) return res.status(404).json({ error: 'Programme introuvable' })
+
+  const { weekIdx, dayIdx, exerciseLogs, note } = req.body
+  const log = {
+    id: uuidv4(),
+    weekIdx,
+    dayIdx,
+    date: new Date().toISOString().slice(0, 10),
+    exerciseLogs: exerciseLogs || [],
+    note: note || '',
+    loggedAt: new Date().toISOString(),
+  }
+  prog.sessionLogs.push(log)
+
+  // Auto-streak
+  const today = new Date().toISOString().slice(0, 10)
+  let s = db.streaks[req.user.id]
+  if (!s) s = db.streaks[req.user.id] = { current: 0, longest: 0, lastDate: null, history: [] }
+  if (s.lastDate !== today) {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+    s.current = s.lastDate === yesterday ? s.current + 1 : 1
+    s.longest = Math.max(s.longest, s.current)
+    s.lastDate = today
+    if (!s.history.includes(today)) s.history.push(today)
+    if (s.history.length > 90) s.history = s.history.slice(-90)
+  }
+
+  res.json({ success: true, log, streak: s })
+})
+
+app.get('/api/client-programs/:id/sessions', auth, (req, res) => {
+  const prog = (db.clientPrograms || []).find(p => p.id === req.params.id && p.userId === req.user.id)
+  if (!prog) return res.status(404).json({ error: 'Programme introuvable' })
+  res.json(prog.sessionLogs || [])
+})
+
 // ─── STREAK ─────────────────────────────────────────────
 
 app.get('/api/streak', auth, (req, res) => {
