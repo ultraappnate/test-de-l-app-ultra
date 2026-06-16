@@ -2,23 +2,80 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import PremiumPaywall from '../components/PremiumPaywall'
+import ExerciseSearch from '../components/ExerciseSearch'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 
 const GOALS = ['Prise de masse', 'Perte de poids', 'Force', 'Endurance', 'Mobilité', 'Autre']
-const DEFAULT_EXERCISE = { name: '', sets: '3', reps: '10', rest: '60s', notes: '' }
+const DEFAULT_EXERCISE = { name: '', sets: '3', reps: '10', rest: '60s', notes: '', image: null, videoId: null }
 
 function ExerciseRow({ ex, onChange, onDelete }) {
+  const [showVideo, setShowVideo] = useState(false)
+
+  function handleExSelect({ name, image, videoId, muscles }) {
+    onChange({ ...ex, name, image: image || ex.image, videoId: videoId || ex.videoId })
+  }
+
   return (
-    <div className="p-3 rounded-xl space-y-2" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}>
-      <div className="flex gap-2">
-        <input value={ex.name} onChange={e => onChange({ ...ex, name: e.target.value })}
-          placeholder="Nom de l'exercice (ex: Squat)"
-          className="flex-1 px-3 py-2 rounded-lg text-sm outline-none font-bold"
-          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
-        <button onClick={onDelete} className="w-8 h-9 rounded-lg text-xs flex items-center justify-center"
-          style={{ background: 'var(--bg-card)', color: 'var(--text-faint)' }}>✕</button>
-      </div>
+    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}>
+      {/* Photo de l'exercice sélectionné */}
+      {ex.image && (
+        <div style={{ position: 'relative', height: 100, overflow: 'hidden' }}>
+          <img src={ex.image} alt={ex.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)',
+          }} />
+          {ex.videoId && (
+            <button
+              onClick={() => setShowVideo(v => !v)}
+              style={{
+                position: 'absolute', bottom: 8, right: 8,
+                background: 'rgba(0,0,0,0.75)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}>
+              {showVideo ? '✕ Fermer' : '▶ Voir vidéo'}
+            </button>
+          )}
+          <button
+            onClick={() => onChange({ ...ex, image: null, videoId: null })}
+            style={{
+              position: 'absolute', top: 6, right: 6,
+              background: 'rgba(0,0,0,0.6)',
+              color: '#fff', border: 'none', borderRadius: 4,
+              width: 22, height: 22, fontSize: 11, cursor: 'pointer',
+            }}>✕</button>
+        </div>
+      )}
+
+      {/* Vidéo YouTube embed */}
+      {showVideo && ex.videoId && (
+        <div style={{ aspectRatio: '16/9', background: '#000' }}>
+          <iframe
+            src={`https://www.youtube.com/embed/${ex.videoId}?autoplay=1&rel=0&modestbranding=1`}
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            style={{ width: '100%', height: '100%', border: 'none' }}
+          />
+        </div>
+      )}
+
+      <div className="p-3 space-y-2">
+        <div className="flex gap-2">
+          <ExerciseSearch
+            value={ex.name}
+            onChange={handleExSelect}
+            placeholder="Nom de l'exercice (ex: Squat)"
+          />
+          <button onClick={onDelete} className="w-8 h-9 rounded-lg text-xs flex items-center justify-center flex-shrink-0"
+            style={{ background: 'var(--bg-card)', color: 'var(--text-faint)' }}>✕</button>
+        </div>
       <div className="flex gap-2">
         {[
           { key: 'sets', placeholder: 'Séries', label: 'Séries' },
@@ -34,10 +91,11 @@ function ExerciseRow({ ex, onChange, onDelete }) {
           </div>
         ))}
       </div>
-      <input value={ex.notes} onChange={e => onChange({ ...ex, notes: e.target.value })}
-        placeholder="Note ou conseil (facultatif)"
-        className="w-full px-3 py-1.5 rounded-lg text-xs outline-none italic"
-        style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }} />
+        <input value={ex.notes} onChange={e => onChange({ ...ex, notes: e.target.value })}
+          placeholder="Note ou conseil (facultatif)"
+          className="w-full px-3 py-1.5 rounded-lg text-xs outline-none italic"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }} />
+      </div>
     </div>
   )
 }
