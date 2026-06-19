@@ -92,13 +92,28 @@ export default function MarketplaceProfile() {
   const [reviewComment, setReviewComment] = useState('')
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewDone, setReviewDone] = useState(false)
+  const [isFav, setIsFav] = useState(false)
 
   useEffect(() => {
     fetch(`${API}/marketplace/${id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { setPro(data); setHired(data.isHiredByMe || false); setLoading(false) })
       .catch(() => setLoading(false))
+    if (user?.role === 'client') {
+      fetch(`${API}/favorites/ids`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(ids => setIsFav(Array.isArray(ids) && ids.includes(id)))
+        .catch(() => {})
+    }
   }, [id, token])
+
+  async function toggleFav() {
+    const next = !isFav
+    setIsFav(next)
+    try {
+      await fetch(`${API}/favorites/${id}`, { method: next ? 'POST' : 'DELETE', headers: { Authorization: `Bearer ${token}` } })
+    } catch { setIsFav(!next) }
+  }
 
   async function handleHire() {
     setHiring(true)
@@ -163,6 +178,19 @@ export default function MarketplaceProfile() {
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => navigate('/marketplace')} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 20, cursor: 'pointer' }}>←</button>
         <p style={{ fontWeight: 900, fontSize: 15, color: 'var(--text-primary)', flex: 1 }}>{pro.name}</p>
+        {user?.role === 'client' && (
+          <button onClick={toggleFav} title={isFav ? 'Retirer des favoris' : 'Enregistrer'} style={{
+            width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--border)',
+            background: isFav ? 'rgba(220,38,38,0.12)' : 'var(--bg-base)',
+            fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>{isFav ? '❤️' : '🤍'}</button>
+        )}
+        {user?.role === 'client' && (
+          <button onClick={() => navigate(`/chat/${id}`)} style={{
+            padding: '8px 14px', borderRadius: 12, border: '1px solid var(--accent)',
+            background: 'var(--accent-subtle)', color: 'var(--accent)', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+          }}>💬 Contacter</button>
+        )}
         {!hired && user?.role === 'client' && (
           <button onClick={() => setShowHireModal(true)} style={{
             padding: '8px 18px', borderRadius: 12, border: 'none',

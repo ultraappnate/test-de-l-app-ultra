@@ -37,6 +37,7 @@ const NAV_COACH = [
   { to: '/chat',             label: 'Messages',         icon: '◆' },
   { to: '/analytics',        label: 'Statistiques',     icon: '↑' },
   { to: '/revenue',          label: 'Revenus',          icon: '◇' },
+  { to: '/promotions',       label: 'Promotions',       icon: '🏷️' },
   { to: '/coach/upgrade',    label: 'Plan Coach',       icon: '★' },
   { to: '/calendar',         label: 'Calendrier',       icon: '▤' },
   { to: '/settings',         label: 'Paramètres',       icon: '⚙️' },
@@ -55,6 +56,7 @@ const NAV_NUTRITIONIST = [
   { to: '/chat',             label: 'Messages',             icon: '◉' },
   { to: '/nutri/stats',      label: 'Statistiques',         icon: '↑' },
   { to: '/revenue',          label: 'Revenus',              icon: '◇' },
+  { to: '/promotions',       label: 'Promotions',           icon: '🏷️' },
   { to: '/calendar',         label: 'Calendrier',           icon: '▤' },
   { to: '/settings',         label: 'Paramètres',           icon: '⚙️' },
 ]
@@ -62,6 +64,7 @@ const NAV_HEALTH_PRO = [
   { to: '/pro/dashboard', label: 'Accueil',       icon: '⌂', short: 'Accueil' },
   { to: '/pro/profile',   label: 'Profil',        icon: '◈', short: 'Profil' },
   { to: '/pro/patients',  label: 'Mes patients',  icon: '👥', short: 'Patients' },
+  { to: '/pro/insights',  label: 'Radar Patient', icon: '📡', short: 'Radar', highlight: true },
   { to: '/discover',      label: 'Carte sportifs',icon: '🗺', short: 'Carte' },
   { to: '/chat',          label: 'Messages',      icon: '◉', short: 'Messages' },
   { to: '/calendar',      label: 'Calendrier',    icon: '▦', short: 'Agenda' },

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../store'
+import ProRadarWidget from '../../components/ProRadarWidget'
 
 export default function HealthProDashboard() {
   const { user, fetchProfile } = useStore()
@@ -65,6 +66,9 @@ export default function HealthProDashboard() {
             ✎ Compléter mon profil
           </button>
         </div>
+
+        {/* Radar Patient IA — charge réelle & risques de rechute */}
+        <ProRadarWidget />
 
         {/* Actions rapides */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 20 }}>

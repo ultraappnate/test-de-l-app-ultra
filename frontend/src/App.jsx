@@ -61,8 +61,10 @@ import PostureAnalysis from './pages/PostureAnalysis'
 import AdminExerciseLibrary from './pages/AdminExerciseLibrary'
 import CoachInsights from './pages/CoachInsights'
 import NutriInsights from './pages/NutriInsights'
+import ProInsights from './pages/ProInsights'
 import Marketplace from './pages/Marketplace'
 import MarketplaceProfile from './pages/MarketplaceProfile'
+import PromotionsManager from './pages/PromotionsManager'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -218,8 +220,10 @@ export default function App() {
           <Route path="/admin/exercises" element={<PrivateRoute><AdminExerciseLibrary /></PrivateRoute>} />
           <Route path="/coach/insights" element={<PrivateRoute><CoachInsights /></PrivateRoute>} />
           <Route path="/nutri/insights" element={<PrivateRoute><NutriInsights /></PrivateRoute>} />
+          <Route path="/pro/insights" element={<PrivateRoute><ProInsights /></PrivateRoute>} />
           <Route path="/marketplace" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
           <Route path="/marketplace/:id" element={<PrivateRoute><MarketplaceProfile /></PrivateRoute>} />
+          <Route path="/promotions" element={<PrivateRoute><PromotionsManager /></PrivateRoute>} />
         </Routes>
       </Layout>
     </BrowserRouter>

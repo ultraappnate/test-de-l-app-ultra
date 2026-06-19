@@ -77,6 +77,10 @@ const db = {
   postureAnalyses: [],   // { id, userId, userName, imageBase64, analysis, createdAt, sharedWithPros }
   coachInsights: [],     // { id, coachId, clientId, clientName, type, severite, titre, message, recommandation, action, createdAt, dismissed }
   nutriInsights: [],     // { id, nutriId, clientId, clientName, type, severite, titre, message, recommandation, action, createdAt, dismissed }
+  proInsights: [],       // { id, proId, clientId, clientName, type, severite, titre, message, recommandation, action, charge, createdAt, dismissed }
+  favorites: [],         // { id, clientId, proId, createdAt }
+  clientGroups: [],      // { id, ownerId, ownerRole, name, color, clientIds, createdAt }
+  promotions: [],        // { id, ownerId, ownerRole, name, scope, programIds, type, value, target, groupId, segment, code, startAt, endAt, active, usageCount, createdAt }
   reviews: [
     { id: 'r1',  proId: 'coach-1',  clientId: 'c-ext1', clientName: 'Alexandre M.', rating: 5, comment: 'Nate est exceptionnel. En 3 mois j\'ai gagné 8kg de muscle et ma force a explosé. Son suivi est ultra-personnalisé.', specialty: 'Prise de masse', createdAt: new Date(Date.now()-86400000*5).toISOString() },
     { id: 'r2',  proId: 'coach-1',  clientId: 'c-ext2', clientName: 'Marie D.',     rating: 5, comment: 'Programme parfaitement adapté à mon niveau. Le suivi en temps réel via l\'app est un vrai plus.', specialty: 'Force', createdAt: new Date(Date.now()-86400000*12).toISOString() },
@@ -309,12 +313,36 @@ db.programs.forEach(p => { if (!p.source) p.source = 'admin' })
 // ─── PROGRAMS ───────────────────────────────────────────
 
 app.get('/api/programs', auth, (req, res) => {
-  res.json(db.programs)
+  const viewerId = req.user.role === 'client' ? req.user.id : null
+  const withPricing = db.programs.map(p => {
+    if (!p.price || p.price <= 0) return p
+    const best = bestAutoPromoForProgram(p, viewerId)
+    if (!best) return p
+    return {
+      ...p,
+      pricing: {
+        original: best.original,
+        final: best.finalPrice,
+        promo: { id: best.promo.id, name: best.promo.name, type: best.promo.type, value: best.promo.value, endAt: best.promo.endAt },
+      },
+    }
+  })
+  res.json(withPricing)
 })
 
 app.get('/api/programs/:id', auth, (req, res) => {
   const program = db.programs.find(p => p.id === req.params.id)
   if (!program) return res.status(404).json({ message: 'Programme introuvable' })
+  if (program.price > 0) {
+    const viewerId = req.user.role === 'client' ? req.user.id : null
+    const best = bestAutoPromoForProgram(program, viewerId)
+    if (best) {
+      return res.json({ ...program, pricing: {
+        original: best.original, final: best.finalPrice,
+        promo: { id: best.promo.id, name: best.promo.name, type: best.promo.type, value: best.promo.value, endAt: best.promo.endAt },
+      }})
+    }
+  }
   res.json(program)
 })
 
@@ -1955,10 +1983,16 @@ app.post('/api/marketplace/hire/:id', auth, async (req, res) => {
   if (req.user.role !== 'client') return res.status(403).json({ error: 'Client uniquement' })
   const pro = db.users.find(u => u.id === req.params.id)
   if (!pro) return res.status(404).json({ error: 'Pro introuvable' })
-  const { duration = 1 } = req.body // durée en mois
+  const { duration = 1, promoCode = null } = req.body // durée en mois
 
   const rate = getCommissionRate(pro.coachPlan)
-  const basePrice = (pro.price || 80) * duration
+  const monthly = pro.price || 80
+  // Promo coach/nutri applicable à l'abonnement (auto ou code)
+  const subPromo = bestSubscriptionPromo(pro.id, pro.role, req.user.id, monthly, promoCode)
+  const effectiveMonthly = subPromo ? subPromo.finalMonthly : monthly
+  const basePrice = Math.round(effectiveMonthly * duration * 100) / 100
+  const fullPrice = monthly * duration
+  if (subPromo) subPromo.promo.usageCount = (subPromo.promo.usageCount || 0) + 1
   const commission = Math.round(basePrice * rate)
   const proEarns = basePrice - commission
 
@@ -1998,6 +2032,8 @@ app.post('/api/marketplace/hire/:id', auth, async (req, res) => {
     clientName: req.user.name,
     duration,
     amount: basePrice,
+    originalAmount: fullPrice,
+    promo: subPromo ? { name: subPromo.promo.name, type: subPromo.promo.type, value: subPromo.promo.value } : null,
     commission,
     proEarns,
     status: 'active',
@@ -2064,6 +2100,44 @@ app.get('/api/marketplace/admin/stats', auth, (req, res) => {
     totalReviews: db.reviews.length,
     avgRating: db.reviews.length ? Math.round(db.reviews.reduce((s, r) => s + r.rating, 0) / db.reviews.length * 10) / 10 : 0,
   })
+})
+
+// ─── FAVORIS CLIENT (coachs / pros enregistrés) ─────────
+
+// Liste des pros favoris du client (objets pros complets)
+app.get('/api/favorites', auth, (req, res) => {
+  if (req.user.role !== 'client') return res.status(403).json({ error: 'Client uniquement' })
+  const favs = db.favorites.filter(f => f.clientId === req.user.id)
+  const pros = favs.map(f => {
+    const u = db.users.find(x => x.id === f.proId)
+    if (!u) return null
+    const proReviews = db.reviews.filter(r => r.proId === u.id)
+    const avgRating = proReviews.length ? Math.round(proReviews.reduce((s, r) => s + r.rating, 0) / proReviews.length * 10) / 10 : (u.rating || 0)
+    const { password, ...pub } = u
+    return { ...pub, avgRating, reviewCount: proReviews.length || u.reviewCount || 0, favoritedAt: f.createdAt }
+  }).filter(Boolean)
+  res.json(pros)
+})
+
+// IDs des favoris (léger, pour cocher les cœurs)
+app.get('/api/favorites/ids', auth, (req, res) => {
+  if (req.user.role !== 'client') return res.json([])
+  res.json(db.favorites.filter(f => f.clientId === req.user.id).map(f => f.proId))
+})
+
+app.post('/api/favorites/:proId', auth, (req, res) => {
+  if (req.user.role !== 'client') return res.status(403).json({ error: 'Client uniquement' })
+  const pro = db.users.find(u => u.id === req.params.proId && ['coach', 'nutritionist', 'health_pro'].includes(u.role))
+  if (!pro) return res.status(404).json({ error: 'Pro introuvable' })
+  if (!db.favorites.find(f => f.clientId === req.user.id && f.proId === req.params.proId)) {
+    db.favorites.push({ id: `fav-${Date.now()}`, clientId: req.user.id, proId: req.params.proId, createdAt: new Date().toISOString() })
+  }
+  res.json({ ok: true, favorited: true })
+})
+
+app.delete('/api/favorites/:proId', auth, (req, res) => {
+  db.favorites = db.favorites.filter(f => !(f.clientId === req.user.id && f.proId === req.params.proId))
+  res.json({ ok: true, favorited: false })
 })
 
 // ─── IA PROACTIVE — COACH INSIGHTS ─────────────────────
@@ -2376,6 +2450,457 @@ app.delete('/api/nutri/insights/:id', auth, (req, res) => {
   if (!insight) return res.status(404).json({ error: 'Introuvable' })
   insight.dismissed = true
   res.json({ ok: true })
+})
+
+// ─── IA PROACTIVE — RADAR PATIENT (pros de santé) ───────
+// Calcule le rapport de charge hebdo d'un patient (déterministe, sans IA)
+function patientChargeReport(clientId) {
+  const logs = db.workoutLogs.filter(l => l.userId === clientId)
+  const now = Date.now()
+  const volBetween = (fromDays, toDays) => logs
+    .filter(l => {
+      const t = new Date(l.completedAt).getTime()
+      return t > now - fromDays * 86400000 && t <= now - toDays * 86400000
+    })
+    .reduce((s, l) => s + (l.exerciseLogs || []).reduce((s2, ex) =>
+      s2 + (ex.sets || []).reduce((s3, set) => s3 + (set.weight || 0) * (set.reps || 0), 0), 0), 0)
+
+  const thisWeek = volBetween(7, 0)
+  const lastWeek = volBetween(14, 7)
+  const sessionsThisWeek = logs.filter(l => new Date(l.completedAt).getTime() > now - 7 * 86400000).length
+  const sessionsLastWeek = logs.filter(l => {
+    const t = new Date(l.completedAt).getTime()
+    return t > now - 14 * 86400000 && t <= now - 7 * 86400000
+  }).length
+  const lastLog = [...logs].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0]
+  const daysSinceLast = lastLog ? Math.floor((now - new Date(lastLog.completedAt)) / 86400000) : null
+  const variationPct = lastWeek > 0
+    ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100)
+    : (thisWeek > 0 ? 100 : 0)
+
+  const postures = db.postureAnalyses
+    .filter(a => a.userId === clientId)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+
+  return {
+    volumeThisWeekKg: Math.round(thisWeek),
+    volumeLastWeekKg: Math.round(lastWeek),
+    variationPct,
+    sessionsThisWeek,
+    sessionsLastWeek,
+    daysSinceLast,
+    postureScore: postures[0]?.analysis?.scoreGlobal ?? null,
+    posturePrevScore: postures[1]?.analysis?.scoreGlobal ?? null,
+    postureDate: postures[0]?.createdAt ?? null,
+  }
+}
+
+// Liste les patients d'un pro (via consentements), fallback démo si aucun
+function patientsForPro(proId) {
+  const consents = db.consents.filter(c => c.proId === proId)
+  let patients = consents
+    .map(c => db.users.find(u => u.id === c.clientId))
+    .filter(Boolean)
+  // dédupe
+  patients = patients.filter((p, i) => patients.findIndex(x => x.id === p.id) === i)
+  if (patients.length === 0) {
+    patients = db.users.filter(u => u.role === 'client').slice(0, 4)
+  }
+  return patients
+}
+
+// Rapport de charge de tous les patients (toujours dispo, sans IA)
+app.get('/api/pro/load', auth, (req, res) => {
+  if (!['health_pro', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Pro de santé uniquement' })
+  const patients = patientsForPro(req.user.id)
+  res.json(patients.map(p => ({
+    clientId: p.id,
+    clientName: p.name,
+    objective: p.objective || null,
+    charge: patientChargeReport(p.id),
+  })))
+})
+
+app.post('/api/pro/insights/generate', auth, async (req, res) => {
+  if (!['health_pro', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Pro de santé uniquement' })
+  if (!anthropic) return res.status(503).json({ error: 'IA non configurée' })
+
+  const proId = req.user.id
+  const today = new Date().toISOString().split('T')[0]
+  const me = db.users.find(u => u.id === proId)
+  const patients = patientsForPro(proId)
+  if (patients.length === 0) return res.json([])
+
+  const patientContexts = patients.map(p => {
+    const charge = patientChargeReport(p.id)
+    const postures = db.postureAnalyses
+      .filter(a => a.userId === p.id)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    const lastPosture = postures[0]?.analysis || null
+    return {
+      id: p.id,
+      name: p.name,
+      objective: p.objective || 'non renseigné',
+      level: p.level || 'non renseigné',
+      ...charge,
+      postureResume: lastPosture?.resume || null,
+      postureZonesProblematiques: lastPosture?.zones
+        ?.filter(z => (z.severite || 0) >= 2)
+        ?.map(z => `${z.zone} (${z.statut})`) || [],
+      postureAsymetries: lastPosture?.asymetries?.map(a => a.type) || [],
+      postureOrientation: lastPosture?.orientation_pro?.urgence || null,
+    }
+  })
+
+  const prompt = `Tu es l'assistant IA clinique d'un professionnel de santé (${me?.profession || 'kiné/ostéo/médecin du sport'}) sur l'app ULTRA. Tu surveilles ce que les patients font VRAIMENT entre les séances — données qu'un praticien n'a jamais eues avant : charge d'entraînement réelle, fréquence, évolution posturale.
+
+Ton rôle : détecter les risques de rechute/blessure et les signaux cliniques, AVANT la prochaine séance.
+
+Données patients :
+${JSON.stringify(patientContexts, null, 2)}
+
+Date du jour : ${today}
+
+Pour CHAQUE patient, génère l'insight clinique le plus pertinent. Raisonne comme un kiné/médecin du sport.
+
+Réponds UNIQUEMENT avec un tableau JSON valide, format exact :
+[
+  {
+    "clientId": "<id exact du patient>",
+    "clientName": "<prénom>",
+    "type": "<surcharge|reprise_brutale|inactivite|asymetrie|consultation|progression>",
+    "severite": <1|2|3>,
+    "titre": "<titre clinique court 4-6 mots>",
+    "message": "<observation clinique précise reliant les données, 1-2 phrases>",
+    "recommandation": "<conseil concret à donner au patient ou à appliquer en séance>",
+    "action": "<message|ajuster_protocole|consultation|feliciter|rien>"
+  }
+]
+
+Logique clinique :
+- surcharge : variationPct > +40% ou volume hebdo en forte hausse → risque de blessure/rechute, charge mal gérée
+- reprise_brutale : patient inactif puis reprise intense (daysSinceLast élevé récemment + volume qui repart fort) → risque tendineux
+- inactivite : daysSinceLast > 7 ou 0 séance cette semaine → déconditionnement, perte des acquis de rééducation
+- asymetrie : asymétries ou zones posturales problématiques détectées → compensation, à corriger
+- consultation : orientation posturale "rapidement" ou score postural bas → consultation à programmer
+- progression : charge maîtrisée, posture qui s'améliore (postureScore > posturePrevScore) → à encourager
+
+Sévérité : 1=info verte, 2=attention orange, 3=urgent rouge. Sois cliniquement rigoureux et concret.`
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-4-8',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    })
+
+    let insights = []
+    try {
+      const text = response.content[0].text
+      const jsonMatch = text.match(/\[[\s\S]*\]/)
+      insights = jsonMatch ? JSON.parse(jsonMatch[0]) : []
+    } catch {
+      return res.status(500).json({ error: 'Erreur parsing IA' })
+    }
+
+    db.proInsights = db.proInsights.filter(i => i.proId !== proId)
+    const now = new Date().toISOString()
+    insights.forEach(insight => {
+      const ctx = patientContexts.find(c => c.id === insight.clientId)
+      db.proInsights.push({
+        id: `proin-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        proId,
+        clientId: insight.clientId,
+        clientName: insight.clientName,
+        type: insight.type,
+        severite: insight.severite,
+        titre: insight.titre,
+        message: insight.message,
+        recommandation: insight.recommandation,
+        action: insight.action,
+        charge: ctx ? {
+          volumeThisWeekKg: ctx.volumeThisWeekKg,
+          volumeLastWeekKg: ctx.volumeLastWeekKg,
+          variationPct: ctx.variationPct,
+          sessionsThisWeek: ctx.sessionsThisWeek,
+          daysSinceLast: ctx.daysSinceLast,
+          postureScore: ctx.postureScore,
+          posturePrevScore: ctx.posturePrevScore,
+        } : null,
+        createdAt: now,
+        dismissed: false,
+      })
+    })
+
+    res.json(db.proInsights.filter(i => i.proId === proId && !i.dismissed))
+  } catch (err) {
+    console.error('Pro insights error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.get('/api/pro/insights', auth, (req, res) => {
+  if (!['health_pro', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Pro de santé uniquement' })
+  const insights = db.proInsights
+    .filter(i => i.proId === req.user.id && !i.dismissed)
+    .sort((a, b) => b.severite - a.severite || new Date(b.createdAt) - new Date(a.createdAt))
+  res.json(insights)
+})
+
+app.delete('/api/pro/insights/:id', auth, (req, res) => {
+  const insight = db.proInsights.find(i => i.id === req.params.id && i.proId === req.user.id)
+  if (!insight) return res.status(404).json({ error: 'Introuvable' })
+  insight.dismissed = true
+  res.json({ ok: true })
+})
+
+// ─── GROUPES DE CLIENTS & PROMOTIONS ────────────────────
+
+// Clients rattachés à un coach/nutri (via coachId/nutriId)
+function clientsOfOwner(ownerId, ownerRole) {
+  const key = ownerRole === 'nutritionist' ? 'nutriId' : 'coachId'
+  let clients = db.users.filter(u => u.role === 'client' && u[key] === ownerId)
+  if (clients.length === 0) clients = db.users.filter(u => u.role === 'client').slice(0, 6) // démo
+  return clients
+}
+
+// Définitions des segments automatiques (recalculés à la volée)
+function autoSegments(ownerId, ownerRole) {
+  const clients = clientsOfOwner(ownerId, ownerRole)
+  const now = Date.now()
+  const lastSession = (cid) => {
+    const logs = db.workoutLogs.filter(l => l.userId === cid)
+    const last = logs.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0]
+    return last ? new Date(last.completedAt).getTime() : null
+  }
+  const joined = (c) => c.createdAt ? new Date(c.createdAt).getTime() : now
+  const defs = [
+    { key: 'tous',     label: 'Tous mes clients', emoji: '👥', filter: () => true },
+    { key: 'nouveaux', label: 'Nouveaux (< 30j)', emoji: '✨', filter: (c) => now - joined(c) < 30 * 86400000 },
+    { key: 'anciens',  label: 'Fidèles (> 90j)',  emoji: '🏅', filter: (c) => now - joined(c) > 90 * 86400000 },
+    { key: 'inactifs', label: 'Inactifs (> 14j)', emoji: '💤', filter: (c) => { const t = lastSession(c.id); return t == null || now - t > 14 * 86400000 } },
+    { key: 'premium',  label: 'Premium',          emoji: '⭐', filter: (c) => !!c.isPremium },
+  ]
+  return defs.map(d => {
+    const members = clients.filter(d.filter)
+    return { key: d.key, label: d.label, emoji: d.emoji, count: members.length, clientIds: members.map(c => c.id) }
+  })
+}
+
+// Membres effectifs d'une cible (groupe manuel, segment auto, ou tous)
+function resolveAudience(promo, ownerId, ownerRole) {
+  if (promo.target === 'group' && promo.groupId) {
+    const g = db.clientGroups.find(x => x.id === promo.groupId)
+    return g ? (g.clientIds || []) : []
+  }
+  if (promo.target === 'segment' && promo.segment) {
+    const seg = autoSegments(ownerId, ownerRole).find(s => s.key === promo.segment)
+    return seg ? seg.clientIds : []
+  }
+  // 'all' ou 'code' → tous les clients
+  return clientsOfOwner(ownerId, ownerRole).map(c => c.id)
+}
+
+function promoStatus(promo) {
+  const now = Date.now()
+  if (!promo.active) return 'paused'
+  if (promo.startAt && new Date(promo.startAt).getTime() > now) return 'scheduled'
+  if (promo.endAt && new Date(promo.endAt).getTime() < now) return 'expired'
+  return 'active'
+}
+
+function isPromoLive(promo) {
+  return promoStatus(promo) === 'active'
+}
+
+function applyDiscount(price, promo) {
+  if (!price || price <= 0) return price
+  const off = promo.type === 'fixed' ? promo.value : price * (promo.value / 100)
+  return Math.max(0, Math.round((price - off) * 100) / 100)
+}
+
+// Meilleure promo applicable à un programme pour un client donné (auto : 'all'/'group'/'segment')
+function bestAutoPromoForProgram(program, viewerClientId) {
+  const ownerId = program.coachId
+  if (!ownerId) return null
+  const owner = db.users.find(u => u.id === ownerId)
+  const ownerRole = owner?.role || 'coach'
+  const candidates = db.promotions.filter(p =>
+    p.ownerId === ownerId &&
+    ['programs', 'both'].includes(p.scope) &&
+    p.target !== 'code' &&
+    isPromoLive(p) &&
+    (!p.programIds || p.programIds.length === 0 || p.programIds.includes(program.id))
+  )
+  let best = null
+  for (const promo of candidates) {
+    if (viewerClientId) {
+      const audience = resolveAudience(promo, ownerId, ownerRole)
+      if (promo.target !== 'all' && !audience.includes(viewerClientId)) continue
+    }
+    const finalPrice = applyDiscount(program.price, promo)
+    if (best == null || finalPrice < best.finalPrice) {
+      best = { promo, finalPrice, original: program.price }
+    }
+  }
+  return best
+}
+
+// Meilleure promo sur l'abonnement mensuel d'un pro (auto + code)
+function bestSubscriptionPromo(ownerId, ownerRole, viewerClientId, monthlyPrice, code) {
+  const candidates = db.promotions.filter(p =>
+    p.ownerId === ownerId &&
+    ['subscription', 'both'].includes(p.scope) &&
+    isPromoLive(p)
+  )
+  let best = null
+  for (const promo of candidates) {
+    if (promo.target === 'code') {
+      if (!code || promo.code !== String(code).trim().toUpperCase()) continue
+    } else if (viewerClientId) {
+      const audience = resolveAudience(promo, ownerId, ownerRole)
+      if (promo.target !== 'all' && !audience.includes(viewerClientId)) continue
+    }
+    const finalMonthly = applyDiscount(monthlyPrice, promo)
+    if (best == null || finalMonthly < best.finalMonthly) {
+      best = { promo, finalMonthly, original: monthlyPrice }
+    }
+  }
+  return best
+}
+
+// ── Groupes ──
+app.get('/api/groups', auth, (req, res) => {
+  if (!['coach', 'nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach/nutri uniquement' })
+  const manual = db.clientGroups
+    .filter(g => g.ownerId === req.user.id)
+    .map(g => ({ ...g, kind: 'manual', count: (g.clientIds || []).length }))
+  const segments = autoSegments(req.user.id, req.user.role).map(s => ({ ...s, kind: 'segment' }))
+  res.json({ manual, segments })
+})
+
+// Liste des clients de l'owner (pour composer un groupe manuel)
+app.get('/api/groups/clients', auth, (req, res) => {
+  if (!['coach', 'nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach/nutri uniquement' })
+  const clients = clientsOfOwner(req.user.id, req.user.role).map(({ password, ...c }) => ({
+    id: c.id, name: c.name, email: c.email, avatar: c.avatar, avatarColor: c.avatarColor, isPremium: !!c.isPremium,
+  }))
+  res.json(clients)
+})
+
+app.post('/api/groups', auth, (req, res) => {
+  if (!['coach', 'nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach/nutri uniquement' })
+  const { name, color, clientIds } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
+  const group = {
+    id: `grp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    ownerId: req.user.id, ownerRole: req.user.role,
+    name: name.trim(), color: color || '#8b1a2e',
+    clientIds: Array.isArray(clientIds) ? clientIds : [],
+    createdAt: new Date().toISOString(),
+  }
+  db.clientGroups.push(group)
+  res.status(201).json(group)
+})
+
+app.put('/api/groups/:id', auth, (req, res) => {
+  const g = db.clientGroups.find(x => x.id === req.params.id && x.ownerId === req.user.id)
+  if (!g) return res.status(404).json({ error: 'Groupe introuvable' })
+  const { name, color, clientIds } = req.body
+  if (name !== undefined) g.name = name.trim()
+  if (color !== undefined) g.color = color
+  if (clientIds !== undefined) g.clientIds = Array.isArray(clientIds) ? clientIds : g.clientIds
+  res.json(g)
+})
+
+app.delete('/api/groups/:id', auth, (req, res) => {
+  const idx = db.clientGroups.findIndex(x => x.id === req.params.id && x.ownerId === req.user.id)
+  if (idx === -1) return res.status(404).json({ error: 'Groupe introuvable' })
+  db.clientGroups.splice(idx, 1)
+  res.json({ ok: true })
+})
+
+// ── Promotions ──
+app.get('/api/promotions', auth, (req, res) => {
+  if (!['coach', 'nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach/nutri uniquement' })
+  const promos = db.promotions
+    .filter(p => p.ownerId === req.user.id)
+    .map(p => ({
+      ...p,
+      status: promoStatus(p),
+      audienceCount: resolveAudience(p, req.user.id, req.user.role).length,
+    }))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  res.json(promos)
+})
+
+app.post('/api/promotions', auth, (req, res) => {
+  if (!['coach', 'nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach/nutri uniquement' })
+  const { name, scope, programIds, type, value, target, groupId, segment, code, startAt, endAt } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
+  const numValue = Number(value)
+  if (!numValue || numValue <= 0) return res.status(400).json({ error: 'Valeur de réduction invalide' })
+  if (type === 'percent' && numValue > 90) return res.status(400).json({ error: 'Réduction max 90%' })
+  const promo = {
+    id: `promo-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    ownerId: req.user.id, ownerRole: req.user.role,
+    name: name.trim(),
+    scope: ['programs', 'subscription', 'both'].includes(scope) ? scope : 'both',
+    programIds: Array.isArray(programIds) ? programIds : [],
+    type: type === 'fixed' ? 'fixed' : 'percent',
+    value: numValue,
+    target: ['all', 'group', 'segment', 'code'].includes(target) ? target : 'all',
+    groupId: groupId || null,
+    segment: segment || null,
+    code: target === 'code' ? (code || '').trim().toUpperCase() : null,
+    startAt: startAt || new Date().toISOString(),
+    endAt: endAt || null,
+    active: true,
+    usageCount: 0,
+    createdAt: new Date().toISOString(),
+  }
+  db.promotions.push(promo)
+  res.status(201).json({ ...promo, status: promoStatus(promo), audienceCount: resolveAudience(promo, req.user.id, req.user.role).length })
+})
+
+app.put('/api/promotions/:id', auth, (req, res) => {
+  const p = db.promotions.find(x => x.id === req.params.id && x.ownerId === req.user.id)
+  if (!p) return res.status(404).json({ error: 'Promo introuvable' })
+  const editable = ['name', 'scope', 'programIds', 'type', 'value', 'target', 'groupId', 'segment', 'code', 'startAt', 'endAt', 'active']
+  editable.forEach(k => { if (req.body[k] !== undefined) p[k] = req.body[k] })
+  if (p.value) p.value = Number(p.value)
+  res.json({ ...p, status: promoStatus(p), audienceCount: resolveAudience(p, req.user.id, req.user.role).length })
+})
+
+app.delete('/api/promotions/:id', auth, (req, res) => {
+  const idx = db.promotions.findIndex(x => x.id === req.params.id && x.ownerId === req.user.id)
+  if (idx === -1) return res.status(404).json({ error: 'Promo introuvable' })
+  db.promotions.splice(idx, 1)
+  res.json({ ok: true })
+})
+
+// Valider un code promo (client) pour un programme ou un abonnement
+app.post('/api/promotions/validate-code', auth, (req, res) => {
+  const { code, ownerId, scope = 'programs', programId, basePrice } = req.body
+  if (!code) return res.status(400).json({ error: 'Code requis' })
+  const promo = db.promotions.find(p =>
+    p.target === 'code' &&
+    p.code === code.trim().toUpperCase() &&
+    (!ownerId || p.ownerId === ownerId) &&
+    [scope, 'both'].includes(p.scope) &&
+    isPromoLive(p)
+  )
+  if (!promo) return res.status(404).json({ error: 'Code invalide ou expiré' })
+  if (scope === 'programs' && programId && promo.programIds?.length && !promo.programIds.includes(programId)) {
+    return res.status(400).json({ error: 'Code non valable pour ce programme' })
+  }
+  const original = Number(basePrice) || 0
+  res.json({
+    valid: true,
+    promo: { id: promo.id, name: promo.name, type: promo.type, value: promo.value },
+    finalPrice: applyDiscount(original, promo),
+    original,
+  })
 })
 
 // ─── BIBLIOTHÈQUE D'EXERCICES (admin) ───────────────────

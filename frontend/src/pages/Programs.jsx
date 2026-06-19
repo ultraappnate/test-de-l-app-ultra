@@ -40,6 +40,12 @@ function FeaturedCard({ program, onClick }) {
               Gratuit
             </span>
           )}
+          {program.pricing && (
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-black"
+              style={{ background: 'rgba(220,38,38,0.55)', border: '1px solid rgba(248,113,113,0.7)', color: '#fff', backdropFilter: 'blur(8px)' }}>
+              {program.pricing.promo.type === 'percent' ? `-${program.pricing.promo.value}%` : `-${program.pricing.promo.value}€`}
+            </span>
+          )}
         </div>
         <div className="absolute inset-0 flex items-center justify-center transition-all duration-300"
           style={{ fontSize: hov ? 64 : 52, opacity: hov ? 0.3 : 0.85, transform: hov ? 'scale(1.1) translateY(-8px)' : 'none' }}>
@@ -64,9 +70,16 @@ function FeaturedCard({ program, onClick }) {
               </span>
               <span className="text-white/45 text-[11px]">{program.duration}</span>
             </div>
-            <span className="text-white font-black text-lg flex-shrink-0 ml-2">
-              {program.price === 0 ? '—' : `${program.price}€`}
-            </span>
+            {program.pricing ? (
+              <span className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                <span className="text-white/50 text-sm font-bold line-through">{program.pricing.original}€</span>
+                <span className="font-black text-lg" style={{ color: '#4ade80' }}>{program.pricing.final}€</span>
+              </span>
+            ) : (
+              <span className="text-white font-black text-lg flex-shrink-0 ml-2">
+                {program.price === 0 ? '—' : `${program.price}€`}
+              </span>
+            )}
           </div>
           <div className="overflow-hidden transition-all duration-300" style={{ maxHeight: hov ? 28 : 0 }}>
             <div className="flex justify-between items-center pt-2 mt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
@@ -110,10 +123,16 @@ function RowCard({ program, onClick }) {
             🥗
           </div>
         )}
-        {program.source === 'admin' && program.price > 0 && (
+        {program.source === 'admin' && program.price > 0 && !program.pricing && (
           <div className="absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full font-bold"
             style={{ background: 'rgba(212,175,55,0.45)', color: '#d4af37', border: '1px solid rgba(212,175,55,0.5)' }}>
             ★
+          </div>
+        )}
+        {program.pricing && (
+          <div className="absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-black"
+            style={{ background: 'rgba(220,38,38,0.6)', color: '#fff', border: '1px solid rgba(248,113,113,0.7)' }}>
+            {program.pricing.promo.type === 'percent' ? `-${program.pricing.promo.value}%` : `-${program.pricing.promo.value}€`}
           </div>
         )}
       </div>
@@ -129,9 +148,16 @@ function RowCard({ program, onClick }) {
             style={{ background: `${LEVEL_COLOR[program.level]}22`, color: LEVEL_COLOR[program.level] }}>
             {program.level}
           </span>
-          <span className="text-xs font-black" style={{ color: 'var(--accent)' }}>
-            {program.price === 0 ? 'Gratuit' : `${program.price}€`}
-          </span>
+          {program.pricing ? (
+            <span className="flex items-center gap-1">
+              <span className="text-[10px] font-bold line-through" style={{ color: 'var(--text-faint)' }}>{program.pricing.original}€</span>
+              <span className="text-xs font-black" style={{ color: '#16a34a' }}>{program.pricing.final}€</span>
+            </span>
+          ) : (
+            <span className="text-xs font-black" style={{ color: 'var(--accent)' }}>
+              {program.price === 0 ? 'Gratuit' : `${program.price}€`}
+            </span>
+          )}
         </div>
         {hov && (
           <p className="text-[11px] font-bold mt-2 pt-2" style={{ color: 'var(--accent)', borderTop: '1px solid var(--border)' }}>

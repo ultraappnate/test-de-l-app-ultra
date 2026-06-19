@@ -26,7 +26,7 @@ function Stars({ rating, size = 13 }) {
   )
 }
 
-function ProCard({ pro, onClick }) {
+function ProCard({ pro, onClick, isFav, onToggleFav, onContact, showActions }) {
   const cfg = ROLE_CONFIG[pro.role] || ROLE_CONFIG.coach
   const initials = pro.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()
 
@@ -52,18 +52,34 @@ function ProCard({ pro, onClick }) {
         position: 'relative',
       }}>
         {/* Badges top */}
-        <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: 6 }}>
+        <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: 6, flexWrap: 'wrap', maxWidth: 'calc(100% - 60px)' }}>
           <span style={{
             background: cfg.bg, color: cfg.color,
             fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20,
           }}>{cfg.icon} {cfg.label}</span>
-        </div>
-        {pro.verified && (
-          <div style={{ position: 'absolute', top: 10, right: 10 }}>
+          {pro.verified && (
             <span style={{ background: '#f59e0b22', color: '#f59e0b', fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 20 }}>
               ✓ Vérifié
             </span>
-          </div>
+          )}
+        </div>
+        {/* Bouton favori */}
+        {onToggleFav && (
+          <button
+            onClick={e => { e.stopPropagation(); onToggleFav() }}
+            title={isFav ? 'Retirer des favoris' : 'Enregistrer'}
+            style={{
+              position: 'absolute', top: 8, right: 8,
+              width: 34, height: 34, borderRadius: '50%',
+              border: 'none', cursor: 'pointer',
+              background: isFav ? 'rgba(220,38,38,0.15)' : 'rgba(0,0,0,0.25)',
+              backdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, transition: 'transform 0.12s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.15)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          >{isFav ? '❤️' : '🤍'}</button>
         )}
         {/* Avatar */}
         <div style={{
@@ -127,6 +143,17 @@ function ProCard({ pro, onClick }) {
 
       {/* CTA */}
       <div style={{ padding: '0 16px 16px', display: 'flex', gap: 8 }}>
+        {showActions && onContact && (
+          <button
+            onClick={e => { e.stopPropagation(); onContact() }}
+            style={{
+              flex: 1, padding: '10px', borderRadius: 12,
+              border: '1px solid var(--accent)', background: 'var(--accent-subtle)',
+              color: 'var(--accent)', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+            }}>
+            💬 Contacter
+          </button>
+        )}
         <button
           onClick={e => { e.stopPropagation(); onClick() }}
           style={{
@@ -134,7 +161,7 @@ function ProCard({ pro, onClick }) {
             border: 'none', background: 'var(--accent)',
             color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer',
           }}>
-          Voir le profil
+          {showActions ? 'Profil & programmes' : 'Voir le profil'}
         </button>
       </div>
     </div>
@@ -143,7 +170,7 @@ function ProCard({ pro, onClick }) {
 
 export default function Marketplace() {
   const navigate = useNavigate()
-  const { token } = useStore()
+  const { token, user } = useStore()
   const [pros, setPros] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -153,13 +180,39 @@ export default function Marketplace() {
   const [onlineOnly, setOnlineOnly] = useState(false)
   const [maxPrice, setMaxPrice] = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [favIds, setFavIds] = useState([])
+  const [favPros, setFavPros] = useState([])
+
+  const isClient = user?.role === 'client'
+  const headers = { Authorization: `Bearer ${token}` }
 
   useEffect(() => { load() }, [typeFilter, availableOnly, onlineOnly, maxPrice])
+  useEffect(() => { if (isClient) loadFavorites() }, [])
+
+  async function loadFavorites() {
+    try {
+      const [ids, full] = await Promise.all([
+        fetch(`${API}/favorites/ids`, { headers }).then(r => r.json()),
+        fetch(`${API}/favorites`, { headers }).then(r => r.json()),
+      ])
+      setFavIds(Array.isArray(ids) ? ids : [])
+      setFavPros(Array.isArray(full) ? full : [])
+    } catch {}
+  }
+
+  async function toggleFav(proId) {
+    const isFav = favIds.includes(proId)
+    setFavIds(prev => isFav ? prev.filter(x => x !== proId) : [...prev, proId])
+    try {
+      await fetch(`${API}/favorites/${proId}`, { method: isFav ? 'DELETE' : 'POST', headers })
+      loadFavorites()
+    } catch { loadFavorites() }
+  }
 
   async function load() {
     setLoading(true)
     const params = new URLSearchParams()
-    if (typeFilter !== 'tous') params.set('type', typeFilter)
+    if (typeFilter !== 'tous' && typeFilter !== 'favoris') params.set('type', typeFilter)
     if (availableOnly) params.set('available', 'true')
     if (onlineOnly) params.set('online', 'true')
     if (maxPrice) params.set('maxPrice', maxPrice)
@@ -180,10 +233,17 @@ export default function Marketplace() {
 
   const types = [
     { key: 'tous', label: 'Tous', icon: '⭐' },
+    ...(isClient ? [{ key: 'favoris', label: `Favoris${favIds.length ? ` (${favIds.length})` : ''}`, icon: '❤️' }] : []),
     { key: 'coach', label: 'Coachs', icon: '🏋️' },
     { key: 'nutritionist', label: 'Nutritionnistes', icon: '🥗' },
     { key: 'health_pro', label: 'Pros de santé', icon: '🩺' },
   ]
+
+  const showFavorites = typeFilter === 'favoris'
+  const favFiltered = favPros.filter(p => {
+    const q = search.toLowerCase()
+    return !q || p.name.toLowerCase().includes(q) || p.specialties?.some(s => s.toLowerCase().includes(q)) || p.location?.city?.toLowerCase().includes(q)
+  })
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
@@ -303,7 +363,35 @@ export default function Marketplace() {
         </div>
 
         {/* Résultats */}
-        {loading ? (
+        {showFavorites ? (
+          favFiltered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 44, marginBottom: 12 }}>🤍</p>
+              <p style={{ fontWeight: 800, fontSize: 17, color: 'var(--text-primary)', marginBottom: 6 }}>Aucun favori pour l'instant</p>
+              <p style={{ fontSize: 13, maxWidth: 320, margin: '0 auto 18px' }}>
+                Touche le cœur sur un expert pour l'enregistrer ici et le retrouver à tout moment.
+              </p>
+              <button onClick={() => setTypeFilter('tous')} style={{
+                padding: '11px 22px', borderRadius: 12, border: 'none',
+                background: 'var(--accent)', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer',
+              }}>Découvrir les experts</button>
+            </div>
+          ) : (
+            <>
+              <p style={{ fontSize: 12, color: 'var(--text-faint)', marginBottom: 14, fontWeight: 600 }}>
+                {favFiltered.length} expert{favFiltered.length > 1 ? 's' : ''} enregistré{favFiltered.length > 1 ? 's' : ''} · contacte-les ou choisis leurs programmes
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%,260px),1fr))', gap: 16 }}>
+                {favFiltered.map(pro => (
+                  <ProCard key={pro.id} pro={pro}
+                    onClick={() => navigate(`/marketplace/${pro.id}`)}
+                    isFav={favIds.includes(pro.id)} onToggleFav={() => toggleFav(pro.id)}
+                    onContact={() => navigate(`/chat/${pro.id}`)} showActions />
+                ))}
+              </div>
+            </>
+          )
+        ) : loading ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%,260px),1fr))', gap: 16 }}>
             {[1,2,3,4,5,6].map(i => (
               <div key={i} style={{ height: 320, background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)', opacity: 0.5 }} />
@@ -321,7 +409,10 @@ export default function Marketplace() {
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%,260px),1fr))', gap: 16 }}>
               {filtered.map(pro => (
-                <ProCard key={pro.id} pro={pro} onClick={() => navigate(`/marketplace/${pro.id}`)} />
+                <ProCard key={pro.id} pro={pro}
+                  onClick={() => navigate(`/marketplace/${pro.id}`)}
+                  isFav={isClient && favIds.includes(pro.id)}
+                  onToggleFav={isClient ? () => toggleFav(pro.id) : undefined} />
               ))}
             </div>
           </>

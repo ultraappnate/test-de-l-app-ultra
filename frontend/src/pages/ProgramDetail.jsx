@@ -274,7 +274,11 @@ export default function ProgramDetail() {
           <StatPill icon="📅" label="Séances" value={`${sessionCount}`} />
           {weeks.length > 0 && <StatPill icon="📋" label="Semaines" value={`${weeks.length}`} />}
           {(program.enrollmentCount || 0) > 0 && <StatPill icon="👥" label="Inscrits" value={program.enrollmentCount} />}
-          <StatPill icon="💰" label="Prix" value={program.price === 0 ? 'Gratuit' : `${program.price}€`} />
+          {program.pricing ? (
+            <StatPill icon="🏷️" label={`Prix · -${program.pricing.promo.type === 'percent' ? program.pricing.promo.value + '%' : program.pricing.promo.value + '€'}`} value={`${program.pricing.original}€ → ${program.pricing.final}€`} />
+          ) : (
+            <StatPill icon="💰" label="Prix" value={program.price === 0 ? 'Gratuit' : `${program.price}€`} />
+          )}
         </div>
       </div>
 
@@ -291,6 +295,17 @@ export default function ProgramDetail() {
                 <span style={{ color: 'var(--gold)' }}>★</span>
                 <p className="text-xs font-black" style={{ color: 'var(--gold)' }}>
                   Ce programme est réservé aux membres Premium
+                </p>
+              </div>
+            )}
+            {program.pricing && !enrolled && (
+              <div className="flex items-center justify-center gap-2 mb-3 px-3 py-2 rounded-xl"
+                style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)' }}>
+                <span style={{ fontSize: 15 }}>🏷️</span>
+                <p className="text-xs font-black" style={{ color: '#dc2626' }}>
+                  {program.pricing.promo.name} — {program.pricing.promo.type === 'percent' ? `-${program.pricing.promo.value}%` : `-${program.pricing.promo.value}€`} ·
+                  <span className="line-through opacity-60 ml-1">{program.pricing.original}€</span>
+                  <span className="ml-1">{program.pricing.final}€</span>
                 </p>
               </div>
             )}
