@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 import { registerPush, fetchPrefs, savePrefs } from '../services/pushNotifications'
+import LocationSettings from '../components/LocationSettings'
 
 // ─── Toggle ───────────────────────────────────────────────
 function Toggle({ value, onChange, label, sublabel, icon, accent }) {
@@ -334,6 +335,7 @@ function TabCompte() {
 // ─── Page principale ──────────────────────────────────────
 const TABS = [
   { id: 'abonnement',    label: 'Abonnement', icon: '★' },
+  { id: 'position',      label: 'Position',   icon: '📍' },
   { id: 'notifications', label: 'Notifs',     icon: '🔔' },
   { id: 'compte',        label: 'Compte',     icon: '👤' },
 ]
@@ -366,6 +368,7 @@ export default function Settings() {
         </div>
 
         {tab === 'abonnement'    && <TabAbonnement />}
+        {tab === 'position'      && <LocationSettings />}
         {tab === 'notifications' && <TabNotifications />}
         {tab === 'compte'        && <TabCompte />}
 

@@ -496,7 +496,7 @@ app.get('/api/discover', (req, res) => {
   const { lat, lng, radius = 30, role, specialty, maxPrice, online } = req.query
   const experts = db.users
     .filter(u => u.role === 'coach' || u.role === 'nutritionist' || u.role === 'health_pro')
-    .filter(u => u.location)
+    .filter(u => u.location && u.locationEnabled !== false)
     .map(({ password, ...u }) => {
       const dist = (lat && lng)
         ? haversine(parseFloat(lat), parseFloat(lng), u.location.lat, u.location.lng)
@@ -707,7 +707,7 @@ app.put('/api/profile', auth, (req, res) => {
   if (idx === -1) return res.status(404).json({ message: 'Utilisateur introuvable' })
   const { name, bio, specialties, calendlyUrl, avatar, banner, instagram, photos, videoUrl, videoData, shop,
           certifications, tarifConsultation, tarifSuivi, linkedin,
-          profession, rpps, location, price } = req.body
+          profession, rpps, location, locationEnabled, price } = req.body
   db.users[idx] = {
     ...db.users[idx],
     name:               name               ? name.trim() : db.users[idx].name,
@@ -728,6 +728,7 @@ app.put('/api/profile', auth, (req, res) => {
     profession:         profession         ?? db.users[idx].profession,
     rpps:               rpps               ?? db.users[idx].rpps,
     location:           location           ?? db.users[idx].location,
+    locationEnabled:    'locationEnabled' in req.body ? !!locationEnabled : (db.users[idx].locationEnabled ?? true),
     price:              price              ?? db.users[idx].price,
     updatedAt: new Date().toISOString(),
   }
