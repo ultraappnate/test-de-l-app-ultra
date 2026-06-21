@@ -93,12 +93,18 @@ export default function MarketplaceProfile() {
   const [submittingReview, setSubmittingReview] = useState(false)
   const [reviewDone, setReviewDone] = useState(false)
   const [isFav, setIsFav] = useState(false)
+  const [packages, setPackages] = useState([])
+  const [buyingPkg, setBuyingPkg] = useState(null)
 
   useEffect(() => {
     fetch(`${API}/marketplace/${id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => { setPro(data); setHired(data.isHiredByMe || false); setLoading(false) })
       .catch(() => setLoading(false))
+    fetch(`${API}/packages/pro/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => setPackages(Array.isArray(d) ? d : []))
+      .catch(() => {})
     if (user?.role === 'client') {
       fetch(`${API}/favorites/ids`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.json())
@@ -113,6 +119,17 @@ export default function MarketplaceProfile() {
     try {
       await fetch(`${API}/favorites/${id}`, { method: next ? 'POST' : 'DELETE', headers: { Authorization: `Bearer ${token}` } })
     } catch { setIsFav(!next) }
+  }
+
+  async function buyPackage(pkgId) {
+    setBuyingPkg(pkgId)
+    try {
+      const res = await fetch(`${API}/packages/buy/${pkgId}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } })
+      const data = await res.json()
+      if (data.url) { window.location.href = data.url; return }
+      if (data.ok) alert(data.message || 'Package acheté !')
+    } catch {}
+    setBuyingPkg(null)
   }
 
   async function handleHire() {
@@ -266,6 +283,56 @@ export default function MarketplaceProfile() {
                     fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 20,
                   }}>{s}</span>
                 ))}
+              </div>
+            </Section>
+          )}
+
+          {/* Packages */}
+          {packages.length > 0 && (
+            <Section title="📦 Packages">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {packages.map(pkg => {
+                  const savings = Math.max(0, (pkg.totalValue || 0) - pkg.price)
+                  const savePct = pkg.totalValue > 0 ? Math.round((savings / pkg.totalValue) * 100) : 0
+                  return (
+                    <div key={pkg.id} style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 16, padding: '16px' }}>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <div style={{ minWidth: 48, height: 48, borderRadius: 12, background: 'var(--accent-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{pkg.emoji}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 900, fontSize: 15, color: 'var(--text-primary)' }}>{pkg.name}</span>
+                            {savings > 0 && <span style={{ background: '#dc262618', color: '#dc2626', fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 20 }}>−{savePct}%</span>}
+                          </div>
+                          {pkg.description && <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>{pkg.description}</p>}
+                        </div>
+                      </div>
+                      {/* Contenu */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '12px 0' }}>
+                        {pkg.items.map((it, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                            <span style={{ color: '#16a34a', fontWeight: 900 }}>✓</span>
+                            <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{it.name}</span>
+                            {it.value > 0 && <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>{it.value}€</span>}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Prix + CTA */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                        <div>
+                          <span style={{ fontSize: 22, fontWeight: 900, color: 'var(--accent)' }}>{pkg.price}€</span>
+                          {savings > 0 && <span style={{ fontSize: 13, color: 'var(--text-faint)', textDecoration: 'line-through', marginLeft: 8 }}>{pkg.totalValue}€</span>}
+                        </div>
+                        {user?.role === 'client' && (
+                          <button onClick={() => buyPackage(pkg.id)} disabled={buyingPkg === pkg.id} style={{
+                            padding: '10px 20px', borderRadius: 12, border: 'none',
+                            background: 'var(--accent)', color: '#fff', fontWeight: 800, fontSize: 14,
+                            cursor: buyingPkg === pkg.id ? 'not-allowed' : 'pointer',
+                          }}>{buyingPkg === pkg.id ? '…' : 'Acheter le package'}</button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </Section>
           )}

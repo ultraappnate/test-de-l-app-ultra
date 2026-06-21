@@ -65,6 +65,7 @@ import ProInsights from './pages/ProInsights'
 import Marketplace from './pages/Marketplace'
 import MarketplaceProfile from './pages/MarketplaceProfile'
 import PromotionsManager from './pages/PromotionsManager'
+import PackagesManager from './pages/PackagesManager'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -224,6 +225,7 @@ export default function App() {
           <Route path="/marketplace" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
           <Route path="/marketplace/:id" element={<PrivateRoute><MarketplaceProfile /></PrivateRoute>} />
           <Route path="/promotions" element={<PrivateRoute><PromotionsManager /></PrivateRoute>} />
+          <Route path="/packages" element={<PrivateRoute><PackagesManager /></PrivateRoute>} />
         </Routes>
       </Layout>
     </BrowserRouter>

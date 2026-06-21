@@ -5,3 +5,6 @@ node_modules/
 dist/
 .DS_Store
 *.log
+
+# Snapshot de persistance local (mode fichier)
+backend/.data/

@@ -8,6 +8,10 @@ import Anthropic from '@anthropic-ai/sdk'
 import webpush from 'web-push'
 import cron from 'node-cron'
 import Stripe from 'stripe'
+import pkg from 'pg'
+import { readFile, writeFile, mkdir } from 'fs/promises'
+import { dirname } from 'path'
+const { Pool } = pkg
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 
@@ -79,6 +83,7 @@ const db = {
   nutriInsights: [],     // { id, nutriId, clientId, clientName, type, severite, titre, message, recommandation, action, createdAt, dismissed }
   proInsights: [],       // { id, proId, clientId, clientName, type, severite, titre, message, recommandation, action, charge, createdAt, dismissed }
   favorites: [],         // { id, clientId, proId, createdAt }
+  packages: [],          // { id, ownerId, ownerRole, name, description, emoji, items, price, totalValue, active, salesCount, createdAt }
   clientGroups: [],      // { id, ownerId, ownerRole, name, color, clientIds, createdAt }
   promotions: [],        // { id, ownerId, ownerRole, name, scope, programIds, type, value, target, groupId, segment, code, startAt, endAt, active, usageCount, createdAt }
   reviews: [
@@ -113,8 +118,91 @@ const db = {
   ],
 }
 
-// ─── SEED comptes par défaut ────────────────────────────
+// ─── PERSISTANCE (snapshot JSON : Postgres en prod, fichier en local) ───
+// Postgres si DATABASE_URL (Railway), sinon fichier si PERSIST_FILE, sinon mémoire seule.
+const DATABASE_URL = process.env.DATABASE_URL
+const PERSIST_FILE = process.env.PERSIST_FILE
+const FILE_PATH = (PERSIST_FILE && PERSIST_FILE !== '1') ? PERSIST_FILE : './.data/snapshot.json'
+let pgPool = null
+let persistMode = 'memory'
+
+async function initPersistence() {
+  try {
+    if (DATABASE_URL) {
+      pgPool = new Pool({
+        connectionString: DATABASE_URL,
+        ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
+      })
+      await pgPool.query('CREATE TABLE IF NOT EXISTS app_state (id INT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ DEFAULT now())')
+      persistMode = 'postgres'
+    } else if (PERSIST_FILE) {
+      persistMode = 'file'
+    }
+  } catch (err) {
+    console.error('⚠️  Persistance indisponible, mode mémoire seule :', err.message)
+    persistMode = 'memory'
+  }
+  return persistMode
+}
+
+async function readSnapshot() {
+  try {
+    if (persistMode === 'postgres') {
+      const r = await pgPool.query('SELECT data FROM app_state WHERE id = 1')
+      return r.rows[0]?.data || null
+    } else if (persistMode === 'file') {
+      return JSON.parse(await readFile(FILE_PATH, 'utf8'))
+    }
+  } catch { /* table vide / fichier absent → premier démarrage */ }
+  return null
+}
+
+let saving = false, dirty = false
+async function persist() {
+  if (persistMode === 'memory') return
+  if (saving) { dirty = true; return }
+  saving = true
+  try {
+    const json = JSON.stringify(db)
+    if (persistMode === 'postgres') {
+      await pgPool.query(
+        'INSERT INTO app_state (id, data, updated_at) VALUES (1, $1, now()) ON CONFLICT (id) DO UPDATE SET data = $1, updated_at = now()',
+        [json]
+      )
+    } else if (persistMode === 'file') {
+      await mkdir(dirname(FILE_PATH), { recursive: true })
+      await writeFile(FILE_PATH, json)
+    }
+  } catch (err) {
+    console.error('⚠️  Échec de sauvegarde :', err.message)
+  } finally {
+    saving = false
+  }
+  if (dirty) { dirty = false; persist() }
+}
+
+function startAutosave() {
+  if (persistMode === 'memory') return
+  setInterval(() => { persist() }, 8000) // sauvegarde auto toutes les 8s
+  const onExit = async (sig) => {
+    console.log(`\n${sig} reçu → sauvegarde finale…`)
+    try { await persist() } catch {}
+    process.exit(0)
+  }
+  process.on('SIGTERM', () => onExit('SIGTERM'))
+  process.on('SIGINT', () => onExit('SIGINT'))
+}
+
+// ─── SEED comptes par défaut (ou restauration de l'état sauvegardé) ───
 ;(async () => {
+  const mode = await initPersistence()
+  const snap = await readSnapshot()
+  if (snap && Array.isArray(snap.users) && snap.users.length) {
+    Object.assign(db, snap)
+    console.log(`💾 État restauré depuis ${mode} — ${db.users.length} comptes, ${db.programs.length} programmes`)
+    startAutosave()
+    return
+  }
   const seed = [
     { id: 'coach-nate', name: 'nate',             email: 'natecoaching97@gmail.com', password: 'ultra2024', role: 'coach', coachPlan: 'pro', coachPlanSince: new Date().toISOString() },
     { id: 'coach-1',    name: 'Nate Coach',       email: 'coach@ultra.com',          password: 'ultra2024', role: 'coach', coachPlan: 'free', coachPlanSince: null,
@@ -239,6 +327,8 @@ const db = {
     }
   }
   console.log('✅ Seed prêts — coach@ultra.com / client@ultra.com / nutri@ultra.com (mdp: ultra2024)')
+  await persist()
+  startAutosave()
 })()
 
 // Middleware auth
@@ -2138,6 +2228,119 @@ app.post('/api/favorites/:proId', auth, (req, res) => {
 app.delete('/api/favorites/:proId', auth, (req, res) => {
   db.favorites = db.favorites.filter(f => !(f.clientId === req.user.id && f.proId === req.params.proId))
   res.json({ ok: true, favorited: false })
+})
+
+// ─── PACKAGES (bundles vendus par coach/nutri) ──────────
+
+function normalizePackageItems(items) {
+  if (!Array.isArray(items)) return []
+  const TYPES = ['programme', 'diete', 'merch', 'masterclass', 'ebook', 'seance', 'autre']
+  return items
+    .filter(it => it && (it.name?.trim() || it.programId))
+    .map(it => ({
+      type: TYPES.includes(it.type) ? it.type : 'autre',
+      name: (it.name || '').trim(),
+      value: Number(it.value) || 0,
+      programId: it.programId || null,
+    }))
+}
+
+// Mes packages (coach/nutri propriétaire)
+app.get('/api/packages', auth, (req, res) => {
+  if (!['coach', 'nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach/nutri uniquement' })
+  res.json(db.packages.filter(p => p.ownerId === req.user.id).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)))
+})
+
+// Packages publics d'un pro (clients) — actifs uniquement
+app.get('/api/packages/pro/:proId', auth, (req, res) => {
+  res.json(db.packages.filter(p => p.ownerId === req.params.proId && p.active))
+})
+
+app.post('/api/packages', auth, (req, res) => {
+  if (!['coach', 'nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach/nutri uniquement' })
+  const { name, description, emoji, items, price } = req.body
+  if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
+  const cleanItems = normalizePackageItems(items)
+  if (cleanItems.length < 2) return res.status(400).json({ error: 'Un package doit contenir au moins 2 éléments' })
+  const numPrice = Number(price)
+  if (!numPrice || numPrice <= 0) return res.status(400).json({ error: 'Prix invalide' })
+  const totalValue = cleanItems.reduce((s, it) => s + (it.value || 0), 0)
+  const pkg = {
+    id: `pkg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    ownerId: req.user.id, ownerRole: req.user.role,
+    name: name.trim(), description: (description || '').trim(),
+    emoji: emoji || '📦',
+    items: cleanItems, price: numPrice, totalValue,
+    active: true, salesCount: 0,
+    createdAt: new Date().toISOString(),
+  }
+  db.packages.push(pkg)
+  res.status(201).json(pkg)
+})
+
+app.put('/api/packages/:id', auth, (req, res) => {
+  const pkg = db.packages.find(p => p.id === req.params.id && p.ownerId === req.user.id)
+  if (!pkg) return res.status(404).json({ error: 'Package introuvable' })
+  const { name, description, emoji, items, price, active } = req.body
+  if (name !== undefined) pkg.name = name.trim()
+  if (description !== undefined) pkg.description = description.trim()
+  if (emoji !== undefined) pkg.emoji = emoji
+  if (items !== undefined) { pkg.items = normalizePackageItems(items); pkg.totalValue = pkg.items.reduce((s, it) => s + (it.value || 0), 0) }
+  if (price !== undefined) pkg.price = Number(price) || pkg.price
+  if (active !== undefined) pkg.active = !!active
+  res.json(pkg)
+})
+
+app.delete('/api/packages/:id', auth, (req, res) => {
+  const idx = db.packages.findIndex(p => p.id === req.params.id && p.ownerId === req.user.id)
+  if (idx === -1) return res.status(404).json({ error: 'Package introuvable' })
+  db.packages.splice(idx, 1)
+  res.json({ ok: true })
+})
+
+// Acheter un package (client) — Stripe Checkout + fallback
+app.post('/api/packages/buy/:id', auth, async (req, res) => {
+  if (req.user.role !== 'client') return res.status(403).json({ error: 'Client uniquement' })
+  const pkg = db.packages.find(p => p.id === req.params.id && p.active)
+  if (!pkg) return res.status(404).json({ error: 'Package introuvable' })
+  const pro = db.users.find(u => u.id === pkg.ownerId)
+  const rate = getCommissionRate(pro?.coachPlan)
+  const commission = Math.round(pkg.price * rate)
+
+  if (stripe) {
+    try {
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'payment',
+        line_items: [{
+          price_data: {
+            currency: 'eur',
+            product_data: { name: `Package : ${pkg.name}`, description: pkg.items.map(i => i.name).join(' + ').slice(0, 200) },
+            unit_amount: Math.round(pkg.price * 100),
+          },
+          quantity: 1,
+        }],
+        success_url: `${FRONTEND_URL}/marketplace/${pkg.ownerId}?package=${pkg.id}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${FRONTEND_URL}/marketplace/${pkg.ownerId}`,
+        metadata: { type: 'package', packageId: pkg.id, clientId: req.user.id, commission: String(commission) },
+      })
+      return res.json({ url: session.url })
+    } catch (err) {
+      console.error('Stripe package error:', err)
+    }
+  }
+
+  // Fallback sans Stripe
+  pkg.salesCount = (pkg.salesCount || 0) + 1
+  const sale = {
+    id: `pkgsale-${Date.now()}`,
+    packageId: pkg.id, packageName: pkg.name,
+    proId: pkg.ownerId, clientId: req.user.id, clientName: req.user.name,
+    amount: pkg.price, commission, proEarns: pkg.price - commission,
+    createdAt: new Date().toISOString(),
+  }
+  db.hires.push({ ...sale, type: 'package', duration: 0, status: 'completed', proName: pro?.name })
+  res.json({ ok: true, sale, message: `Package "${pkg.name}" acheté pour ${pkg.price}€.` })
 })
 
 // ─── IA PROACTIVE — COACH INSIGHTS ─────────────────────
