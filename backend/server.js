@@ -125,6 +125,7 @@ const PERSIST_FILE = process.env.PERSIST_FILE
 const FILE_PATH = (PERSIST_FILE && PERSIST_FILE !== '1') ? PERSIST_FILE : './.data/snapshot.json'
 let pgPool = null
 let persistMode = 'memory'
+const BOOT_TIME = new Date().toISOString()
 
 async function initPersistence() {
   try {
@@ -3295,5 +3296,16 @@ app.get('/api/posture/admin-all', auth, (req, res) => {
 })
 
 // ─── START ──────────────────────────────────────────────
+
+// Santé / diagnostic (public) — expose le mode de persistance et l'heure de démarrage
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    version: 'v3-health',
+    persistMode,
+    bootTime: BOOT_TIME,
+    counts: { users: db.users.length, packages: db.packages.length, favorites: db.favorites.length },
+  })
+})
 
 app.listen(PORT, () => console.log(`Backend ULTRA running on http://localhost:${PORT}`))
