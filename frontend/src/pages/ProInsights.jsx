@@ -189,7 +189,46 @@ function InsightCard({ insight, onDismiss, onAction }) {
   )
 }
 
+// ⚠️ BETA — Features IA désactivées (placeholder). Pour réactiver, supprimer ce bloc + le `return <AIComingSoon ... />` ci-dessous.
+function AIComingSoon({ title, icon = '🤖', desc }) {
+  const navigate = useNavigate()
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 10,
+        background: 'var(--bg-card)', borderBottom: '1px solid var(--border)',
+        padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 20, cursor: 'pointer' }}>←</button>
+        <p style={{ fontWeight: 900, fontSize: 16, color: 'var(--text-primary)' }}>{title}</p>
+      </div>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: 'clamp(24px,8vw,64px) 20px' }}>
+        <div style={{
+          textAlign: 'center', padding: '48px 24px',
+          background: 'var(--bg-card)', borderRadius: 20, border: '1px solid var(--border)',
+        }}>
+          <p style={{ fontSize: 48, marginBottom: 16 }}>{icon}</p>
+          <p style={{ fontWeight: 900, fontSize: 19, color: 'var(--text-primary)', marginBottom: 10 }}>
+            Bientôt disponible
+          </p>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 340, margin: '0 auto' }}>
+            {desc || "Cette analyse IA est en cours de finalisation et sera activée très prochainement."}
+          </p>
+          <div style={{
+            marginTop: 20, display: 'inline-block',
+            background: 'var(--accent-subtle)', color: 'var(--accent)',
+            fontSize: 12, fontWeight: 800, padding: '6px 14px', borderRadius: 20,
+          }}>🤖 En cours de finalisation</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ProInsights() {
+  // ⚠️ BETA — désactivé. Retirer cette ligne pour réactiver le Radar Patient IA.
+  return <AIComingSoon title="Radar Patient IA" icon="📡" desc="La surveillance IA de la charge réelle et des risques de rechute de tes patients est en cours de finalisation." />
+
   const navigate = useNavigate()
   const { token } = useStore()
   const [insights, setInsights] = useState([])

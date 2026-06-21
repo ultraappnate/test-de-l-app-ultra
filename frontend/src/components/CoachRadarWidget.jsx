@@ -14,6 +14,29 @@ const TYPE_CONFIG = {
 }
 
 export default function CoachRadarWidget() {
+  // ⚠️ BETA — Radar Coach IA désactivé. Retirer ce bloc pour réactiver.
+  return (
+    <div style={{
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      borderRadius: 20, padding: '16px', marginBottom: 16,
+      display: 'flex', alignItems: 'center', gap: 12,
+    }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+        background: 'var(--accent-subtle)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+      }}>🤖</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontWeight: 900, fontSize: 14, color: 'var(--text-primary)' }}>Radar Coach IA</p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Bientôt disponible</p>
+      </div>
+      <span style={{
+        background: 'var(--accent-subtle)', color: 'var(--accent)',
+        fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 20, flexShrink: 0,
+      }}>En finalisation</span>
+    </div>
+  )
+
   const navigate = useNavigate()
   const { token } = useStore()
   const [insights, setInsights] = useState([])

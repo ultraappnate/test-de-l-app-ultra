@@ -3,26 +3,12 @@ import { useEffect, useState } from 'react'
 const MONTHS = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc']
 const now = new Date().getMonth()
 
-const MONTHLY = [320,480,360,600,440,720,560,800,680,960,760,880].slice(0, now + 1)
-const MONTHLY_DATA = MONTHS.slice(0, now + 1).map((m, i) => ({ label: m, value: MONTHLY[i] }))
+const MONTHLY = MONTHS.slice(0, now + 1).map(() => 0)
+const MONTHLY_DATA = MONTHS.slice(0, now + 1).map((m) => ({ label: m, value: 0 }))
 
-const PROGRAMS = [
-  { title: 'Force Absolue',        price: 49,  sales: 12, color: 'var(--accent)' },
-  { title: 'Transformation 90j',   price: 99,  sales: 8,  color: '#3a52a8' },
-  { title: 'Prise de Masse Clean', price: 89,  sales: 6,  color: '#4ade80' },
-  { title: 'HIIT Brûle-Graisses',  price: 19,  sales: 18, color: '#e8a020' },
-  { title: 'Nutrition HP',         price: 39,  sales: 5,  color: '#f59e0b' },
-  { title: 'Athlete Elite',        price: 129, sales: 3,  color: '#a855f7' },
-]
+const PROGRAMS = []
 
-const TRANSACTIONS = [
-  { name: 'Alexandre M.', program: 'Force Absolue',       amount: 49,  date: "Aujourd'hui, 09:14", status: 'paid' },
-  { name: 'Marie D.',     program: 'Transformation 90j',  amount: 99,  date: "Aujourd'hui, 08:02", status: 'paid' },
-  { name: 'Lucas P.',     program: 'Athlete Elite',        amount: 129, date: 'Hier, 16:45',        status: 'paid' },
-  { name: 'Sophie M.',    program: 'HIIT Brûle-Graisses', amount: 19,  date: 'Hier, 11:30',        status: 'paid' },
-  { name: 'Thomas B.',    program: 'Nutrition HP',         amount: 39,  date: 'Il y a 2 jours',     status: 'paid' },
-  { name: 'Camille R.',   program: 'Force Absolue',        amount: 49,  date: 'Il y a 3 jours',     status: 'refunded' },
-]
+const TRANSACTIONS = []
 
 function RevenueBar({ data }) {
   const max = Math.max(...data.map(d => d.value), 1)
@@ -49,18 +35,18 @@ export default function Revenue() {
   useEffect(() => { const t = setTimeout(() => setVisible(true), 60); return () => clearTimeout(t) }, [])
 
   const totalRevenue   = MONTHLY.reduce((a, b) => a + b, 0)
-  const thisMonth      = MONTHLY[MONTHLY.length - 1]
+  const thisMonth      = MONTHLY[MONTHLY.length - 1] || 0
   const lastMonth      = MONTHLY[MONTHLY.length - 2] || 0
   const growth         = lastMonth ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : 0
   const totalSales     = PROGRAMS.reduce((a, p) => a + p.sales, 0)
-  const topProgram     = [...PROGRAMS].sort((a, b) => b.price * b.sales - a.price * a.sales)[0]
-  const maxRevProg     = Math.max(...PROGRAMS.map(p => p.price * p.sales))
+  const maxRevProg     = Math.max(...PROGRAMS.map(p => p.price * p.sales), 1)
+  const avgCart        = totalSales ? Math.round(totalRevenue / totalSales) : 0
 
   const KPIs = [
-    { label: 'Revenus totaux', value: `${totalRevenue.toLocaleString('fr')}€`, color: '#4ade80', icon: '💰', trend: `+${growth}% vs mois dernier` },
-    { label: 'Ce mois',        value: `${thisMonth}€`,                          color: 'var(--accent)', icon: '📅', trend: growth >= 0 ? `↑ vs ${lastMonth}€` : `↓ vs ${lastMonth}€` },
-    { label: 'Ventes totales', value: totalSales,                               color: '#3a52a8', icon: '🛒', trend: 'toutes périodes' },
-    { label: 'Panier moyen',   value: `${Math.round(totalRevenue / totalSales)}€`, color: '#e8a020', icon: '📊', trend: 'par vente' },
+    { label: 'Revenus totaux', value: `${totalRevenue.toLocaleString('fr')}€`, color: '#4ade80',       icon: '💰', trend: 'toutes périodes' },
+    { label: 'Ce mois',        value: `${thisMonth}€`,                          color: 'var(--accent)', icon: '📅', trend: 'mois en cours' },
+    { label: 'Ventes totales', value: totalSales,                               color: '#3a52a8',       icon: '🛒', trend: 'toutes périodes' },
+    { label: 'Panier moyen',   value: `${avgCart}€`,                            color: '#e8a020',       icon: '📊', trend: 'par vente' },
   ]
 
   return (
@@ -102,8 +88,13 @@ export default function Revenue() {
           {/* Top program */}
           <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <p className="text-[10px] font-black tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>Par programme</p>
+            {PROGRAMS.length === 0 && (
+              <p className="text-xs py-6 text-center" style={{ color: 'var(--text-faint)' }}>
+                La répartition par programme apparaîtra ici dès ta première vente.
+              </p>
+            )}
             <div className="space-y-3">
-              {PROGRAMS.sort((a, b) => b.price * b.sales - a.price * a.sales).map(p => {
+              {[...PROGRAMS].sort((a, b) => b.price * b.sales - a.price * a.sales).map(p => {
                 const rev = p.price * p.sales
                 const pct = Math.round((rev / maxRevProg) * 100)
                 return (
@@ -128,6 +119,12 @@ export default function Revenue() {
             <p className="text-[10px] font-black tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>Dernières transactions</p>
           </div>
           <div>
+            {TRANSACTIONS.length === 0 && (
+              <div className="px-5 py-10 text-center">
+                <p className="text-sm font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>Aucune transaction pour l'instant</p>
+                <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Tes ventes apparaîtront ici dès ta première vente.</p>
+              </div>
+            )}
             {TRANSACTIONS.map((t, i) => (
               <div key={i} className="flex items-center gap-3 px-4 py-3.5 transition"
                 style={{ borderBottom: i < TRANSACTIONS.length - 1 ? '1px solid var(--border)' : 'none' }}

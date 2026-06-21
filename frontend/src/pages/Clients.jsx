@@ -1,15 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { useStore } from '../store'
 
-const MOCK_CLIENTS = [
-  { id: 'c1', name: 'Alexandre Martin', email: 'alex@mail.com', program: 'Force Absolue', week: 3, totalWeeks: 12, lastActive: 'il y a 12 min', compliance: 94, streak: 14, weight: 82, goal: 'Prise de masse', status: 'active' },
-  { id: 'c2', name: 'Marie Dubois',     email: 'marie@mail.com', program: 'Transformation 90j', week: 7, totalWeeks: 12, lastActive: 'il y a 1h', compliance: 87, streak: 21, weight: 61, goal: 'Sèche', status: 'active' },
-  { id: 'c3', name: 'Thomas Bernard',  email: 'thomas@mail.com', program: 'HIIT Brûle-Graisses', week: 2, totalWeeks: 6, lastActive: 'il y a 3h', compliance: 72, streak: 5, weight: 94, goal: 'Perte de poids', status: 'active' },
-  { id: 'c4', name: 'Lucas Petit',     email: 'lucas@mail.com', program: 'Powerlifting 8 sem.', week: 5, totalWeeks: 8, lastActive: 'hier', compliance: 98, streak: 32, weight: 88, goal: 'Performance', status: 'active' },
-  { id: 'c5', name: 'Sophie Moreau',   email: 'sophie@mail.com', program: 'Yoga Athlète', week: 1, totalWeeks: 8, lastActive: 'il y a 2j', compliance: 55, streak: 3, weight: 58, goal: 'Mobilité', status: 'inactive' },
-  { id: 'c6', name: 'Nicolas Leroy',   email: 'nico@mail.com', program: '—', week: 0, totalWeeks: 0, lastActive: 'il y a 5j', compliance: 0, streak: 0, weight: 77, goal: 'Définir', status: 'new' },
-]
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+
+// Adapte un client réel renvoyé par l'API au format attendu par les cartes.
+function adaptClient(u) {
+  return {
+    id: u.id,
+    name: u.name || u.email || 'Client',
+    email: u.email || '',
+    program: u.program || u.currentProgram?.title || '—',
+    week: u.week ?? 0,
+    totalWeeks: u.totalWeeks ?? u.currentProgram?.weeks ?? 0,
+    lastActive: u.lastActive || '—',
+    compliance: u.compliance ?? 0,
+    streak: u.streak ?? 0,
+    weight: u.weight ?? '—',
+    goal: u.goal || '—',
+    status: u.status || 'new',
+  }
+}
 
 function complianceColor(v) {
   if (v >= 90) return '#4ade80'
@@ -132,14 +144,26 @@ const COACH_LIMIT_FREE = 3
 
 export default function Clients() {
   const navigate = useNavigate()
-  const { user } = useStore()
+  const { user, token } = useStore()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [visible, setVisible] = useState(false)
+  const [clients, setClients] = useState([])
+  const [loading, setLoading] = useState(true)
   useEffect(() => { const t = setTimeout(() => setVisible(true), 60); return () => clearTimeout(t) }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    if (!token) { setLoading(false); return }
+    axios.get(`${API}/coach/clients`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => { if (!cancelled) setClients(Array.isArray(res.data) ? res.data.map(adaptClient) : []) })
+      .catch(() => { if (!cancelled) setClients([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [token])
+
   const isFreePlan = !user?.coachPlan || user?.coachPlan === 'free'
-  const atLimit = isFreePlan && MOCK_CLIENTS.length >= COACH_LIMIT_FREE
+  const atLimit = isFreePlan && clients.length >= COACH_LIMIT_FREE
 
   const filters = [
     { id: 'all',      label: 'Tous' },
@@ -148,14 +172,16 @@ export default function Clients() {
     { id: 'new',      label: 'Nouveaux' },
   ]
 
-  const filtered = MOCK_CLIENTS.filter(c => {
+  const filtered = clients.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase())
     const matchFilter = filter === 'all' || c.status === filter
     return matchSearch && matchFilter
   })
 
-  const active = MOCK_CLIENTS.filter(c => c.status === 'active').length
-  const avgCompliance = Math.round(MOCK_CLIENTS.filter(c => c.compliance > 0).reduce((s, c) => s + c.compliance, 0) / MOCK_CLIENTS.filter(c => c.compliance > 0).length)
+  const active = clients.filter(c => c.status === 'active').length
+  const compliant = clients.filter(c => c.compliance > 0)
+  const avgCompliance = compliant.length ? Math.round(compliant.reduce((s, c) => s + c.compliance, 0) / compliant.length) : 0
+  const bestStreak = clients.length ? Math.max(...clients.map(c => c.streak || 0)) : 0
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)', padding: 'clamp(16px,4vw,32px)' }}>
@@ -165,19 +191,19 @@ export default function Clients() {
         <div className={`mb-6 transition-all duration-600 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-1" style={{ color: 'var(--gold)' }}>Coach</p>
           <h1 className="font-black" style={{ color: 'var(--text-primary)', fontSize:'clamp(22px,6vw,36px)' }}>Mes clients</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{MOCK_CLIENTS.length} clients · {active} actifs en ce moment</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{clients.length} client{clients.length > 1 ? 's' : ''} · {active} actif{active > 1 ? 's' : ''} en ce moment</p>
         </div>
 
         {/* Bannière limite plan gratuit */}
-        {isFreePlan && (
+        {isFreePlan && clients.length > 0 && (
           <div className="mb-5 p-4 rounded-2xl flex items-center justify-between gap-3"
             style={{ background: atLimit ? 'rgba(160,56,72,0.12)' : 'var(--bg-card)', border: `1px solid ${atLimit ? 'var(--accent)' : 'var(--border)'}` }}>
             <div>
               <p className="text-sm font-black" style={{ color: atLimit ? 'var(--accent)' : 'var(--text-primary)' }}>
-                {atLimit ? '⚠️ Limite atteinte — plan Gratuit' : `Plan Gratuit · ${MOCK_CLIENTS.length}/${COACH_LIMIT_FREE} clients`}
+                {atLimit ? '⚠️ Limite atteinte — plan Gratuit' : `Plan Gratuit · ${clients.length}/${COACH_LIMIT_FREE} clients`}
               </p>
               <p className="text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                {atLimit ? 'Passe au Pro pour accueillir jusqu\'à 50 clients.' : `Il te reste ${COACH_LIMIT_FREE - MOCK_CLIENTS.length} place(s).`}
+                {atLimit ? 'Passe au Pro pour accueillir jusqu\'à 50 clients.' : `Il te reste ${Math.max(0, COACH_LIMIT_FREE - clients.length)} place(s).`}
               </p>
             </div>
             <button onClick={() => navigate('/coach/upgrade')}
@@ -189,12 +215,13 @@ export default function Clients() {
         )}
 
         {/* Summary stats — 2 cols mobile, 4 desktop */}
+        {clients.length > 0 && (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12, marginBottom:20 }} className="cli-stats">
           {[
-            { label: 'Total clients', value: MOCK_CLIENTS.length, color: 'var(--accent)', icon: '👥' },
+            { label: 'Total clients', value: clients.length, color: 'var(--accent)', icon: '👥' },
             { label: 'Actifs', value: active, color: '#4ade80', icon: '🟢' },
             { label: 'Compliance moy.', value: `${avgCompliance}%`, color: '#e8a020', icon: '📊' },
-            { label: 'Streak record', value: `${Math.max(...MOCK_CLIENTS.map(c => c.streak))}j`, color: '#f59e0b', icon: '🔥' },
+            { label: 'Streak record', value: `${bestStreak}j`, color: '#f59e0b', icon: '🔥' },
           ].map((s, i) => (
             <div key={s.label} className={`rounded-2xl p-4 transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
               style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', transitionDelay: `${i * 80}ms` }}>
@@ -206,8 +233,28 @@ export default function Clients() {
             </div>
           ))}
         </div>
+        )}
+
+        {/* État vide — coach sans clients */}
+        {!loading && clients.length === 0 && (
+          <div className="rounded-2xl text-center"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', padding: 'clamp(32px,8vw,64px) 24px' }}>
+            <p className="text-5xl mb-4">👥</p>
+            <h2 className="font-black mb-2" style={{ color: 'var(--text-primary)', fontSize: 'clamp(18px,4vw,24px)' }}>Aucun client pour l'instant</h2>
+            <p className="text-sm mb-6 mx-auto" style={{ color: 'var(--text-secondary)', maxWidth: 380 }}>
+              Partage ton profil sur la Marketplace pour être contacté par des sportifs.
+            </p>
+            <button onClick={() => navigate('/marketplace')}
+              className="px-6 py-3 rounded-xl text-sm font-black text-white"
+              style={{ background: 'var(--accent)' }}>
+              Aller sur la Marketplace
+            </button>
+          </div>
+        )}
 
         {/* Search + filters — empilé mobile */}
+        {clients.length > 0 && (
+        <>
         <div className="flex items-center gap-3 mb-6 flex-wrap">
           <div className="relative flex-1" style={{ minWidth:180 }}>
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-faint)' }}>🔍</span>
@@ -246,6 +293,8 @@ export default function Clients() {
             <p className="text-4xl mb-3">🔍</p>
             <p className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>Aucun client trouvé</p>
           </div>
+        )}
+        </>
         )}
       </div>
 

@@ -43,16 +43,11 @@ function ProgressRing({ value, max, size = 100, stroke = 7, color, label, sub })
   )
 }
 
-const WEIGHT_DATA    = [84, 83.5, 83, 82.5, 82, 81.8, 81.5, 81, 80.8, 80.5, 80.2, 80]
-const BODYFAT_DATA   = [18, 17.8, 17.5, 17.2, 17, 16.8, 16.5, 16.2, 16, 15.8, 15.5, 15.2]
-const MUSCLE_DATA    = [70, 70.2, 70.5, 70.8, 71, 71.3, 71.6, 72, 72.3, 72.6, 73, 73.5]
+const WEIGHT_DATA    = []
+const BODYFAT_DATA   = []
+const MUSCLE_DATA    = []
 
-const PRS = [
-  { exercise: 'Back Squat', value: '120 kg', date: 'Il y a 3j', trend: '+5kg', color: 'var(--accent)' },
-  { exercise: 'Deadlift',   value: '145 kg', date: 'Hier',      trend: '+10kg',color: '#3a52a8' },
-  { exercise: 'Bench Press',value: '90 kg',  date: 'Hier',      trend: '+2.5kg',color: '#e8a020' },
-  { exercise: 'OHP',        value: '65 kg',  date: 'Il y a 1 sem', trend: '+2.5kg', color: '#27ae60' },
-]
+const PRS = []
 
 const WEEKS = ['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10','S11','S12']
 
@@ -72,7 +67,8 @@ export default function Progress() {
 
   const current = metrics[activeMetric]
   const cfg = metricConfig[activeMetric]
-  const delta = (current[current.length - 1] - current[0]).toFixed(1)
+  const hasData = current.length > 0
+  const delta = hasData ? (current[current.length - 1] - current[0]).toFixed(1) : '0.0'
   const isPositive = activeMetric === 'muscle' ? delta > 0 : delta < 0
 
   return (
@@ -107,17 +103,17 @@ export default function Progress() {
           <div className={`rounded-2xl p-5 flex flex-col items-center justify-center transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <p className="text-[10px] font-black tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>Programme actif</p>
-            <ProgressRing value={7} max={12} color="var(--accent)" label="Force Absolue" sub="Semaine 7 / 12" size={90}/>
+            <ProgressRing value={0} max={12} color="var(--accent)" label="Aucun programme" sub="Démarre un programme" size={90}/>
           </div>
           <div className={`rounded-2xl p-5 transition-all duration-500 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', transitionDelay: '80ms' }}>
             <p className="text-[10px] font-black tracking-widest uppercase mb-4" style={{ color: 'var(--text-muted)' }}>Semaines complétées</p>
             <div className="flex gap-2">
-              {WEEKS.map((w, i) => (
+              {WEEKS.map((w) => (
                 <div key={w} className="flex-1 flex flex-col items-center gap-1">
                   <div className="w-full rounded-lg transition-all duration-300"
-                    style={{ height: 32, background: i < 7 ? 'var(--accent)' : 'var(--bg-base)', border: `1px solid ${i === 6 ? 'var(--accent)' : 'var(--border)'}`, opacity: i < 7 ? 1 : 0.4 }}/>
-                  <span className="text-[8px] font-bold" style={{ color: i < 7 ? 'var(--accent)' : 'var(--text-faint)' }}>{w}</span>
+                    style={{ height: 32, background: 'var(--bg-base)', border: '1px solid var(--border)', opacity: 0.4 }}/>
+                  <span className="text-[8px] font-bold" style={{ color: 'var(--text-faint)' }}>{w}</span>
                 </div>
               ))}
             </div>
@@ -144,6 +140,12 @@ export default function Progress() {
               ))}
             </div>
             {/* Chart area */}
+            {!hasData && (
+              <div className="flex flex-col items-center justify-center text-center" style={{ height: 140 }}>
+                <p className="text-sm font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>Aucune donnée pour l'instant</p>
+                <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Tes mesures apparaîtront ici dès ta première pesée.</p>
+              </div>
+            )}
             <div className="flex items-end gap-2 mb-2" style={{ height: 140 }}>
               {current.map((v, i) => {
                 const max = Math.max(...current), min = Math.min(...current)
@@ -165,22 +167,24 @@ export default function Progress() {
               })}
             </div>
             {/* Delta */}
-            <div className="flex items-center gap-2 mt-3">
-              <span className="text-xs font-black px-2 py-1 rounded-full"
-                style={{ background: isPositive ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)', color: isPositive ? '#4ade80' : '#f87171' }}>
-                {delta > 0 ? '+' : ''}{delta}{cfg.unit}
-              </span>
-              <span className="text-xs" style={{ color: 'var(--text-faint)' }}>depuis le début du programme</span>
-            </div>
+            {hasData && (
+              <div className="flex items-center gap-2 mt-3">
+                <span className="text-xs font-black px-2 py-1 rounded-full"
+                  style={{ background: isPositive ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)', color: isPositive ? '#4ade80' : '#f87171' }}>
+                  {delta > 0 ? '+' : ''}{delta}{cfg.unit}
+                </span>
+                <span className="text-xs" style={{ color: 'var(--text-faint)' }}>depuis le début du programme</span>
+              </div>
+            )}
           </div>
 
           {/* Stats — 2 cols mobile */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10 }} className="prog-stats">
             {[
-              { label: 'Poids actuel',   value: `${WEIGHT_DATA[WEIGHT_DATA.length-1]} kg`,  color: 'var(--accent)', icon: '⚖️' },
-              { label: '% Graisses',     value: `${BODYFAT_DATA[BODYFAT_DATA.length-1]}%`,  color: '#f87171',       icon: '📉' },
-              { label: 'Masse maigre',   value: `${MUSCLE_DATA[MUSCLE_DATA.length-1]} kg`,  color: '#4ade80',       icon: '💪' },
-              { label: 'Streak actuel',  value: '21 jours',                                  color: '#f59e0b',       icon: '🔥' },
+              { label: 'Poids actuel',   value: WEIGHT_DATA.length  ? `${WEIGHT_DATA[WEIGHT_DATA.length-1]} kg`  : '—', color: 'var(--accent)', icon: '⚖️' },
+              { label: '% Graisses',     value: BODYFAT_DATA.length ? `${BODYFAT_DATA[BODYFAT_DATA.length-1]}%`  : '—', color: '#f87171',       icon: '📉' },
+              { label: 'Masse maigre',   value: MUSCLE_DATA.length  ? `${MUSCLE_DATA[MUSCLE_DATA.length-1]} kg`  : '—', color: '#4ade80',       icon: '💪' },
+              { label: 'Streak actuel',  value: '—',                                                                     color: '#f59e0b',       icon: '🔥' },
             ].map((s, i) => (
               <div key={s.label} className="rounded-2xl p-4 flex items-center gap-3"
                 style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
@@ -199,6 +203,12 @@ export default function Progress() {
           <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
             <p className="text-[10px] font-black tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>🏆 Records personnels</p>
           </div>
+          {PRS.length === 0 && (
+            <div className="px-5 py-10 text-center">
+              <p className="text-sm font-bold mb-1" style={{ color: 'var(--text-secondary)' }}>Aucun record pour l'instant</p>
+              <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Tes records personnels apparaîtront ici dès tes premières données.</p>
+            </div>
+          )}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)' }} className="prog-prs">
             {PRS.map((pr, i) => (
               <div key={pr.exercise} className="p-4 text-center"

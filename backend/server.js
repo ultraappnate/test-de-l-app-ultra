@@ -17,7 +17,14 @@ const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SEC
 
 const app = express()
 const PORT = 5001
-const JWT_SECRET = 'ultra-secret-key-change-in-prod'
+const JWT_SECRET = process.env.JWT_SECRET || 'ultra-secret-key-change-in-prod'
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️  JWT_SECRET non défini → secret par défaut (NON sécurisé). Définis JWT_SECRET sur Railway avant la beta.')
+}
+if (!process.env.ADMIN_PASSWORD) {
+  console.warn('⚠️  ADMIN_PASSWORD non défini → compte admin@ultra.com VERROUILLÉ (mot de passe aléatoire). Définis ADMIN_PASSWORD sur Railway pour y accéder.')
+}
+const ALLOWED_ROLES = ['client', 'coach', 'nutritionist', 'health_pro'] // 'admin' interdit à l'inscription
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://test-de-l-app-ultra.vercel.app'
 
@@ -228,7 +235,7 @@ function startAutosave() {
     { id: 'client-1',   name: 'Alex Client',      email: 'client@ultra.com',         password: 'ultra2024', role: 'client',
       onboardingDone: true, objective: 'Prise de masse', level: 'Intermédiaire',
     },
-    { id: 'admin-1',    name: 'Admin Ultra',       email: 'admin@ultra.com',          password: 'ultra2024', role: 'admin'         },
+    { id: 'admin-1',    name: 'Admin Ultra',       email: 'admin@ultra.com',          password: process.env.ADMIN_PASSWORD || ('locked-' + uuidv4()), role: 'admin' },
     { id: 'nutri-1',    name: 'Sarah Dupont',      email: 'nutri@ultra.com',          password: 'ultra2024', role: 'nutritionist',
       bio: 'Diététicienne DE + nutritionniste du sport. Spécialiste rééquilibrage et nutrition de performance.',
       specialties: ['Rééquilibrage alimentaire','Nutrition sportive','Perte de poids'], price: 70, rating: 4.8, reviewCount: 98,
@@ -365,12 +372,24 @@ function auth(req, res, next) {
 
 // ─── AUTH ───────────────────────────────────────────────
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 app.post('/api/auth/register', async (req, res) => {
-  const { email, password, name, role, profession, rpps } = req.body
+  let { email, password, name, role, profession, rpps } = req.body
   if (!email || !password || !name) {
     return res.status(400).json({ message: 'Tous les champs sont requis' })
   }
-  if (db.users.find(u => u.email === email)) {
+  email = String(email).trim().toLowerCase()
+  name = String(name).trim()
+  if (!EMAIL_RE.test(email)) {
+    return res.status(400).json({ message: 'Adresse email invalide' })
+  }
+  if (String(password).length < 8) {
+    return res.status(400).json({ message: 'Le mot de passe doit faire au moins 8 caractères' })
+  }
+  // Rôle restreint : impossible de s'inscrire en admin
+  const safeRole = ALLOWED_ROLES.includes(role) ? role : 'client'
+  if (db.users.find(u => u.email.toLowerCase() === email)) {
     return res.status(400).json({ message: 'Email déjà utilisé' })
   }
   const hash = await bcrypt.hash(password, 10)
@@ -379,13 +398,13 @@ app.post('/api/auth/register', async (req, res) => {
     email,
     password: hash,
     name,
-    role: role || 'client',
+    role: safeRole,
     isPremium: false,
     premiumSince: null,
-    coachPlan: role === 'coach' ? 'free' : null, // free | pro | elite
+    coachPlan: safeRole === 'coach' ? 'free' : null, // free | pro | elite
     coachPlanSince: null,
     // Champs professionnel de santé
-    ...(role === 'health_pro' && { profession: profession || 'Professionnel de santé', rpps: rpps || '', verified: false }),
+    ...(safeRole === 'health_pro' && { profession: profession || 'Professionnel de santé', rpps: rpps || '', verified: false }),
     createdAt: new Date().toISOString(),
   }
   db.users.push(user)
@@ -394,12 +413,33 @@ app.post('/api/auth/register', async (req, res) => {
   res.status(201).json({ user: safeUser, token })
 })
 
+// Anti-brute-force : limite d'essais de connexion par email (fenêtre glissante)
+const loginAttempts = new Map() // email -> { count, first }
+const MAX_ATTEMPTS = 8
+const ATTEMPT_WINDOW = 15 * 60 * 1000 // 15 min
+function tooManyAttempts(email) {
+  const a = loginAttempts.get(email)
+  if (!a) return false
+  if (Date.now() - a.first > ATTEMPT_WINDOW) { loginAttempts.delete(email); return false }
+  return a.count >= MAX_ATTEMPTS
+}
+function recordFail(email) {
+  const a = loginAttempts.get(email)
+  if (!a || Date.now() - a.first > ATTEMPT_WINDOW) loginAttempts.set(email, { count: 1, first: Date.now() })
+  else a.count++
+}
+
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body
-  const user = db.users.find(u => u.email === email)
-  if (!user) return res.status(401).json({ message: 'Email ou mot de passe incorrect' })
-  const valid = await bcrypt.compare(password, user.password)
-  if (!valid) return res.status(401).json({ message: 'Email ou mot de passe incorrect' })
+  let { email, password } = req.body
+  email = String(email || '').trim().toLowerCase()
+  if (tooManyAttempts(email)) {
+    return res.status(429).json({ message: 'Trop de tentatives. Réessaie dans 15 minutes.' })
+  }
+  const user = db.users.find(u => u.email.toLowerCase() === email)
+  if (!user) { recordFail(email); return res.status(401).json({ message: 'Email ou mot de passe incorrect' }) }
+  const valid = await bcrypt.compare(password || '', user.password)
+  if (!valid) { recordFail(email); return res.status(401).json({ message: 'Email ou mot de passe incorrect' }) }
+  loginAttempts.delete(email)
   const { password: _, ...safeUser } = user
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' })
   res.json({ user: safeUser, token })
@@ -506,7 +546,8 @@ app.get('/api/discover', (req, res) => {
         profession: u.profession || null,
         bio: u.bio || '', specialties: u.specialties || [],
         price: u.price || 0, rating: u.rating || 4.5, reviewCount: u.reviewCount || 0,
-        location: u.location, available: u.available !== false,
+        location: u.location ? { city: u.location.city || '', lat: u.location.lat, lng: u.location.lng } : null,
+        available: u.available !== false,
         online: u.online !== false, inPerson: u.inPerson !== false,
         avatarColor: u.avatarColor || '#a03848', verified: u.verified || false,
         avatar: u.avatar || null, distance: dist ? Math.round(dist * 10) / 10 : null,
@@ -531,7 +572,8 @@ app.get('/api/discover/:id', (req, res) => {
     profession: u.profession || null, rpps: u.rpps || '',
     bio: u.bio || '', specialties: u.specialties || [],
     price: u.price || 0, rating: u.rating || 4.5, reviewCount: u.reviewCount || 0,
-    location: u.location || null, available: u.available !== false,
+    location: u.location ? { city: u.location.city || '', lat: u.location.lat, lng: u.location.lng } : null,
+    available: u.available !== false,
     online: u.online !== false, inPerson: u.inPerson !== false,
     avatarColor: u.avatarColor || '#a03848', verified: u.verified || false,
     avatar: u.avatar || null, banner: u.banner || null,
@@ -780,15 +822,25 @@ app.get('/api/nutrition/goals', auth, (req, res) => {
 // ─── NUTRITION — COACH ──────────────────────────────────
 
 // Liste des clients (pour le coach)
+// Un coach n'accède qu'à SES clients (admin = tous)
+function coachCanAccessClient(reqUser, clientId) {
+  if (reqUser.role === 'admin') return true
+  const client = db.users.find(u => u.id === clientId && u.role === 'client')
+  return !!client && client.coachId === reqUser.id
+}
+
 app.get('/api/coach/clients', auth, (req, res) => {
   if (!['coach', 'admin'].includes(req.user.role)) return res.status(403).json({ message: 'Accès refusé' })
-  const clients = db.users.filter(u => u.role === 'client').map(({ password, ...u }) => u)
+  const clients = db.users
+    .filter(u => u.role === 'client' && (req.user.role === 'admin' || u.coachId === req.user.id))
+    .map(({ password, ...u }) => u)
   res.json(clients)
 })
 
 // Voir le log nutrition d'un client
 app.get('/api/coach/clients/:clientId/nutrition', auth, (req, res) => {
   if (!['coach', 'admin'].includes(req.user.role)) return res.status(403).json({ message: 'Accès refusé' })
+  if (!coachCanAccessClient(req.user, req.params.clientId)) return res.status(403).json({ message: 'Ce client ne fait pas partie de tes clients' })
   const date  = req.query.date || new Date().toISOString().slice(0, 10)
   const log   = db.nutritionLogs[req.params.clientId]?.[date] || { meals: [] }
   const goals = db.nutritionGoals[req.params.clientId] || { calories: 2000, protein: 150, carbs: 220, fat: 70 }
@@ -799,6 +851,7 @@ app.get('/api/coach/clients/:clientId/nutrition', auth, (req, res) => {
 // Définir les objectifs macro d'un client (coach → client)
 app.put('/api/coach/clients/:clientId/nutrition/goals', auth, (req, res) => {
   if (!['coach', 'admin'].includes(req.user.role)) return res.status(403).json({ message: 'Accès refusé' })
+  if (!coachCanAccessClient(req.user, req.params.clientId)) return res.status(403).json({ message: 'Ce client ne fait pas partie de tes clients' })
   const { calories, protein, carbs, fat } = req.body
   db.nutritionGoals[req.params.clientId] = { calories, protein, carbs, fat, setBy: req.user.id, updatedAt: new Date().toISOString() }
   res.json({ success: true })
@@ -807,6 +860,7 @@ app.put('/api/coach/clients/:clientId/nutrition/goals', auth, (req, res) => {
 // SSE — stream live du log d'un client (coach)
 app.get('/api/coach/clients/:clientId/nutrition/stream', auth, (req, res) => {
   if (!['coach', 'admin'].includes(req.user.role)) return res.status(403).json({ message: 'Accès refusé' })
+  if (!coachCanAccessClient(req.user, req.params.clientId)) return res.status(403).json({ message: 'Ce client ne fait pas partie de tes clients' })
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
@@ -839,6 +893,8 @@ app.get('/api/messages/:recipientId', auth, (req, res) => {
 
 app.post('/api/messages', auth, (req, res) => {
   const { recipientId, message } = req.body
+  if (!recipientId || !message?.trim()) return res.status(400).json({ message: 'Destinataire et message requis' })
+  if (!db.users.find(u => u.id === recipientId)) return res.status(404).json({ message: 'Destinataire introuvable' })
   const msg = {
     id: uuidv4(),
     senderId: req.user.id,
@@ -1496,8 +1552,9 @@ app.post('/api/premium/activate', auth, (req, res) => {
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' })
   user.isPremium = true
   user.premiumSince = new Date().toISOString()
+  user.planSource = 'demo' // activé sans paiement réel (beta) — exclu des stats de revenu
   const { password: _, ...safeUser } = user
-  res.json({ success: true, user: safeUser })
+  res.json({ success: true, demo: true, message: 'Premium activé en mode démo (aucun paiement réel)', user: safeUser })
 })
 
 // Statut premium
@@ -1837,10 +1894,11 @@ app.post('/api/coach/plan/activate', auth, (req, res) => {
   const { plan } = req.body
   const user = db.users.find(u => u.id === req.user.id)
   if (!user || user.role !== 'coach') return res.status(403).json({ error: 'Non autorisé' })
-  user.coachPlan = plan || 'pro'
+  user.coachPlan = ['free', 'pro', 'elite'].includes(plan) ? plan : 'pro'
   user.coachPlanSince = new Date().toISOString()
+  user.planSource = 'demo' // activé sans paiement réel (beta)
   const { password: _, ...safeUser } = user
-  res.json({ success: true, user: safeUser })
+  res.json({ success: true, demo: true, message: 'Plan activé en mode démo (aucun paiement réel)', user: safeUser })
 })
 
 // ─── STRIPE ─────────────────────────────────────────────
@@ -2009,19 +2067,36 @@ function getCommissionRate(coachPlan) {
 // ─── MARKETPLACE ────────────────────────────────────────
 
 // Liste tous les pros (coaches, nutri, health_pro) avec filtres
+// Projection PUBLIQUE d'un pro — jamais d'email, ni RPPS brut, ni adresse rue (ville seulement)
+function toPublicPro(u, extra = {}) {
+  const loc = u.location ? { city: u.location.city || '', lat: u.location.lat, lng: u.location.lng } : null
+  return {
+    id: u.id, name: u.name, role: u.role,
+    profession: u.profession || null,
+    bio: u.bio || '', specialties: u.specialties || [],
+    price: u.price || 0, rating: u.rating || 0,
+    avatar: u.avatar || null, avatarColor: u.avatarColor || '#a03848',
+    verified: u.verified || false, hasRpps: !!u.rpps,
+    online: u.online !== false, inPerson: u.inPerson !== false,
+    available: u.available !== false,
+    location: loc, instagram: u.instagram || null,
+    certifications: u.certifications || [],
+    ...extra,
+  }
+}
+
 app.get('/api/marketplace', auth, (req, res) => {
   const { type, specialty, minRating, maxPrice, available, online } = req.query
 
   let pros = db.users
     .filter(u => ['coach', 'nutritionist', 'health_pro'].includes(u.role) && u.rating)
     .map(u => {
-      const { password, ...safe } = u
       const userReviews = db.reviews.filter(r => r.proId === u.id)
       const avgRating = userReviews.length
         ? Math.round((userReviews.reduce((s, r) => s + r.rating, 0) / userReviews.length) * 10) / 10
         : (u.rating || 0)
       const hireCount = db.hires.filter(h => h.proId === u.id && h.status === 'active').length
-      return { ...safe, avgRating, reviewCount: userReviews.length || u.reviewCount || 0, hireCount }
+      return toPublicPro(u, { avgRating, reviewCount: userReviews.length || u.reviewCount || 0, hireCount })
     })
 
   if (type && type !== 'tous') pros = pros.filter(p => p.role === type)
@@ -2045,7 +2120,6 @@ app.get('/api/marketplace/:id', auth, (req, res) => {
   if (!user || !['coach', 'nutritionist', 'health_pro'].includes(user.role)) {
     return res.status(404).json({ error: 'Introuvable' })
   }
-  const { password, ...safe } = user
   const userReviews = db.reviews
     .filter(r => r.proId === user.id)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -2053,7 +2127,17 @@ app.get('/api/marketplace/:id', auth, (req, res) => {
     ? Math.round((userReviews.reduce((s, r) => s + r.rating, 0) / userReviews.length) * 10) / 10
     : (user.rating || 0)
   const isHiredByMe = db.hires.some(h => h.proId === user.id && h.clientId === req.user.id && h.status === 'active')
-  res.json({ ...safe, avgRating, reviews: userReviews, reviewCount: userReviews.length || user.reviewCount || 0, isHiredByMe })
+  // Fiche publique : pas d'email ni d'adresse rue ; RPPS conservé comme gage de confiance
+  res.json(toPublicPro(user, {
+    rpps: user.rpps || '',
+    banner: user.banner || null,
+    calendlyUrl: user.calendlyUrl || null,
+    experience: user.experience || null,
+    shop: user.shop || [],
+    avgRating, reviews: userReviews,
+    reviewCount: userReviews.length || user.reviewCount || 0,
+    isHiredByMe,
+  }))
 })
 
 // Laisser un avis
@@ -2122,7 +2206,7 @@ app.post('/api/marketplace/hire/:id', auth, async (req, res) => {
     }
   }
 
-  // Fallback sans Stripe
+  // Fallback sans Stripe → SIMULATION démo (aucun paiement réel)
   const hire = {
     id: `hire-${Date.now()}`,
     proId: pro.id,
@@ -2136,6 +2220,7 @@ app.post('/api/marketplace/hire/:id', auth, async (req, res) => {
     commission,
     proEarns,
     status: 'active',
+    demo: true,
     createdAt: new Date().toISOString(),
   }
   db.hires.push(hire)
@@ -2144,7 +2229,7 @@ app.post('/api/marketplace/hire/:id', auth, async (req, res) => {
   if (clientUser && pro.role === 'coach') clientUser.coachId = pro.id
   if (clientUser && pro.role === 'nutritionist') clientUser.nutriId = pro.id
 
-  res.json({ ok: true, hire, message: `${pro.name} engagé pour ${duration} mois. ULTRA: ${commission}€ de commission.` })
+  res.json({ ok: true, demo: true, hire, message: `Démo : mise en relation simulée avec ${pro.name} (aucun paiement réel).` })
 })
 
 // Confirmer un hire après paiement Stripe
@@ -2212,8 +2297,7 @@ app.get('/api/favorites', auth, (req, res) => {
     if (!u) return null
     const proReviews = db.reviews.filter(r => r.proId === u.id)
     const avgRating = proReviews.length ? Math.round(proReviews.reduce((s, r) => s + r.rating, 0) / proReviews.length * 10) / 10 : (u.rating || 0)
-    const { password, ...pub } = u
-    return { ...pub, avgRating, reviewCount: proReviews.length || u.reviewCount || 0, favoritedAt: f.createdAt }
+    return toPublicPro(u, { avgRating, reviewCount: proReviews.length || u.reviewCount || 0, favoritedAt: f.createdAt })
   }).filter(Boolean)
   res.json(pros)
 })
@@ -2348,8 +2432,8 @@ app.post('/api/packages/buy/:id', auth, async (req, res) => {
     amount: pkg.price, commission, proEarns: pkg.price - commission,
     createdAt: new Date().toISOString(),
   }
-  db.hires.push({ ...sale, type: 'package', duration: 0, status: 'completed', proName: pro?.name })
-  res.json({ ok: true, sale, message: `Package "${pkg.name}" acheté pour ${pkg.price}€.` })
+  db.hires.push({ ...sale, type: 'package', duration: 0, status: 'completed', demo: true, proName: pro?.name })
+  res.json({ ok: true, demo: true, sale, message: `Démo : achat du package "${pkg.name}" simulé (aucun paiement réel).` })
 })
 
 // ─── IA PROACTIVE — COACH INSIGHTS ─────────────────────
@@ -2364,11 +2448,6 @@ app.post('/api/coach/insights/generate', auth, async (req, res) => {
 
   // Trouver tous les clients de ce coach
   const clients = db.users.filter(u => u.role === 'client' && u.coachId === coachId)
-  if (clients.length === 0) {
-    // Fallback : prendre les 3 premiers clients pour la démo
-    const demoClients = db.users.filter(u => u.role === 'client').slice(0, 4)
-    clients.push(...demoClients)
-  }
 
   if (clients.length === 0) return res.json([])
 
@@ -2512,10 +2591,6 @@ app.post('/api/nutri/insights/generate', auth, async (req, res) => {
   const today = new Date().toISOString().split('T')[0]
 
   const clients = db.users.filter(u => u.role === 'client' && u.nutriId === nutriId)
-  if (clients.length === 0) {
-    const demoClients = db.users.filter(u => u.role === 'client').slice(0, 4)
-    clients.push(...demoClients)
-  }
   if (clients.length === 0) return res.json([])
 
   // Construire le contexte nutrition de chaque client sur les 14 derniers jours
@@ -2713,11 +2788,8 @@ function patientsForPro(proId) {
   let patients = consents
     .map(c => db.users.find(u => u.id === c.clientId))
     .filter(Boolean)
-  // dédupe
+  // dédupe — uniquement les vrais patients consentants (plus de repli démo)
   patients = patients.filter((p, i) => patients.findIndex(x => x.id === p.id) === i)
-  if (patients.length === 0) {
-    patients = db.users.filter(u => u.role === 'client').slice(0, 4)
-  }
   return patients
 }
 
@@ -2871,9 +2943,8 @@ app.delete('/api/pro/insights/:id', auth, (req, res) => {
 // Clients rattachés à un coach/nutri (via coachId/nutriId)
 function clientsOfOwner(ownerId, ownerRole) {
   const key = ownerRole === 'nutritionist' ? 'nutriId' : 'coachId'
-  let clients = db.users.filter(u => u.role === 'client' && u[key] === ownerId)
-  if (clients.length === 0) clients = db.users.filter(u => u.role === 'client').slice(0, 6) // démo
-  return clients
+  // Uniquement les VRAIS clients rattachés (plus de repli "démo" qui exposait d'autres utilisateurs)
+  return db.users.filter(u => u.role === 'client' && u[key] === ownerId)
 }
 
 // Définitions des segments automatiques (recalculés à la volée)
@@ -2994,8 +3065,8 @@ app.get('/api/groups', auth, (req, res) => {
 // Liste des clients de l'owner (pour composer un groupe manuel)
 app.get('/api/groups/clients', auth, (req, res) => {
   if (!['coach', 'nutritionist', 'admin'].includes(req.user.role)) return res.status(403).json({ error: 'Coach/nutri uniquement' })
-  const clients = clientsOfOwner(req.user.id, req.user.role).map(({ password, ...c }) => ({
-    id: c.id, name: c.name, email: c.email, avatar: c.avatar, avatarColor: c.avatarColor, isPremium: !!c.isPremium,
+  const clients = clientsOfOwner(req.user.id, req.user.role).map(c => ({
+    id: c.id, name: c.name, avatar: c.avatar, avatarColor: c.avatarColor, isPremium: !!c.isPremium,
   }))
   res.json(clients)
 })

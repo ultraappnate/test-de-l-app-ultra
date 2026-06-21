@@ -136,7 +136,6 @@ export default function Login() {
                 <label className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
                   Mot de passe
                 </label>
-                <a href="#" className="text-xs font-semibold" style={{ color: 'var(--gold)' }}>Oublié ?</a>
               </div>
               <input
                 type="password" name="password" required

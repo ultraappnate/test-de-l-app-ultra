@@ -40,7 +40,7 @@ export default function Register() {
       : {}
     const result = await register(formData.email, formData.password, formData.name, formData.role, extra)
     if (result.success) {
-      navigate('/dashboard')
+      navigate(formData.role === 'client' ? '/onboarding' : '/dashboard')
     } else {
       setError(result.error)
     }
