@@ -129,17 +129,24 @@ let persistMode = 'memory'
 async function initPersistence() {
   try {
     if (DATABASE_URL) {
+      // SSL auto : pas de SSL sur le réseau interne Railway (.railway.internal),
+      // SSL relâché sur une URL publique (proxy). Forçable via PGSSL=true/false.
+      const isInternal = /\.railway\.internal/.test(DATABASE_URL)
+      const needsSSL = process.env.PGSSL === 'true' || (process.env.PGSSL !== 'false' && !isInternal)
       pgPool = new Pool({
         connectionString: DATABASE_URL,
-        ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
+        ssl: needsSSL ? { rejectUnauthorized: false } : undefined,
       })
       await pgPool.query('CREATE TABLE IF NOT EXISTS app_state (id INT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ DEFAULT now())')
       persistMode = 'postgres'
+      console.log(`🗄️  Postgres connecté (SSL: ${needsSSL ? 'oui' : 'non'}) — persistance ACTIVE`)
     } else if (PERSIST_FILE) {
       persistMode = 'file'
+    } else {
+      console.warn('⚠️  Aucune DATABASE_URL → mode mémoire (données perdues au redémarrage)')
     }
   } catch (err) {
-    console.error('⚠️  Persistance indisponible, mode mémoire seule :', err.message)
+    console.error('🔴 ÉCHEC connexion Postgres → mode mémoire seule (données NON sauvegardées) :', err.message)
     persistMode = 'memory'
   }
   return persistMode
