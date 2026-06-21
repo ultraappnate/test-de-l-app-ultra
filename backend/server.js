@@ -208,13 +208,24 @@ function startAutosave() {
   process.on('SIGINT', () => onExit('SIGINT'))
 }
 
+// Réconcilie le mot de passe admin à CHAQUE démarrage (même sur une base déjà persistée) :
+// ADMIN_PASSWORD défini → ce mot de passe ; sinon → verrouillé (aléatoire, inaccessible).
+async function reconcileAdmin() {
+  const admin = db.users.find(u => u.role === 'admin' && u.email === 'admin@ultra.com')
+  if (!admin) return
+  const pw = process.env.ADMIN_PASSWORD || ('locked-' + uuidv4())
+  admin.password = await bcrypt.hash(pw, 10)
+}
+
 // ─── SEED comptes par défaut (ou restauration de l'état sauvegardé) ───
 ;(async () => {
   const mode = await initPersistence()
   const snap = await readSnapshot()
   if (snap && Array.isArray(snap.users) && snap.users.length) {
     Object.assign(db, snap)
+    await reconcileAdmin()
     console.log(`💾 État restauré depuis ${mode} — ${db.users.length} comptes, ${db.programs.length} programmes`)
+    await persist()
     startAutosave()
     return
   }
