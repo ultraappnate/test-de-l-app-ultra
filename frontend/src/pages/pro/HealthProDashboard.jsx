@@ -54,7 +54,9 @@ export default function HealthProDashboard() {
           </div>
           <div className="flex items-center gap-2 mt-3 flex-wrap">
             {hasRpps
-              ? <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: 'rgba(14,165,233,0.12)', color: '#0ea5e9' }}>🛡️ RPPS {p.rpps}</span>
+              ? (p.verified
+                  ? <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: 'rgba(14,165,233,0.12)', color: '#0ea5e9' }}>🛡️ RPPS vérifié</span>
+                  : <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: 'rgba(232,160,32,0.12)', color: '#e8a020' }}>⏳ RPPS en attente de vérification</span>)
               : <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: 'rgba(232,160,32,0.12)', color: '#e8a020' }}>⚠️ RPPS manquant</span>}
             {onMap
               ? <span className="text-[11px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: 'rgba(39,174,96,0.12)', color: '#27ae60' }}>📍 Visible sur la carte</span>

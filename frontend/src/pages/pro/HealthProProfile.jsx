@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../../store'
 import { FR_CITIES } from '../../data/frCities'
+import { compressImage } from '../../utils/image'
 
 const PROFESSIONS = ['Kinésithérapeute','Ostéopathe','Médecin du sport','Podologue','Préparateur physique','Psychologue du sport']
 
@@ -50,9 +51,10 @@ export default function HealthProProfile() {
     else set('city', name)
   }
 
-  const handleAvatar = (e) => {
+  const handleAvatar = async (e) => {
     const file = e.target.files?.[0]; if (!file) return
-    const r = new FileReader(); r.onload = () => set('avatar', r.result); r.readAsDataURL(file)
+    const b64 = await compressImage(file, 600, 0.82)
+    set('avatar', b64)
   }
 
   const save = async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useStore } from '../store'
 import { v4 as uuidv4 } from 'uuid'
+import { compressImage } from '../utils/image'
 
 // ─── Boutique ────────────────────────────────────────────
 const PRODUCT_CATEGORIES = [
@@ -387,7 +388,7 @@ export default function CoachMyProfile() {
   const handleAvatar = async e => {
     const f = e.target.files[0]; if (!f) return
     setProfile(p => ({...p, avatar: null}))
-    const b64 = await fileToBase64(f)
+    const b64 = await compressImage(f, 600, 0.82) // avatar compressé
     setProfile(p => ({...p, avatar: b64}))
   }
 

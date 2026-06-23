@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../../store'
+import { compressImage } from '../../utils/image'
 
 const SPECIALTIES = [
   'Perte de poids', 'Prise de masse', 'Nutrition sportive', 'Végétarisme / Véganisme',
@@ -54,7 +55,7 @@ export default function NutriProfile() {
 
   const handleAvatar = async (e) => {
     const file = e.target.files?.[0]; if (!file) return
-    const b64 = await toBase64(file)
+    const b64 = await compressImage(file, 600, 0.82)
     setProfile(p => ({ ...p, avatar: b64 }))
   }
 

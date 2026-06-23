@@ -77,6 +77,7 @@ function NutriRedirect({ children }) {
   const { user } = useStore()
   if (user?.role === 'nutritionist') return <Navigate to="/nutri/dashboard" replace />
   if (user?.role === 'health_pro') return <Navigate to="/pro/dashboard" replace />
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />
   return children
 }
 
@@ -85,6 +86,7 @@ function LandingOrDashboard({ theme, setTheme }) {
   if (!user) return <Landing theme={theme} setTheme={setTheme} />
   if (user.role === 'nutritionist') return <Navigate to="/nutri/dashboard" replace />
   if (user.role === 'health_pro') return <Navigate to="/pro/dashboard" replace />
+  if (user.role === 'admin') return <Navigate to="/admin" replace />
   if (user.role === 'client' && !user.onboardingDone) return <Navigate to="/onboarding" replace />
   return <Navigate to="/dashboard" replace />
 }

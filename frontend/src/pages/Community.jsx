@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import axios from 'axios'
 import { useStore } from '../store'
+import { compressImage } from '../utils/image'
 
 import API from '../config.js'
 
@@ -278,12 +279,11 @@ function Composer({ token, onPost }) {
 
   const connectedPlatforms = Object.entries(connections).filter(([,v]) => v?.connected)
 
-  const handleImage = (e) => {
+  const handleImage = async (e) => {
     const f = e.target.files[0]
     if (!f) return
-    const reader = new FileReader()
-    reader.onload = ev => setImage(ev.target.result)
-    reader.readAsDataURL(f)
+    const b64 = await compressImage(f, 1200, 0.8) // photo de post compressée
+    setImage(b64)
   }
 
   const buildHealthData = () => {
