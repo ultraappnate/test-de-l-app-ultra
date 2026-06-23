@@ -270,11 +270,51 @@ function TabNotifications() {
 }
 
 // ─── Onglet Compte ────────────────────────────────────────
+const SETTINGS_API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+const LEGAL_LINKS = [
+  { slug: 'mentions-legales', label: 'Mentions légales' },
+  { slug: 'confidentialite', label: 'Politique de confidentialité' },
+  { slug: 'cgu', label: "Conditions d'utilisation (CGU)" },
+  { slug: 'cgv', label: 'Conditions de vente (CGV)' },
+  { slug: 'sante-et-ia', label: 'Données de santé & IA' },
+  { slug: 'cookies', label: 'Cookies & traceurs' },
+]
+
 function TabCompte() {
-  const { user, logout } = useStore()
-  const navigate = typeof window !== 'undefined' ? null : null
+  const { user, token, logout } = useStore()
+  const [deleting, setDeleting] = useState(false)
+  const [delPassword, setDelPassword] = useState('')
+  const [delError, setDelError] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const ROLE_LABELS = { client: 'Sportif', coach: 'Coach', nutritionist: 'Nutritionniste', health_pro: 'Pro de santé', admin: 'Admin' }
+
+  async function exportData() {
+    try {
+      const res = await fetch(`${SETTINGS_API}/account/export`, { headers: { Authorization: `Bearer ${token}` } })
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url; a.download = 'ultra-mes-donnees.json'; a.click()
+      URL.revokeObjectURL(url)
+    } catch {}
+  }
+
+  async function confirmDelete() {
+    if (!delPassword) { setDelError('Entre ton mot de passe pour confirmer.'); return }
+    setBusy(true); setDelError('')
+    try {
+      const res = await fetch(`${SETTINGS_API}/account`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ password: delPassword }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Erreur')
+      logout?.()
+      window.location.href = '/login'
+    } catch (e) { setDelError(e.message); setBusy(false) }
+  }
 
   return (
     <div className="space-y-4">
@@ -322,8 +362,64 @@ function TabCompte() {
         </div>
       </div>
 
+      {/* Mes données — RGPD */}
+      <div className="p-5 rounded-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <p className="text-[10px] font-black tracking-widest uppercase mb-1" style={{ color: 'var(--text-faint)' }}>Mes données (RGPD)</p>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>Tu contrôles tes données : télécharge-les ou supprime ton compte à tout moment.</p>
+        <button onClick={exportData}
+          className="w-full py-3 rounded-xl text-sm font-bold mb-2"
+          style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>
+          ⬇ Télécharger mes données
+        </button>
+        {!deleting ? (
+          <button onClick={() => { setDeleting(true); setDelError('') }}
+            className="w-full py-3 rounded-xl text-sm font-bold"
+            style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+            🗑 Supprimer mon compte
+          </button>
+        ) : (
+          <div className="p-3 rounded-xl" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.25)' }}>
+            <p className="text-xs font-bold mb-2" style={{ color: '#ef4444' }}>
+              Action irréversible. Confirme avec ton mot de passe :
+            </p>
+            <input type="password" value={delPassword} onChange={e => setDelPassword(e.target.value)}
+              placeholder="Ton mot de passe"
+              className="w-full px-3 py-2.5 rounded-lg text-sm mb-2"
+              style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+            {delError && <p className="text-xs mb-2" style={{ color: '#ef4444' }}>{delError}</p>}
+            <div className="flex gap-2">
+              <button onClick={() => { setDeleting(false); setDelPassword(''); setDelError('') }}
+                className="flex-1 py-2.5 rounded-lg text-sm font-bold"
+                style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                Annuler
+              </button>
+              <button onClick={confirmDelete} disabled={busy}
+                className="flex-1 py-2.5 rounded-lg text-sm font-black text-white"
+                style={{ background: '#ef4444', opacity: busy ? 0.6 : 1 }}>
+                {busy ? 'Suppression…' : 'Supprimer définitivement'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Informations légales */}
+      <div className="p-5 rounded-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <p className="text-[10px] font-black tracking-widest uppercase mb-3" style={{ color: 'var(--text-faint)' }}>Informations légales</p>
+        <div className="space-y-1">
+          {LEGAL_LINKS.map(({ slug, label }) => (
+            <a key={slug} href={`/legal/${slug}`} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-between py-2.5"
+              style={{ borderTop: '1px solid var(--border)' }}>
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+              <span style={{ color: 'var(--text-faint)' }}>›</span>
+            </a>
+          ))}
+        </div>
+      </div>
+
       <button
-        onClick={() => { if (typeof window !== 'undefined') { window.location.href = '/login' } }}
+        onClick={() => { logout?.(); window.location.href = '/login' }}
         className="w-full py-3.5 rounded-xl text-sm font-black"
         style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
         ⏻ Se déconnecter

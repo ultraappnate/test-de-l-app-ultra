@@ -66,6 +66,7 @@ import Marketplace from './pages/Marketplace'
 import MarketplaceProfile from './pages/MarketplaceProfile'
 import PromotionsManager from './pages/PromotionsManager'
 import PackagesManager from './pages/PackagesManager'
+import LegalPage from './pages/LegalPage'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -165,6 +166,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/welcome" element={<Landing theme={theme} setTheme={setTheme} />} />
+          {/* ── Pages légales (publiques) ── */}
+          <Route path="/legal" element={<LegalPage />} />
+          <Route path="/legal/:slug" element={<LegalPage />} />
           <Route path="/" element={<LandingOrDashboard theme={theme} setTheme={setTheme} />} />
           <Route path="/dashboard" element={<PrivateRoute><NutriRedirect><Dashboard /></NutriRedirect></PrivateRoute>} />
           {/* ── Espace Nutritionniste ── */}

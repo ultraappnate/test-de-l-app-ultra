@@ -384,11 +384,15 @@ function auth(req, res, next) {
 // ─── AUTH ───────────────────────────────────────────────
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const TERMS_VERSION = '2026-06-beta' // version des CGU / politique de confidentialité acceptée
 
 app.post('/api/auth/register', async (req, res) => {
-  let { email, password, name, role, profession, rpps } = req.body
+  let { email, password, name, role, profession, rpps, acceptedTerms } = req.body
   if (!email || !password || !name) {
     return res.status(400).json({ message: 'Tous les champs sont requis' })
+  }
+  if (!acceptedTerms) {
+    return res.status(400).json({ message: 'Tu dois accepter les CGU et la politique de confidentialité' })
   }
   email = String(email).trim().toLowerCase()
   name = String(name).trim()
@@ -416,6 +420,9 @@ app.post('/api/auth/register', async (req, res) => {
     coachPlanSince: null,
     // Champs professionnel de santé
     ...(safeRole === 'health_pro' && { profession: profession || 'Professionnel de santé', rpps: rpps || '', verified: false }),
+    // Consentement RGPD/CGU (preuve)
+    acceptedTermsAt: new Date().toISOString(),
+    termsVersion: TERMS_VERSION,
     createdAt: new Date().toISOString(),
   }
   db.users.push(user)
@@ -795,6 +802,80 @@ app.get('/api/profile', auth, (req, res) => {
   if (!u) return res.status(404).json({ message: 'Introuvable' })
   const { password, ...safe } = u
   res.json(safe)
+})
+
+// ─── RGPD : export & suppression des données ────────────
+
+// Droit d'accès / portabilité : exporte toutes les données de l'utilisateur
+app.get('/api/account/export', auth, (req, res) => {
+  const uid = req.user.id
+  const me = db.users.find(u => u.id === uid)
+  if (!me) return res.status(404).json({ message: 'Introuvable' })
+  const { password, ...profile } = me
+  const data = {
+    exportedAt: new Date().toISOString(),
+    profil: profile,
+    programmes_crees: db.programs.filter(p => p.coachId === uid),
+    programmes_clients: (db.clientPrograms || []).filter(p => p.userId === uid),
+    seances: db.workoutLogs.filter(l => l.userId === uid),
+    serie: db.streaks?.[uid] || null,
+    nutrition_journaux: db.nutritionLogs?.[uid] || null,
+    nutrition_objectifs: db.nutritionGoals?.[uid] || null,
+    analyses_posturales: db.postureAnalyses.filter(a => a.userId === uid),
+    dossiers_sante: db.healthRecords.filter(r => r.clientId === uid || r.proId === uid),
+    consentements_sante: db.consents.filter(c => c.clientId === uid || c.proId === uid || c.coachId === uid),
+    messages: db.messages.filter(m => m.senderId === uid || m.recipientId === uid),
+    avis_publies: db.reviews.filter(r => r.clientId === uid),
+    favoris: db.favorites.filter(f => f.clientId === uid),
+    transactions: db.hires.filter(h => h.clientId === uid || h.proId === uid),
+    packages: db.packages.filter(p => p.ownerId === uid),
+    promotions: db.promotions.filter(p => p.ownerId === uid),
+    groupes: db.clientGroups.filter(g => g.ownerId === uid),
+    notifications: db.notifs?.[uid] || [],
+  }
+  res.setHeader('Content-Disposition', `attachment; filename="ultra-mes-donnees.json"`)
+  res.setHeader('Content-Type', 'application/json')
+  res.send(JSON.stringify(data, null, 2))
+})
+
+// Droit à l'effacement : supprime le compte et les données associées
+app.delete('/api/account', auth, async (req, res) => {
+  const uid = req.user.id
+  const me = db.users.find(u => u.id === uid)
+  if (!me) return res.status(404).json({ message: 'Introuvable' })
+  // Vérification du mot de passe avant suppression définitive
+  const { password } = req.body
+  if (!password || !(await bcrypt.compare(password, me.password))) {
+    return res.status(403).json({ message: 'Mot de passe incorrect' })
+  }
+  if (me.role === 'admin') return res.status(403).json({ message: 'Compte admin non supprimable ici' })
+
+  // Purge des données personnelles
+  db.users = db.users.filter(u => u.id !== uid)
+  db.postureAnalyses = db.postureAnalyses.filter(a => a.userId !== uid)
+  db.workoutLogs = db.workoutLogs.filter(l => l.userId !== uid)
+  db.healthRecords = db.healthRecords.filter(r => r.clientId !== uid && r.proId !== uid)
+  db.consents = db.consents.filter(c => c.clientId !== uid && c.proId !== uid && c.coachId !== uid)
+  db.messages = db.messages.filter(m => m.senderId !== uid && m.recipientId !== uid)
+  db.reviews = db.reviews.filter(r => r.clientId !== uid)
+  db.favorites = db.favorites.filter(f => f.clientId !== uid && f.proId !== uid)
+  db.packages = db.packages.filter(p => p.ownerId !== uid)
+  db.promotions = db.promotions.filter(p => p.ownerId !== uid)
+  db.clientGroups = db.clientGroups.filter(g => g.ownerId !== uid)
+  db.coachInsights = db.coachInsights.filter(i => i.coachId !== uid && i.clientId !== uid)
+  db.nutriInsights = db.nutriInsights.filter(i => i.nutriId !== uid && i.clientId !== uid)
+  db.proInsights = db.proInsights.filter(i => i.proId !== uid && i.clientId !== uid)
+  db.programs = db.programs.filter(p => p.coachId !== uid) // programmes créés par ce coach
+  if (db.clientPrograms) db.clientPrograms = db.clientPrograms.filter(p => p.userId !== uid)
+  if (db.nutritionLogs) delete db.nutritionLogs[uid]
+  if (db.nutritionGoals) delete db.nutritionGoals[uid]
+  if (db.streaks) delete db.streaks[uid]
+  if (db.notifs) delete db.notifs[uid]
+  if (db.pushSubscriptions) delete db.pushSubscriptions[uid]
+  // Détache les clients liés à ce pro
+  db.users.forEach(u => { if (u.coachId === uid) u.coachId = null; if (u.nutriId === uid) u.nutriId = null })
+
+  res.json({ ok: true, message: 'Compte et données supprimés.' })
 })
 
 // Coach: récupérer ses propres programmes

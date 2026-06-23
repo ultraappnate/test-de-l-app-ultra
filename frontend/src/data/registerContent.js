@@ -41,7 +41,7 @@ export const ROLE_DATA = {
       { text: "Les programmes s'adaptent a mon emploi du temps charge. Meme 30min par jour suffisent.", author: '— Isabelle F., 40 ans · Cliente depuis 2024' },
       { text: "ULTRA m'a appris a manger correctement. Pas de restriction, juste de l'equilibre.", author: '— Lucas H., 26 ans · Client depuis 2023' },
       { text: "Le meilleur investissement que j'ai fait pour ma sante. Rentabilise des le premier mois.", author: '— Francois P., 36 ans · Client depuis 2022' },
-      { text: "Mon coach m'a suivi apres une blessure. Il a adapte tout le programme. Professionnalisme total.", author: '— Camille G., 30 ans · Cliente depuis 2023' },
+      { text: "Mon coach a adapte tout le programme a mes contraintes et mes objectifs. Professionnalisme total.", author: '— Camille G., 30 ans · Cliente depuis 2023' },
       { text: "Je pensais que c'etait trop tard pour moi a 50 ans. ULTRA m'a prouve que non.", author: '— Bernard M., 51 ans · Client depuis 2024' },
       { text: "La communaute ULTRA m'a motive meme les jours ou j'avais envie d'abandonner.", author: '— Lea N., 22 ans · Cliente depuis 2024' },
       { text: "J'avais un mariage dans 4 mois. ULTRA m'a permis d'etre la version de moi que je voulais montrer.", author: '— Stephanie C., 32 ans · Cliente depuis 2024' },
@@ -53,7 +53,7 @@ export const ROLE_DATA = {
       { text: "La synchronisation entre plan nutrition et programme d'entrainement est parfaite.", author: '— Marine P., 28 ans · Cliente depuis 2024' },
       { text: "Aucun autre programme ne m'avait jamais donne envie de revenir m'entrainer le lendemain.", author: '— Kevin L., 31 ans · Client depuis 2022' },
       { text: "Mon cardio s'est ameliore de facon spectaculaire. Je ne suis plus essoufle dans les escaliers.", author: '— Bruno S., 47 ans · Client depuis 2023' },
-      { text: "L'approche progressive d'ULTRA m'a evite toutes les blessures que j'avais avec mes anciens programmes.", author: '— Pauline M., 26 ans · Cliente depuis 2024' },
+      { text: "L'approche progressive d'ULTRA m'a permis de progresser sereinement, sans les galeres de mes anciens programmes.", author: '— Pauline M., 26 ans · Cliente depuis 2024' },
       { text: "C'est la premiere fois que je vois mes abdos. A 38 ans. Je ne pensais vraiment pas que c'etait possible.", author: '— David G., 38 ans · Client depuis 2023' },
       { text: "ULTRA m'a reconcilie avec la nutrition. Je ne compte plus les calories, j'apprends a manger.", author: '— Sophie L., 33 ans · Cliente depuis 2024' },
       { text: "Le programme post-grossesse m'a permis de retrouver mon corps en 4 mois. Doux mais efficace.", author: '— Manon B., 30 ans · Cliente depuis 2024' },
@@ -234,7 +234,7 @@ export const ROLE_DATA = {
     subtitle: 'Kine, osteo, medecin du sport : connecte-toi a tout l\'ecosysteme.',
     roleLabel: 'Ma profession',
     headlines: [
-      { lines: ['Soigne,', 'previens.', 'Accompagne', 'la performance.'], accent: 'Accompagne' },
+      { lines: ['Progresse,', 'recupere.', 'Accompagne', 'la performance.'], accent: 'Accompagne' },
       { lines: ['Ton expertise', 'medicale.', 'Au cœur', 'du sport.'], accent: 'Au cœur' },
       { lines: ['Collabore', 'avec les coachs.', 'Optimise', 'la recuperation.'], accent: 'Optimise' },
     ],
@@ -246,7 +246,7 @@ export const ROLE_DATA = {
     testimonials: [
       { text: "Je partage mes bilans directement avec les coachs de mes patients. Le suivi est enfin coordonne.", author: '— Dr. Julien F., Kinesitherapeute · Sur ULTRA depuis 2024' },
       { text: "Mes patients sportifs me trouvent via la carte ULTRA. Ma patientele a double en 6 mois.", author: '— Camille R., Osteopathe · Sur ULTRA depuis 2023' },
-      { text: "Pouvoir adapter le programme du coach selon mon diagnostic, c'est la medecine du futur.", author: '— Dr. Nadia B., Medecin du sport · Sur ULTRA depuis 2024' },
+      { text: "Pouvoir collaborer avec le coach et adapter le programme a chaque sportif, c'est l'avenir de l'accompagnement.", author: '— Dr. Nadia B., Medecin du sport · Sur ULTRA depuis 2024' },
     ],
     features: [
       [

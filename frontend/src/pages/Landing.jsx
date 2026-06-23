@@ -1123,10 +1123,12 @@ export default function Landing({ theme, setTheme }) {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <span className="font-black tracking-[0.25em] text-lg" style={{ color: 'var(--text-primary)' }}>ULTRA</span>
           <p className="text-sm" style={{ color: 'var(--text-faint)' }}>© 2025 ULTRA · Coaching & Nutrition · Tous droits réservés</p>
-          <div className="flex gap-6 text-sm" style={{ color: 'var(--text-muted)' }}>
-            <a href="#" className="hover:opacity-75 transition">Mentions légales</a>
-            <a href="#" className="hover:opacity-75 transition">CGU</a>
-            <a href="#" className="hover:opacity-75 transition">Contact</a>
+          <div className="flex gap-6 text-sm flex-wrap justify-center" style={{ color: 'var(--text-muted)' }}>
+            <a href="/legal/mentions-legales" className="hover:opacity-75 transition">Mentions légales</a>
+            <a href="/legal/confidentialite" className="hover:opacity-75 transition">Confidentialité</a>
+            <a href="/legal/cgu" className="hover:opacity-75 transition">CGU</a>
+            <a href="/legal/cgv" className="hover:opacity-75 transition">CGV</a>
+            <a href="/legal" className="hover:opacity-75 transition">Tout voir</a>
           </div>
         </div>
       </footer>

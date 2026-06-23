@@ -15,6 +15,7 @@ export default function Register() {
   const [formData, setFormData] = useState({ email: '', password: '', name: '', role: initialRole })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   // Pick random content per role change — memo keyed on role
   const randomContent = useMemo(() => {
@@ -34,10 +35,14 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    if (!acceptedTerms) {
+      setError('Tu dois accepter les CGU et la politique de confidentialité.')
+      return
+    }
     setIsLoading(true)
     const extra = formData.role === 'health_pro'
-      ? { profession: formData.profession || 'Kinésithérapeute', rpps: formData.rpps || '' }
-      : {}
+      ? { profession: formData.profession || 'Kinésithérapeute', rpps: formData.rpps || '', acceptedTerms: true }
+      : { acceptedTerms: true }
     const result = await register(formData.email, formData.password, formData.name, formData.role, extra)
     if (result.success) {
       navigate(formData.role === 'client' ? '/onboarding' : '/dashboard')
@@ -214,11 +219,29 @@ export default function Register() {
                     className="w-full text-base px-5 py-4 rounded-xl focus:outline-none transition"
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
                   <p className="mt-2 text-xs" style={{ color: 'var(--text-faint)' }}>
-                    🛡️ Vérifié par notre équipe — affiché sur ton profil public
+                    Affiché sur ton profil — statut « en attente de vérification » jusqu'à contrôle par notre équipe
                   </p>
                 </div>
               </>
             )}
+
+            {/* Consentement RGPD / CGU */}
+            <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl" style={{ background: 'var(--bg-card)', border: `1px solid ${acceptedTerms ? 'var(--accent)' : 'var(--border)'}` }}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={e => setAcceptedTerms(e.target.checked)}
+                style={{ width: 18, height: 18, marginTop: 2, accentColor: 'var(--accent)', flexShrink: 0 }}
+              />
+              <span className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                J'ai lu et j'accepte les{' '}
+                <a href="/legal/cgu" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', fontWeight: 700 }}>CGU</a>,
+                la{' '}
+                <a href="/legal/confidentialite" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', fontWeight: 700 }}>politique de confidentialité</a>
+                {' '}et la{' '}
+                <a href="/legal/sante-et-ia" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--gold)', fontWeight: 700 }}>charte données de santé</a>.
+              </span>
+            </label>
 
             <button
               type="submit" disabled={isLoading}
