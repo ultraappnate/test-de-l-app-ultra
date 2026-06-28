@@ -55,6 +55,17 @@ function ytEmbed(url) {
 
 const BLOCK_ICON = { exercise: '💪', video: '🎬', note: '📝', recipe: '🍽️', ebook: '📖', tracker: '📊' }
 
+// Regroupe les blocs consécutifs liés (superset/circuit)
+function segmentBlocks(blocks) {
+  const segs = []
+  for (const b of (blocks || [])) {
+    const last = segs[segs.length - 1]
+    if (b.group && last && last.group === b.group) last.items.push(b)
+    else segs.push({ group: b.group || null, items: [b] })
+  }
+  return segs
+}
+
 // Lecteur vidéo d'un bloc (YouTube/Vimeo/fichier local), verrouillé si pas d'accès
 function BlockVideo({ block, locked }) {
   const embed = ytEmbed(block.url || '')
@@ -126,30 +137,41 @@ function WeekCard({ week, index, onExercise, hasAccess }) {
 
               {day.blocks?.length > 0 ? (
                 <div className="space-y-2.5">
-                  {day.blocks.map((b, bi) => {
-                    const name = b.title || b.exercise || b.name || `Bloc ${bi + 1}`
-                    const isEx = b.type === 'exercise' || (!b.type && (b.sets || b.reps))
-                    const meta = [b.sets && `${b.sets} séries`, b.reps && `${b.reps} reps`, b.rest && `repos ${b.rest}`].filter(Boolean).join(' · ')
-                    return (
-                      <div key={bi} className="rounded-xl p-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm flex-shrink-0">{BLOCK_ICON[b.type] || '•'}</span>
-                          <p className="text-sm font-bold flex-1 min-w-0" style={{ color: 'var(--text-primary)' }}>{name}</p>
-                          {isEx && (
-                            <button onClick={() => onExercise?.(name)}
-                              className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0"
-                              style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
-                              🦾 Muscles
-                            </button>
+                  {segmentBlocks(day.blocks).map((seg, si) => {
+                    const renderBlock = (b, bi) => {
+                      const name = b.title || b.exercise || b.name || `Bloc ${bi + 1}`
+                      const isEx = b.type === 'exercise' || (!b.type && (b.sets || b.reps))
+                      const meta = [b.sets && `${b.sets} séries`, b.reps && `${b.reps} reps`, b.rest && `repos ${b.rest}`].filter(Boolean).join(' · ')
+                      return (
+                        <div key={b.id || bi} className="rounded-xl p-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm flex-shrink-0">{BLOCK_ICON[b.type] || '•'}</span>
+                            <p className="text-sm font-bold flex-1 min-w-0" style={{ color: 'var(--text-primary)' }}>{name}</p>
+                            {isEx && (
+                              <button onClick={() => onExercise?.(name)}
+                                className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0"
+                                style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
+                                🦾 Muscles
+                              </button>
+                            )}
+                          </div>
+                          {meta && <p className="text-[11px] mt-1" style={{ color: 'var(--text-faint)' }}>{meta}</p>}
+                          {(b.notes || b.content) && (
+                            <p className="text-xs mt-1.5 px-3 py-1.5 rounded-lg" style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)' }}>
+                              {b.notes || b.content}
+                            </p>
                           )}
+                          <BlockVideo block={b} locked={!hasAccess} />
                         </div>
-                        {meta && <p className="text-[11px] mt-1" style={{ color: 'var(--text-faint)' }}>{meta}</p>}
-                        {(b.notes || b.content) && (
-                          <p className="text-xs mt-1.5 px-3 py-1.5 rounded-lg" style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)' }}>
-                            {b.notes || b.content}
-                          </p>
-                        )}
-                        <BlockVideo block={b} locked={!hasAccess} />
+                      )
+                    }
+                    if (!seg.group) return seg.items.map(renderBlock)
+                    return (
+                      <div key={'g' + si} className="rounded-2xl p-2.5" style={{ background: 'rgba(160,56,72,0.05)', border: '1.5px dashed var(--accent)' }}>
+                        <p className="text-[10px] font-black uppercase tracking-widest mb-1.5" style={{ color: 'var(--accent)' }}>
+                          {seg.items.length === 2 ? '🔗 Superset' : `🔗 Circuit ×${seg.items.length}`}
+                        </p>
+                        <div className="space-y-2">{seg.items.map(renderBlock)}</div>
                       </div>
                     )
                   })}
