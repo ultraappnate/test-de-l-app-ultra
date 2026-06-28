@@ -24,6 +24,24 @@ function fileToBase64(file) {
   return new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file) })
 }
 
+// Extrait l'ID YouTube (pour la miniature)
+function ytId(url) {
+  if (!url) return null
+  try {
+    const u = new URL(url)
+    if (u.searchParams.get('v')) return u.searchParams.get('v')
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1)
+    if (u.pathname.includes('/shorts/')) return u.pathname.split('/shorts/')[1].split(/[/?]/)[0]
+    if (u.pathname.includes('/embed/')) return u.pathname.split('/embed/')[1].split(/[/?]/)[0]
+  } catch {}
+  return null
+}
+function vimeoId(url) {
+  if (!url) return null
+  const m = String(url).match(/vimeo\.com\/(\d+)/)
+  return m ? m[1] : null
+}
+
 // Regroupe les blocs consécutifs partageant le même `group` en segments
 function segmentBlocks(blocks) {
   const segs = []
@@ -39,6 +57,9 @@ function segmentBlocks(blocks) {
 function ExoCard({ block, onChange, onRemove, onMove, dropHandlers, handleProps, dragging, dropTarget }) {
   const set = (k, v) => onChange({ ...block, [k]: v })
   const [showVid, setShowVid] = useState(!!block.url)
+  const yt = ytId(block.url)
+  const vm = vimeoId(block.url)
+  const inputStyle = { background: 'var(--bg-base)', border: '1px solid var(--border-soft, var(--border))', color: 'var(--text-primary)' }
 
   return (
     <div
@@ -46,61 +67,78 @@ function ExoCard({ block, onChange, onRemove, onMove, dropHandlers, handleProps,
       style={{
         scrollSnapAlign: 'center',
         flexShrink: 0,
-        width: 'min(78vw, 300px)',
+        width: 'min(80vw, 300px)',
         background: 'var(--bg-card)',
-        border: `1px solid ${dropTarget ? 'var(--accent)' : 'var(--border)'}`,
-        boxShadow: dropTarget ? '0 0 0 2px var(--accent)' : '0 6px 24px rgba(0,0,0,0.10)',
+        border: `1.5px solid ${dropTarget ? 'var(--accent)' : 'var(--border)'}`,
+        boxShadow: dropTarget ? '0 0 0 3px var(--accent)' : '0 10px 30px rgba(0,0,0,0.35)',
         borderRadius: 20,
-        padding: 16,
+        padding: 14,
         opacity: dragging ? 0.4 : 1,
         transition: 'opacity .15s, box-shadow .15s, border-color .15s',
       }}
     >
-      {/* Poignée (drag) + déplacer + suppression */}
-      <div className="flex items-center justify-between mb-2">
-        <span {...handleProps} style={{ cursor: 'grab', color: 'var(--text-faint)', fontSize: 16 }} title="Glisser sur une autre carte pour grouper">⠿</span>
-        <div className="flex items-center gap-1">
-          <button onClick={() => onMove(-1)} title="Déplacer à gauche" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 6, width: 24, height: 24, color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12 }}>←</button>
-          <button onClick={() => onMove(1)} title="Déplacer à droite" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 6, width: 24, height: 24, color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12 }}>→</button>
-          <button onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: 15, marginLeft: 2 }}>✕</button>
+      {/* Barre de liaison (poignée de glisser) — explicite */}
+      <div className="flex items-center gap-1.5 mb-3">
+        <div {...handleProps} title="Glisse cette carte sur une autre pour créer un superset/circuit"
+          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5"
+          style={{ cursor: 'grab', background: 'var(--accent-subtle)', border: '1px dashed var(--accent)' }}>
+          <span style={{ fontSize: 13, color: 'var(--accent)' }}>⠿</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: 'var(--accent)' }}>Glisser pour lier</span>
         </div>
+        <button onClick={() => onMove(-1)} title="Déplacer à gauche" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 7, width: 26, height: 26, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>←</button>
+        <button onClick={() => onMove(1)} title="Déplacer à droite" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 7, width: 26, height: 26, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>→</button>
+        <button onClick={onRemove} title="Supprimer" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 7, width: 26, height: 26, color: '#e06b7e', cursor: 'pointer', fontSize: 13 }}>✕</button>
       </div>
 
       <input
         value={block.title || ''} onChange={e => set('title', e.target.value)}
         placeholder="Nom de l'exercice"
-        className="w-full font-black text-base mb-3 bg-transparent focus:outline-none"
-        style={{ color: 'var(--text-primary)' }}
+        className="w-full font-black text-base mb-3 rounded-lg px-2 py-1.5 focus:outline-none"
+        style={{ ...inputStyle, color: 'var(--text-primary)' }}
       />
 
-      {/* Séries / reps / repos */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
+      {/* Séries / reps / repos / RPE */}
+      <div className="grid grid-cols-4 gap-1.5 mb-3">
         {[
           { k: 'sets', label: 'Séries', ph: '4' },
           { k: 'reps', label: 'Reps', ph: '10' },
           { k: 'rest', label: 'Repos', ph: '90s' },
+          { k: 'rpe', label: 'RPE', ph: '8' },
         ].map(({ k, label, ph }) => (
           <div key={k}>
-            <label className="block text-[9px] font-black uppercase tracking-wider mb-1" style={{ color: 'var(--text-faint)' }}>{label}</label>
+            <label className="block text-[8px] font-black uppercase tracking-wide mb-1 text-center" style={{ color: 'var(--text-muted)' }}>{label}</label>
             <input value={block[k] || ''} onChange={e => set(k, e.target.value)} placeholder={ph}
-              className="w-full text-center text-sm font-bold rounded-lg px-1 py-2 focus:outline-none"
-              style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+              className="w-full text-center text-sm font-bold rounded-lg px-0.5 py-2 focus:outline-none"
+              style={inputStyle} />
           </div>
         ))}
       </div>
 
       {/* Notes */}
       <textarea value={block.notes || ''} onChange={e => set('notes', e.target.value)}
-        placeholder="Note / consigne (tempo, RPE…)" rows={2}
+        placeholder="Note / consigne (tempo, technique…)" rows={2}
         className="w-full text-xs rounded-lg px-3 py-2 mb-2 resize-none focus:outline-none"
-        style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }} />
+        style={{ ...inputStyle, color: 'var(--text-secondary)' }} />
 
-      {/* Vidéo */}
+      {/* Vidéo + miniature */}
       {showVid || block.url ? (
-        <input value={block.url || ''} onChange={e => set('url', e.target.value)}
-          placeholder="Lien vidéo (YouTube/Vimeo)"
-          className="w-full text-xs rounded-lg px-3 py-2 focus:outline-none"
-          style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+        <>
+          <input value={block.url || ''} onChange={e => set('url', e.target.value)}
+            placeholder="Lien vidéo (YouTube/Vimeo)"
+            className="w-full text-xs rounded-lg px-3 py-2 focus:outline-none"
+            style={inputStyle} />
+          {yt && (
+            <div className="mt-2 rounded-lg overflow-hidden relative" style={{ aspectRatio: '16/9', background: '#000' }}>
+              <img src={`https://img.youtube.com/vi/${yt}/hqdefault.jpg`} alt="" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span style={{ fontSize: 30, filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))' }}>▶️</span>
+              </div>
+            </div>
+          )}
+          {!yt && vm && (
+            <p className="text-[10px] mt-2" style={{ color: 'var(--text-faint)' }}>🎬 Vidéo Vimeo liée</p>
+          )}
+        </>
       ) : (
         <button onClick={() => setShowVid(true)}
           className="text-xs font-bold" style={{ color: 'var(--accent)' }}>🎬 Ajouter une vidéo</button>
@@ -183,12 +221,17 @@ export default function CoachProgramBuilder() {
     setForm(f => ({ ...f, weeks: f.weeks.filter((_, i) => i !== weekIdx) }))
     setWeekIdx(i => Math.max(0, i - 1)); setSelDay(null)
   }
-  const duplicateWeek = () => setForm(f => {
-    const copy = JSON.parse(JSON.stringify(f.weeks[weekIdx]))
-    copy.id = uuidv4(); copy.title = (copy.title || `Semaine ${weekIdx + 1}`) + ' (copie)'
-    copy.days = (copy.days || []).map(d => ({ ...d, id: uuidv4(), blocks: (d.blocks || []).map(b => ({ ...b, id: uuidv4() })) }))
-    const weeks = [...f.weeks]; weeks.splice(weekIdx + 1, 0, copy); return { ...f, weeks }
-  })
+  const duplicateWeek = () => {
+    setForm(f => {
+      const copy = JSON.parse(JSON.stringify(f.weeks[weekIdx]))
+      copy.id = uuidv4(); copy.title = (copy.title || `Semaine ${weekIdx + 1}`) + ' (copie)'
+      copy.days = (copy.days || []).map(d => ({ ...d, id: uuidv4(), blocks: (d.blocks || []).map(b => ({ ...b, id: uuidv4() })) }))
+      const weeks = [...f.weeks]; weeks.splice(weekIdx + 1, 0, copy); return { ...f, weeks }
+    })
+    setWeekIdx(weekIdx + 1) // bascule sur la copie pour la voir
+    setSelDay(null)
+    setSaveMsg('✓ Semaine dupliquée'); setTimeout(() => setSaveMsg(''), 1500)
+  }
 
   const dayByWeekday = (wd) => (week.days || []).find(d => d.weekday === wd)
 
@@ -298,8 +341,6 @@ export default function CoachProgramBuilder() {
             className="w-full font-black text-base bg-transparent focus:outline-none" style={{ color: 'var(--text-primary)' }} />
           <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{draftMsg || `${CAT_ICONS[form.category] || ''} ${form.category} · ${form.level}`}</p>
         </div>
-        <button onClick={() => setShowMeta(s => !s)} className="px-3 py-2 rounded-xl text-xs font-bold"
-          style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>⚙ Détails</button>
         <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl text-xs font-black text-white"
           style={{ background: 'var(--accent)', opacity: saving ? 0.6 : 1 }}>{saving ? '…' : '✓ Enregistrer'}</button>
       </div>
@@ -310,9 +351,14 @@ export default function CoachProgramBuilder() {
 
       <div style={{ maxWidth: 920, margin: '0 auto', padding: 'clamp(12px,3vw,24px)' }}>
 
-        {/* ── Métadonnées (repliable) ── */}
-        {showMeta && (
-          <div className="rounded-2xl p-4 mb-5 space-y-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        {/* ── Détails du programme (onglet dépliable au-dessus des semaines) ── */}
+        <div className="rounded-2xl mb-4 overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <button onClick={() => setShowMeta(s => !s)} className="w-full flex items-center justify-between px-4 py-3.5">
+            <span className="font-black text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>⚙ Détails du programme</span>
+            <span className="text-xs transition-transform" style={{ color: 'var(--text-faint)', transform: showMeta ? 'rotate(180deg)' : 'none', display: 'inline-block' }}>▾</span>
+          </button>
+          {showMeta && (
+          <div className="p-4 pt-1 space-y-3" style={{ borderTop: '1px solid var(--border)' }}>
             <textarea value={form.description} onChange={e => setField('description', e.target.value)} rows={2}
               placeholder="Description du programme" className="w-full text-sm rounded-xl px-3 py-2 resize-none focus:outline-none" style={iStyle} />
             <div className="grid grid-cols-2 gap-3">
@@ -346,7 +392,8 @@ export default function CoachProgramBuilder() {
               </div>
             </div>
           </div>
-        )}
+          )}
+        </div>
 
         {/* ── Sélecteur de semaine ── */}
         <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
@@ -369,7 +416,7 @@ export default function CoachProgramBuilder() {
             {form.weeks.length > 1 && <button onClick={removeWeek} className="text-[11px] font-bold" style={{ color: '#a03848' }}>✕ Semaine</button>}
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-1.5 mb-6">
+        <div className="mb-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6 }}>
           {DAYS_FR.map((dName, wd) => {
             const d = dayByWeekday(wd)
             const n = d?.blocks?.length || 0
@@ -378,18 +425,18 @@ export default function CoachProgramBuilder() {
               <button key={wd} onClick={() => selectDay(wd)}
                 className="rounded-xl py-3 px-1 flex flex-col items-center gap-1 transition-all"
                 style={{
-                  background: active ? 'var(--accent)' : 'var(--bg-card)',
-                  border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                  background: active ? 'var(--accent)' : (n > 0 ? 'var(--accent-subtle)' : 'var(--bg-card)'),
+                  border: `1.5px solid ${active ? 'var(--accent)' : (n > 0 ? 'var(--accent)' : 'var(--border)')}`,
                   transform: active ? 'translateY(-2px)' : 'none',
-                  boxShadow: active ? '0 6px 18px rgba(160,56,72,0.3)' : 'none',
+                  boxShadow: active ? '0 8px 20px rgba(160,56,72,0.4)' : '0 2px 10px rgba(0,0,0,0.25)',
                 }}>
-                <span className="text-[10px] font-black uppercase" style={{ color: active ? 'rgba(255,255,255,0.8)' : 'var(--text-faint)' }}>{DAYS_SHORT[wd]}</span>
+                <span className="text-[10px] font-black uppercase" style={{ color: active ? 'rgba(255,255,255,0.9)' : 'var(--text-secondary)' }}>{DAYS_SHORT[wd]}</span>
                 {n > 0 ? (
-                  <span className="text-[11px] font-black" style={{ color: active ? '#fff' : 'var(--accent)' }}>{n}</span>
+                  <span className="text-base font-black" style={{ color: active ? '#fff' : 'var(--accent)' }}>{n}</span>
                 ) : (
-                  <span className="text-[11px]" style={{ color: active ? 'rgba(255,255,255,0.6)' : 'var(--text-faint)' }}>·</span>
+                  <span className="text-base font-black" style={{ color: active ? 'rgba(255,255,255,0.6)' : 'var(--text-faint)' }}>·</span>
                 )}
-                <span className="text-[8px] font-bold" style={{ color: active ? 'rgba(255,255,255,0.7)' : 'var(--text-faint)' }}>{n > 0 ? 'exos' : 'repos'}</span>
+                <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: active ? 'rgba(255,255,255,0.8)' : (n > 0 ? 'var(--accent)' : 'var(--text-faint)') }}>{n > 0 ? 'exos' : 'repos'}</span>
               </button>
             )
           })}
