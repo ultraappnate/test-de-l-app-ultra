@@ -4,6 +4,8 @@ import { useStore } from '../store'
 import MuscleMap from '../components/MuscleMap'
 import PremiumPaywall from '../components/PremiumPaywall'
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+
 const LEVEL_COLORS = {
   'Débutant':      { bg: 'rgba(39,174,96,0.15)',   text: '#27ae60', border: 'rgba(39,174,96,0.4)' },
   'Intermédiaire': { bg: 'rgba(232,160,32,0.15)',  text: '#e8a020', border: 'rgba(232,160,32,0.4)' },
@@ -34,68 +36,127 @@ function StatPill({ icon, label, value }) {
   )
 }
 
-function WeekCard({ week, index, onExercise }) {
+// Convertit une URL YouTube/Vimeo en URL d'intégration
+function ytEmbed(url) {
+  if (!url) return null
+  try {
+    const u = new URL(url)
+    let id = u.searchParams.get('v')
+    if (!id && u.hostname === 'youtu.be') id = u.pathname.slice(1)
+    if (!id && u.pathname.includes('/shorts/')) id = u.pathname.split('/shorts/')[1]
+    if (id) return `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`
+  } catch {}
+  if (url.includes('vimeo.com')) {
+    const m = url.match(/vimeo\.com\/(\d+)/)
+    if (m) return `https://player.vimeo.com/video/${m[1]}`
+  }
+  return null
+}
+
+const BLOCK_ICON = { exercise: '💪', video: '🎬', note: '📝', recipe: '🍽️', ebook: '📖', tracker: '📊' }
+
+// Lecteur vidéo d'un bloc (YouTube/Vimeo/fichier local), verrouillé si pas d'accès
+function BlockVideo({ block, locked }) {
+  const embed = ytEmbed(block.url || '')
+  const hasVideo = !!(block.localVideo || embed || block.url)
+  if (!hasVideo) return null
+  if (locked) {
+    return (
+      <div className="mt-2 rounded-xl p-3 text-center" style={{ background: 'var(--bg-base)', border: '1px dashed var(--border)' }}>
+        <p className="text-xs font-bold" style={{ color: 'var(--text-faint)' }}>🔒 Vidéo disponible après inscription</p>
+      </div>
+    )
+  }
+  if (block.localVideo) {
+    return <video src={block.localVideo} controls playsInline className="w-full mt-2 rounded-xl" style={{ maxHeight: 380, background: '#000' }} />
+  }
+  if (embed) {
+    return (
+      <div className="mt-2 rounded-xl overflow-hidden" style={{ aspectRatio: '16 / 9', background: '#000' }}>
+        <iframe src={embed} title={block.title || 'Vidéo'} loading="lazy"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen style={{ width: '100%', height: '100%', border: 0 }} />
+      </div>
+    )
+  }
+  return (
+    <a href={block.url} target="_blank" rel="noopener noreferrer"
+      className="inline-block mt-2 text-xs font-bold" style={{ color: 'var(--accent)' }}>
+      🎬 Ouvrir la vidéo ↗
+    </a>
+  )
+}
+
+function WeekCard({ week, index, onExercise, hasAccess }) {
   const [open, setOpen] = useState(index === 0)
   const days = week.days || []
   const blockCount = days.reduce((s, d) => s + (d.blocks?.length || 0), 0)
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-5 py-4 text-left">
-        <div className="flex items-center gap-3">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 md:px-5 py-4 text-left">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
             style={{ background: 'var(--accent)' }}>
             {index + 1}
           </div>
-          <div>
-            <p className="font-black text-sm" style={{ color: 'var(--text-primary)' }}>
+          <div className="min-w-0">
+            <p className="font-black text-sm truncate" style={{ color: 'var(--text-primary)' }}>
               {week.title || `Semaine ${index + 1}`}
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>
-              {days.length} jour{days.length !== 1 ? 's' : ''} · {blockCount} exercice{blockCount !== 1 ? 's' : ''}
+              {days.length} jour{days.length !== 1 ? 's' : ''} · {blockCount} bloc{blockCount !== 1 ? 's' : ''}
             </p>
           </div>
         </div>
-        <span className="text-xs transition-transform duration-200"
+        <span className="text-xs transition-transform duration-200 flex-shrink-0 ml-2"
           style={{ color: 'var(--text-faint)', transform: open ? 'rotate(180deg)' : 'none', display: 'inline-block' }}>
           ▾
         </span>
       </button>
       {open && days.length > 0 && (
-        <div className="px-5 pb-4 space-y-2">
+        <div className="px-3 md:px-5 pb-4 space-y-3">
           {days.map((day, di) => (
-            <div key={di} className="flex items-start gap-3 p-3 rounded-xl"
-              style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}>
-              <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0 mt-0.5"
-                style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
-                J{di + 1}
+            <div key={di} className="p-3 rounded-xl" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
+                  style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>J{di + 1}</span>
+                <p className="text-xs font-black" style={{ color: 'var(--text-primary)' }}>{day.name || day.label || `Jour ${di + 1}`}</p>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {day.name || `Jour ${di + 1}`}
-                </p>
-                {day.blocks?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {day.blocks.slice(0, 6).map((b, bi) => {
-                      const exName = b.exercise || b.name || `Ex. ${bi + 1}`
-                      return (
-                        <button key={bi} onClick={() => onExercise?.(exName)}
-                          className="text-[10px] px-2 py-0.5 rounded-full font-semibold transition-all"
-                          style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', border: '1px solid var(--border)', cursor: 'pointer' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}>
-                          {exName} <span style={{ opacity: 0.5 }}>🦾</span>
-                        </button>
-                      )
-                    })}
-                    {day.blocks.length > 6 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ color: 'var(--text-faint)' }}>
-                        +{day.blocks.length - 6}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+
+              {day.blocks?.length > 0 ? (
+                <div className="space-y-2.5">
+                  {day.blocks.map((b, bi) => {
+                    const name = b.title || b.exercise || b.name || `Bloc ${bi + 1}`
+                    const isEx = b.type === 'exercise' || (!b.type && (b.sets || b.reps))
+                    const meta = [b.sets && `${b.sets} séries`, b.reps && `${b.reps} reps`, b.rest && `repos ${b.rest}`].filter(Boolean).join(' · ')
+                    return (
+                      <div key={bi} className="rounded-xl p-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm flex-shrink-0">{BLOCK_ICON[b.type] || '•'}</span>
+                          <p className="text-sm font-bold flex-1 min-w-0" style={{ color: 'var(--text-primary)' }}>{name}</p>
+                          {isEx && (
+                            <button onClick={() => onExercise?.(name)}
+                              className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0"
+                              style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>
+                              🦾 Muscles
+                            </button>
+                          )}
+                        </div>
+                        {meta && <p className="text-[11px] mt-1" style={{ color: 'var(--text-faint)' }}>{meta}</p>}
+                        {(b.notes || b.content) && (
+                          <p className="text-xs mt-1.5 px-3 py-1.5 rounded-lg" style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)' }}>
+                            {b.notes || b.content}
+                          </p>
+                        )}
+                        <BlockVideo block={b} locked={!hasAccess} />
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-[11px]" style={{ color: 'var(--text-faint)' }}>Aucun contenu</p>
+              )}
             </div>
           ))}
         </div>
@@ -108,7 +169,7 @@ export default function ProgramDetail() {
   const { id, programId } = useParams()
   const resolvedId = id || programId
   const navigate = useNavigate()
-  const { programs, fetchPrograms, user } = useStore()
+  const { programs, fetchPrograms, user, token } = useStore()
   const [program, setProgram] = useState(null)
   const [loading, setLoading] = useState(true)
   const [muscleEx, setMuscleEx] = useState(null)
@@ -123,7 +184,15 @@ export default function ProgramDetail() {
       setLoading(true)
       let list = programs
       if (!list?.length) list = await fetchPrograms()
-      const found = (list || []).find(p => String(p.id) === String(resolvedId))
+      let found = (list || []).find(p => String(p.id) === String(resolvedId))
+      // Fallback : si absent de la liste (liste périmée, accès direct par URL),
+      // on récupère le programme directement par son id.
+      if (!found) {
+        try {
+          const res = await fetch(`${API}/programs/${resolvedId}`, { headers: { Authorization: `Bearer ${token}` } })
+          if (res.ok) found = await res.json()
+        } catch {}
+      }
       setProgram(found || null)
       setLoading(false)
       // Vérifie si déjà inscrit
@@ -177,10 +246,13 @@ export default function ProgramDetail() {
   const lvlStyle = LEVEL_COLORS[program.level] || LEVEL_COLORS['Tous niveaux']
   const gradient = program.gradient || CAT_GRADIENTS[program.category] || CAT_GRADIENTS.Force
   const icon = CAT_ICONS[program.category] || '💪'
-  const weeks = program.sections || program.weeks || []
+  // Attention : sections peut être un tableau VIDE (truthy) → on teste la longueur
+  const weeks = (program.sections?.length ? program.sections : program.weeks) || []
   const sessionCount = weeks.reduce((s, w) => s + (w.days?.length || 0), 0) || program.sessions || '—'
   const isCoach = user?.role === 'coach'
   const isPremiumRequired = program.source === 'admin' && program.price > 0 && !user?.isPremium
+  // Accès au contenu (vidéos) : coach propriétaire, programme gratuit, déjà inscrit, ou admin débloqué (premium)
+  const hasAccess = isCoach || enrolled || program.price === 0 || (program.source === 'admin' && !isPremiumRequired)
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
@@ -200,7 +272,7 @@ export default function ProgramDetail() {
       )}
 
       {/* ── Hero cinématique ── */}
-      <div className="relative overflow-hidden" style={{ background: gradient, minHeight: 420 }}>
+      <div className="relative overflow-hidden" style={{ background: gradient, minHeight: 'clamp(300px, 48vh, 420px)' }}>
         {/* Grain */}
         <div className="absolute inset-0 opacity-20" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
@@ -214,7 +286,7 @@ export default function ProgramDetail() {
           style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.18))' }} />
 
         {/* Nav */}
-        <div className="relative z-10 flex items-center justify-between px-8 pt-8">
+        <div className="relative z-10 flex items-center justify-between px-5 md:px-8 pt-6 md:pt-8">
           <button onClick={() => navigate(-1)}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
             style={{ background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)' }}
@@ -234,7 +306,7 @@ export default function ProgramDetail() {
         </div>
 
         {/* Content */}
-        <div className="relative z-10 px-8 pt-8 pb-10">
+        <div className="relative z-10 px-5 md:px-8 pt-6 md:pt-8 pb-8 md:pb-10">
           <div className="flex items-center gap-3 mb-5 flex-wrap">
             <span className="px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase"
               style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
@@ -252,7 +324,7 @@ export default function ProgramDetail() {
             )}
           </div>
 
-          <h1 className="text-5xl font-black tracking-tight mb-4 max-w-2xl"
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-4 max-w-2xl"
             style={{ color: '#fff', textShadow: '0 2px 24px rgba(0,0,0,0.5)', lineHeight: 1.1 }}>
             {program.title}
           </h1>
@@ -359,7 +431,7 @@ export default function ProgramDetail() {
               Programme semaine par semaine
             </h2>
             <div className="space-y-3">
-              {weeks.map((w, i) => <WeekCard key={i} week={w} index={i} onExercise={setMuscleEx} />)}
+              {weeks.map((w, i) => <WeekCard key={i} week={w} index={i} onExercise={setMuscleEx} hasAccess={hasAccess} />)}
             </div>
           </div>
         )}
