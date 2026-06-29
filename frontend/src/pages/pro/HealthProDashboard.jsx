@@ -69,8 +69,7 @@ export default function HealthProDashboard() {
           </button>
         </div>
 
-        {/* Radar Patient IA — charge réelle & risques de rechute */}
-        <ProRadarWidget />
+        {/* Radar Patient IA — masqué en beta (IA non disponible) */}
 
         {/* Actions rapides */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 20 }}>

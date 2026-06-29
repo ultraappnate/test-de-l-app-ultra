@@ -2,6 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 
+// Fonctionnalités pas encore dispo en beta → onglet "Bientôt", clic = page Bientôt disponible
+const SOON_PATHS = new Set([
+  '/ai-coach', '/posture', '/discover', '/muscles',
+  '/coach/insights', '/nutri/insights', '/pro/insights',
+])
+
 const NAV_CLIENT = [
   { to: '/dashboard',  label: 'Accueil',          icon: '⌂' },
   { to: '/ai-coach',   label: 'Coach IA',          icon: '🤖', short: 'Coach IA', highlight: true },
@@ -319,13 +325,16 @@ export default function Sidebar({ theme, setTheme, collapsed, setCollapsed }) {
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-        {links.map(({ to, label, icon, highlight }) => (
+        {links.map(({ to, label, icon, highlight }) => {
+          const soon = SOON_PATHS.has(to)
+          const hl = highlight && !soon
+          return (
           <NavLink key={to} to={to} end={to === '/dashboard'} title={collapsed ? label : undefined}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
             style={({ isActive }) => ({
-              background: isActive ? 'var(--accent)' : highlight && !isActive ? 'rgba(39,174,96,0.08)' : 'transparent',
-              color: isActive ? '#fff' : highlight ? '#27ae60' : 'var(--text-muted)',
-              border: highlight && !isActive ? '1px solid rgba(39,174,96,0.25)' : '1px solid transparent',
+              background: isActive ? 'var(--accent)' : hl && !isActive ? 'rgba(39,174,96,0.08)' : 'transparent',
+              color: isActive ? '#fff' : hl ? '#27ae60' : soon ? 'var(--text-faint)' : 'var(--text-muted)',
+              border: hl && !isActive ? '1px solid rgba(39,174,96,0.25)' : '1px solid transparent',
             })}
             onMouseEnter={e => {
               if (!e.currentTarget.getAttribute('aria-current')) {
@@ -335,14 +344,19 @@ export default function Sidebar({ theme, setTheme, collapsed, setCollapsed }) {
             }}
             onMouseLeave={e => {
               if (!e.currentTarget.getAttribute('aria-current')) {
-                e.currentTarget.style.background = highlight ? 'rgba(39,174,96,0.08)' : 'transparent'
-                e.currentTarget.style.color = highlight ? '#27ae60' : 'var(--text-muted)'
+                e.currentTarget.style.background = hl ? 'rgba(39,174,96,0.08)' : 'transparent'
+                e.currentTarget.style.color = hl ? '#27ae60' : soon ? 'var(--text-faint)' : 'var(--text-muted)'
               }
             }}>
             <span className="w-4 text-center text-xs flex-shrink-0 leading-none font-black">{icon}</span>
-            {!collapsed && <span className="truncate">{label}</span>}
+            {!collapsed && <span className="truncate flex-1">{label}</span>}
+            {!collapsed && soon && (
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full flex-shrink-0"
+                style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', letterSpacing: '0.05em' }}>BIENTÔT</span>
+            )}
           </NavLink>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Footer */}

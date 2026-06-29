@@ -94,8 +94,7 @@ export default function NutriDashboard() {
 
       <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
 
-        {/* ── Radar Nutrition IA ─────────────────────────── */}
-        <NutriRadarWidget />
+        {/* ── Radar Nutrition IA — masqué en beta (IA non disponible) ── */}
 
         {/* ── KPIs ───────────────────────────────────────── */}
         <div className="grid grid-cols-6 gap-3">

@@ -379,11 +379,7 @@ function CoachDashboard({ user, navigate }) {
           }
         `}</style>
 
-        {/* Radar Coach IA */}
-        <CoachRadarWidget/>
-
-        {/* AI Insights */}
-        <AIInsights/>
+        {/* Radar Coach IA & AI Insights — masqués en beta (IA non disponible) */}
 
         {/* Quote of the day */}
         <DailyQuote/>
@@ -417,13 +413,13 @@ function ClientDashboard({ user, navigate }) {
       {/* Streak + accès rapide AI */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         <StreakWidget />
-        <button onClick={() => navigate('/ai-coach')}
+        <button onClick={() => navigate('/marketplace')}
           className="p-4 rounded-2xl text-left relative overflow-hidden"
           style={{ background: 'linear-gradient(135deg, #1a0a0f 0%, #6b1a2e 60%, var(--accent) 100%)', border: '1px solid var(--accent)' }}>
-          <div className="absolute top-2 right-3 text-3xl opacity-30">🤖</div>
-          <p className="text-[10px] font-black tracking-[0.2em] uppercase mb-1" style={{ color: 'rgba(255,255,255,0.6)' }}>Nouveau</p>
-          <p className="text-sm font-black text-white leading-tight">Coach IA</p>
-          <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.65)' }}>Disponible 24h/24</p>
+          <div className="absolute top-2 right-3 text-3xl opacity-30">🛒</div>
+          <p className="text-[10px] font-black tracking-[0.2em] uppercase mb-1" style={{ color: 'rgba(255,255,255,0.6)' }}>Marketplace</p>
+          <p className="text-sm font-black text-white leading-tight">Trouve ton coach</p>
+          <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.65)' }}>Experts vérifiés</p>
         </button>
       </div>
 

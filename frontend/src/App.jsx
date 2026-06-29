@@ -67,6 +67,7 @@ import MarketplaceProfile from './pages/MarketplaceProfile'
 import PromotionsManager from './pages/PromotionsManager'
 import PackagesManager from './pages/PackagesManager'
 import LegalPage from './pages/LegalPage'
+import ComingSoon from './pages/ComingSoon'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -145,7 +146,7 @@ function Layout({ theme, setTheme, children }) {
           {children}
         </main>
         {!isBuilderPage && !isMobile && <ThemeToggle theme={theme} setTheme={setTheme} />}
-        {!isMobile && <AICoach/>}
+        {/* Coach IA flottant désactivé en beta (IA non disponible) */}
       </div>
     </SidebarContext.Provider>
   )
@@ -179,8 +180,9 @@ export default function App() {
           <Route path="/nutri/resources"  element={<PrivateRoute><NutriResources /></PrivateRoute>} />
           <Route path="/nutri/profile"    element={<PrivateRoute><NutriProfile /></PrivateRoute>} />
           <Route path="/nutri/stats"      element={<PrivateRoute><NutriStats /></PrivateRoute>} />
-          <Route path="/discover"   element={<Discover />} />
-          <Route path="/expert/:id" element={<ExpertProfile />} />
+          {/* Géolocalisation — désactivée en beta */}
+          <Route path="/discover"   element={<ComingSoon title="Carte des experts" emoji="🗺️" desc="La géolocalisation et la carte des experts à proximité arrivent très bientôt." />} />
+          <Route path="/expert/:id" element={<ComingSoon title="Carte des experts" emoji="🗺️" desc="La géolocalisation et la carte des experts à proximité arrivent très bientôt." />} />
           {/* ── Espace Professionnel de santé ── */}
           <Route path="/pro/dashboard" element={<PrivateRoute><HealthProDashboard /></PrivateRoute>} />
           <Route path="/pro/profile"   element={<PrivateRoute><HealthProProfile /></PrivateRoute>} />
@@ -211,23 +213,23 @@ export default function App() {
           <Route path="/progress" element={<PrivateRoute><Progress /></PrivateRoute>} />
           <Route path="/health" element={<PrivateRoute><HealthIntegrations /></PrivateRoute>} />
           <Route path="/community" element={<PrivateRoute><Community /></PrivateRoute>} />
-          <Route path="/muscles" element={<PrivateRoute><MuscleExplorer /></PrivateRoute>} />
+          <Route path="/muscles" element={<PrivateRoute><ComingSoon title="Atlas Musculaire 3D" emoji="🦾" desc="L'explorateur musculaire 3D interactif arrive très bientôt." /></PrivateRoute>} />
           <Route path="/client/:id" element={<PrivateRoute><ClientProfile /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
           <Route path="/payment/success" element={<PaymentSuccess />} />
           <Route path="/payment/cancel" element={<PaymentCancel />} />
-          <Route path="/ai-coach" element={<PrivateRoute><AICoachPage /></PrivateRoute>} />
+          <Route path="/ai-coach" element={<PrivateRoute><ComingSoon title="Coach IA" emoji="🤖" desc="Ton assistant IA personnel arrive très bientôt. On peaufine ses réponses pour qu'il soit vraiment au top." /></PrivateRoute>} />
           <Route path="/workout" element={<PrivateRoute><WorkoutSession /></PrivateRoute>} />
           <Route path="/coach/upgrade" element={<PrivateRoute><CoachUpgrade /></PrivateRoute>} />
           <Route path="/my-programs" element={<PrivateRoute><MyPrograms /></PrivateRoute>} />
           <Route path="/my-programs/new" element={<PrivateRoute><ClientProgramBuilder /></PrivateRoute>} />
           <Route path="/my-programs/:id" element={<PrivateRoute><ClientProgramView /></PrivateRoute>} />
           <Route path="/my-programs/:id/session" element={<PrivateRoute><ClientProgramView /></PrivateRoute>} />
-          <Route path="/posture" element={<PrivateRoute><PostureAnalysis /></PrivateRoute>} />
+          <Route path="/posture" element={<PrivateRoute><ComingSoon title="Analyse posturale IA" emoji="🧍" desc="L'analyse de ta posture par intelligence artificielle arrive très bientôt." /></PrivateRoute>} />
           <Route path="/admin/exercises" element={<PrivateRoute><AdminExerciseLibrary /></PrivateRoute>} />
-          <Route path="/coach/insights" element={<PrivateRoute><CoachInsights /></PrivateRoute>} />
-          <Route path="/nutri/insights" element={<PrivateRoute><NutriInsights /></PrivateRoute>} />
-          <Route path="/pro/insights" element={<PrivateRoute><ProInsights /></PrivateRoute>} />
+          <Route path="/coach/insights" element={<PrivateRoute><ComingSoon title="Radar Clients IA" emoji="📡" desc="Les insights IA proactifs sur tes clients arrivent très bientôt." /></PrivateRoute>} />
+          <Route path="/nutri/insights" element={<PrivateRoute><ComingSoon title="Radar Clients IA" emoji="📡" desc="Les insights IA proactifs sur tes clients arrivent très bientôt." /></PrivateRoute>} />
+          <Route path="/pro/insights" element={<PrivateRoute><ComingSoon title="Radar Patient IA" emoji="📡" desc="Le suivi IA de la charge et des risques de rechute de tes patients arrive très bientôt." /></PrivateRoute>} />
           <Route path="/marketplace" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
           <Route path="/marketplace/:id" element={<PrivateRoute><MarketplaceProfile /></PrivateRoute>} />
           <Route path="/promotions" element={<PrivateRoute><PromotionsManager /></PrivateRoute>} />
