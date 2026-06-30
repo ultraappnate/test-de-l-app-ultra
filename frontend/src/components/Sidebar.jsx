@@ -19,7 +19,7 @@ const NAV_CLIENT = [
   { to: '/muscles',    label: 'Muscles 3D',        icon: '🦾', short: 'Muscles' },
   { to: '/nutrition',  label: 'Mon Tracker',       icon: '◎', short: 'Tracker' },
   { to: '/progress',   label: 'Ma progression',    icon: '↑', short: 'Progrès' },
-  { to: '/health',       label: 'Applis Santé',    icon: '🔗' },
+  // { to: '/health',       label: 'Applis Santé',    icon: '🔗' }, // masqué temporairement (sync mock) — à remettre plus tard
   { to: '/health-access',label: 'Pros de santé',   icon: '🩺', short: 'Santé' },
   { to: '/community',    label: 'Communauté',      icon: '🌐' },
   { to: '/chat',         label: 'Messages',        icon: '◉' },
@@ -39,7 +39,7 @@ const NAV_COACH = [
   { to: '/coach/nutrition',  label: 'Suivi Nutrition',  icon: '◎' },
   { to: '/coach/sante',      label: 'Bilans santé',     icon: '🩺' },
   { to: '/clients',          label: 'Mes clients',      icon: '❯❯' },
-  { to: '/health',           label: 'Applis Santé',     icon: '🔗' },
+  // { to: '/health',           label: 'Applis Santé',     icon: '🔗' }, // masqué temporairement (sync mock) — à remettre plus tard
   { to: '/community',        label: 'Communauté',       icon: '🌐' },
   { to: '/chat',             label: 'Messages',         icon: '◆' },
   { to: '/analytics',        label: 'Statistiques',     icon: '↑' },
@@ -59,7 +59,7 @@ const NAV_NUTRITIONIST = [
   { to: '/discover',         label: 'Carte experts',        icon: '🗺' },
   { to: '/nutri/recipes',    label: 'Mes recettes',         icon: '◆' },
   { to: '/nutri/resources',  label: 'Ebooks & Ressources',  icon: '▦' },
-  { to: '/health',           label: 'Applis Santé',         icon: '🔗' },
+  // { to: '/health',           label: 'Applis Santé',         icon: '🔗' }, // masqué temporairement (sync mock) — à remettre plus tard
   { to: '/community',        label: 'Communauté',           icon: '🌐' },
   { to: '/chat',             label: 'Messages',             icon: '◉' },
   { to: '/nutri/stats',      label: 'Statistiques',         icon: '↑' },

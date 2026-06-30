@@ -38,7 +38,6 @@ import AICoach from './components/AICoach'
 import Landing from './pages/Landing'
 import Discover from './pages/Discover'
 import Onboarding from './pages/Onboarding'
-import HealthIntegrations from './pages/HealthIntegrations'
 import Community from './pages/Community'
 import MuscleExplorer from './pages/MuscleExplorer'
 import ExpertProfile from './pages/ExpertProfile'
@@ -211,7 +210,7 @@ export default function App() {
           <Route path="/revenue" element={<PrivateRoute><Revenue /></PrivateRoute>} />
           <Route path="/calendar" element={<PrivateRoute><CalendarPage /></PrivateRoute>} />
           <Route path="/progress" element={<PrivateRoute><Progress /></PrivateRoute>} />
-          <Route path="/health" element={<PrivateRoute><HealthIntegrations /></PrivateRoute>} />
+          <Route path="/health" element={<PrivateRoute><ComingSoon title="Applis Santé" emoji="🔗" desc="La synchronisation avec Strava, Garmin, Oura, Polar et Apple Santé arrive très bientôt — on finalise les connexions sécurisées à chaque plateforme." /></PrivateRoute>} />
           <Route path="/community" element={<PrivateRoute><Community /></PrivateRoute>} />
           <Route path="/muscles" element={<PrivateRoute><ComingSoon title="Atlas Musculaire 3D" emoji="🦾" desc="L'explorateur musculaire 3D interactif arrive très bientôt." /></PrivateRoute>} />
           <Route path="/client/:id" element={<PrivateRoute><ClientProfile /></PrivateRoute>} />
