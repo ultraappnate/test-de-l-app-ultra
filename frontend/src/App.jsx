@@ -152,7 +152,7 @@ function Layout({ theme, setTheme, children }) {
 }
 
 export default function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem('ultra-theme') || 'light')
+  const [theme, setTheme] = useState(() => localStorage.getItem('ultra-theme') || 'dark')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
