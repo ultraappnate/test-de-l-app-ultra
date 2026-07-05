@@ -67,6 +67,8 @@ import PromotionsManager from './pages/PromotionsManager'
 import PackagesManager from './pages/PackagesManager'
 import LegalPage from './pages/LegalPage'
 import ComingSoon from './pages/ComingSoon'
+import Survey from './pages/Survey'
+import SurveyResults from './pages/SurveyResults'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -166,6 +168,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/welcome" element={<Landing theme={theme} setTheme={setTheme} />} />
+          <Route path="/enquete" element={<Survey />} />
+          <Route path="/enquete/resultats" element={<PrivateRoute><SurveyResults /></PrivateRoute>} />
           {/* ── Pages légales (publiques) ── */}
           <Route path="/legal" element={<LegalPage />} />
           <Route path="/legal/:slug" element={<LegalPage />} />

@@ -50,6 +50,7 @@ const db = {
   nutritionLogs:  {},  // { clientId: { 'YYYY-MM-DD': { meals:[], updatedAt } } }
   nutritionGoals: {},  // { clientId: { calories, protein, carbs, fat, setBy, updatedAt } }
   calendarEvents: {},  // { userId: [ { id, date:'YYYY-MM-DD', title, time, type } ] }
+  surveyResponses: [], // enquête anciens clients (public, sans compte)
   programs: [
     // ── Force (4)
     { id: 'prog-f1', source: 'admin', title: 'Force Absolue', description: 'Développe une force brute en 12 semaines. Squat, deadlift, bench — les 3 piliers de la puissance.', price: 49, duration: '12 semaines', category: 'Force', level: 'Intermédiaire', sessions: '4x/semaine', nutrition: false, enrollmentCount: 124, gradient: 'linear-gradient(135deg, #1a0a0d 0%, #7d2d38 60%, #a03848 100%)' },
@@ -907,6 +908,51 @@ app.put('/api/nutrition/log', auth, (req, res) => {
   if (!db.nutritionLogs[req.user.id]) db.nutritionLogs[req.user.id] = {}
   db.nutritionLogs[req.user.id][date] = { meals: Array.isArray(meals) ? meals : [], updatedAt: new Date().toISOString() }
   res.json({ success: true, updatedAt: db.nutritionLogs[req.user.id][date].updatedAt })
+})
+
+// ── Enquête anciens clients (publique, sans compte) ──
+const surveyIpHits = new Map() // anti-spam léger : max 5 envois / IP / heure
+app.post('/api/survey', (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown'
+  const hits = surveyIpHits.get(ip)
+  if (hits && Date.now() - hits.first < 3600000 && hits.count >= 5) {
+    return res.status(429).json({ message: 'Trop de réponses, réessaie plus tard' })
+  }
+  if (!hits || Date.now() - hits.first > 3600000) surveyIpHits.set(ip, { count: 1, first: Date.now() })
+  else hits.count++
+
+  const clean = (v, max = 300) => String(v ?? '').slice(0, max).trim()
+  const r = req.body || {}
+  if (!clean(r.firstName) || !clean(r.oldProgram, 500)) {
+    return res.status(400).json({ message: 'Prénom et programme requis' })
+  }
+  if (db.surveyResponses.length >= 2000) {
+    return res.status(400).json({ message: 'Enquête clôturée' })
+  }
+  db.surveyResponses.push({
+    id: uuidv4(),
+    firstName: clean(r.firstName, 80),
+    lastName: clean(r.lastName, 80),
+    email: clean(r.email, 160),
+    oldProgram: clean(r.oldProgram, 500),
+    hadSubscription: clean(r.hadSubscription, 30),
+    purchased: clean(r.purchased, 30),
+    wantedProgram: clean(r.wantedProgram, 500),
+    goal: clean(r.goal, 60),
+    frequency: clean(r.frequency, 30),
+    budget: clean(r.budget, 30),
+    feedback: clean(r.feedback, 1500),
+    wantsBeta: clean(r.wantsBeta, 10),
+    createdAt: new Date().toISOString(),
+  })
+  res.status(201).json({ success: true })
+})
+// Résultats — réservés coach/admin
+app.get('/api/survey/responses', auth, (req, res) => {
+  if (!['coach', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Accès réservé' })
+  }
+  res.json({ responses: db.surveyResponses })
 })
 
 // ── Calendrier personnel ─────────────────────────────
