@@ -1,6 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+
+const FIELD_LABELS = {
+  firstName: 'Ton prénom', lastName: 'Ton nom', email: 'Ton email',
+  oldProgram: 'Le programme que tu avais', hadSubscription: 'Abonnement oui/non',
+  purchased: 'Acheté ou gratuit', wantedProgram: 'Le programme souhaité',
+  goal: 'Ton objectif', frequency: 'Ta fréquence d\'entraînement',
+  budget: 'Ton budget', feedback: 'Ce qui te manquait', wantsBeta: 'Tester la nouvelle app',
+}
 
 const GOALS = ['Perte de poids', 'Prise de muscle', 'Force', 'Remise en forme', 'Performance', 'Santé / mobilité']
 const FREQS = ['1-2 / semaine', '3-4 / semaine', '5+ / semaine']
@@ -44,6 +53,44 @@ const inputStyle = {
   color: 'var(--text-primary)', outline: 'none', fontWeight: 600,
 }
 
+/* Merci + redirection vers la présentation de l'app */
+function ThankYou({ firstName, wantsBeta }) {
+  const navigate = useNavigate()
+  const [count, setCount] = useState(6)
+  useEffect(() => {
+    const t = setInterval(() => setCount(c => c - 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+  useEffect(() => { if (count <= 0) navigate('/welcome') }, [count])
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ maxWidth: 420, textAlign: 'center', background: 'var(--bg-card)',
+        border: '1px solid var(--border)', borderRadius: 28, padding: '48px 28px' }}>
+        <div style={{ fontSize: 56, marginBottom: 16 }}>🙏</div>
+        <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 10 }}>
+          Merci {firstName} !
+        </h1>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 26 }}>
+          Tes réponses sont bien enregistrées. {wantsBeta === 'Oui'
+            ? 'Je te recontacte très vite pour ton accès en avant-première à ULTRA 💪'
+            : 'Merci pour ton temps — ça m\'aide énormément à construire la suite.'}
+        </p>
+        <button onClick={() => navigate('/welcome')}
+          style={{ width: '100%', padding: '15px 0', borderRadius: 14, fontSize: 15, fontWeight: 900,
+            background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer',
+            boxShadow: '0 8px 30px rgba(160,56,72,0.35)' }}>
+          Découvrir ULTRA →
+        </button>
+        <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 12 }}>
+          Redirection automatique dans {Math.max(count, 0)}s…
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function Survey() {
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', oldProgram: '', hadSubscription: '',
@@ -56,8 +103,10 @@ export default function Survey() {
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: typeof v === 'string' ? v : v.target.value }))
 
   const submit = async () => {
-    if (!form.firstName.trim() || !form.oldProgram.trim()) {
-      setError('Ton prénom et le programme que tu avais sont nécessaires 🙏')
+    // Toutes les réponses sont obligatoires
+    const missing = Object.keys(FIELD_LABELS).filter(k => !String(form[k] || '').trim())
+    if (missing.length) {
+      setError(`Il manque : ${missing.map(k => FIELD_LABELS[k]).join(', ')} — toutes les réponses sont nécessaires 🙏`)
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
@@ -76,25 +125,7 @@ export default function Survey() {
     setSending(false)
   }
 
-  if (done) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex',
-        alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ maxWidth: 420, textAlign: 'center', background: 'var(--bg-card)',
-          border: '1px solid var(--border)', borderRadius: 28, padding: '48px 28px' }}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>🙏</div>
-          <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 10 }}>
-            Merci {form.firstName} !
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-            Tes réponses sont bien enregistrées. {form.wantsBeta === 'Oui'
-              ? 'Je te recontacte très vite pour ton accès en avant-première à ULTRA 💪'
-              : 'Merci pour ton temps — ça m\'aide énormément à construire la suite.'}
-          </p>
-        </div>
-      </div>
-    )
-  }
+  if (done) return <ThankYou firstName={form.firstName} wantsBeta={form.wantsBeta} />
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)', padding: 'clamp(16px,4vw,40px) clamp(16px,5vw,24px) 80px' }}>
@@ -112,6 +143,9 @@ export default function Survey() {
           <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
             Tu as suivi un de mes programmes — j'ai besoin de 2 minutes de ton temps
             pour préparer la suite, sur ma nouvelle app.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '10px 0 0' }}>
+            Toutes les questions sont obligatoires
           </p>
         </div>
 

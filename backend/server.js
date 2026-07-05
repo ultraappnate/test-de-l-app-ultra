@@ -51,6 +51,8 @@ const db = {
   nutritionGoals: {},  // { clientId: { calories, protein, carbs, fat, setBy, updatedAt } }
   calendarEvents: {},  // { userId: [ { id, date:'YYYY-MM-DD', title, time, type } ] }
   surveyResponses: [], // enquête anciens clients (public, sans compte)
+  questionnaires: [],       // { id, coachId, title, questions:[{id,label,type,options}], recipients:[clientIds], createdAt }
+  questionnaireAnswers: [], // { id, qId, clientId, clientName, answers:[{label,value}], createdAt }
   programs: [
     // ── Force (4)
     { id: 'prog-f1', source: 'admin', title: 'Force Absolue', description: 'Développe une force brute en 12 semaines. Squat, deadlift, bench — les 3 piliers de la puissance.', price: 49, duration: '12 semaines', category: 'Force', level: 'Intermédiaire', sessions: '4x/semaine', nutrition: false, enrollmentCount: 124, gradient: 'linear-gradient(135deg, #1a0a0d 0%, #7d2d38 60%, #a03848 100%)' },
@@ -953,6 +955,115 @@ app.get('/api/survey/responses', auth, (req, res) => {
     return res.status(403).json({ message: 'Accès réservé' })
   }
   res.json({ responses: db.surveyResponses })
+})
+
+// ── Questionnaires coach → clients ───────────────────
+// Les clients d'un coach = rattachés (coachId) ∪ inscrits à l'un de ses programmes
+function getCoachClients(coachId) {
+  const progIds = db.programs.filter(p => p.coachId === coachId).map(p => p.id)
+  const enrolledIds = new Set(db.enrollments.filter(e => progIds.includes(e.programId)).map(e => e.userId))
+  return db.users.filter(u => u.role === 'client' && (u.coachId === coachId || enrolledIds.has(u.id)))
+}
+
+// Liste des clients joignables (pour le sélecteur de destinataires)
+app.get('/api/questionnaires/clients', auth, (req, res) => {
+  if (req.user.role !== 'coach') return res.status(403).json({ message: 'Accès réservé aux coachs' })
+  res.json({ clients: getCoachClients(req.user.id).map(c => ({ id: c.id, name: c.name, email: c.email })) })
+})
+
+// Créer et envoyer (individuel, groupé ou tous)
+app.post('/api/questionnaires', auth, (req, res) => {
+  if (req.user.role !== 'coach') return res.status(403).json({ message: 'Accès réservé aux coachs' })
+  const { title, questions, clientIds } = req.body || {}
+  const cleanTitle = String(title || '').trim().slice(0, 120)
+  const cleanQuestions = (Array.isArray(questions) ? questions : [])
+    .slice(0, 20)
+    .map((q, i) => ({
+      id: `q${i}`,
+      label: String(q.label || '').trim().slice(0, 300),
+      type: q.type === 'choice' ? 'choice' : 'text',
+      options: q.type === 'choice' ? (Array.isArray(q.options) ? q.options.slice(0, 8).map(o => String(o).slice(0, 80)) : []) : [],
+    }))
+    .filter(q => q.label && (q.type === 'text' || q.options.length >= 2))
+  if (!cleanTitle || cleanQuestions.length === 0) {
+    return res.status(400).json({ message: 'Titre et au moins une question requis' })
+  }
+  const myClients = getCoachClients(req.user.id)
+  const recipients = clientIds === 'all'
+    ? myClients.map(c => c.id)
+    : (Array.isArray(clientIds) ? clientIds.filter(id => myClients.some(c => c.id === id)) : [])
+  if (recipients.length === 0) return res.status(400).json({ message: 'Aucun destinataire valide' })
+
+  const questionnaire = {
+    id: uuidv4(), coachId: req.user.id, title: cleanTitle,
+    questions: cleanQuestions, recipients, createdAt: new Date().toISOString(),
+  }
+  db.questionnaires.push(questionnaire)
+  const coach = db.users.find(u => u.id === req.user.id)
+  recipients.forEach(cid => pushNotif(cid, {
+    type: 'questionnaire', title: '📋 Nouveau questionnaire',
+    body: `${coach?.name || 'Ton coach'} t'a envoyé « ${cleanTitle} »`,
+    time: '', link: '/questionnaires',
+  }))
+  res.status(201).json({ success: true, questionnaire })
+})
+
+// Mes questionnaires (coach) + compteurs de réponses
+app.get('/api/questionnaires/mine', auth, (req, res) => {
+  if (req.user.role !== 'coach') return res.status(403).json({ message: 'Accès réservé aux coachs' })
+  const mine = db.questionnaires
+    .filter(q => q.coachId === req.user.id)
+    .map(q => ({ ...q, answerCount: db.questionnaireAnswers.filter(a => a.qId === q.id).length }))
+  res.json({ questionnaires: mine })
+})
+
+// Réponses d'un questionnaire (coach propriétaire)
+app.get('/api/questionnaires/:id/responses', auth, (req, res) => {
+  const q = db.questionnaires.find(x => x.id === req.params.id)
+  if (!q) return res.status(404).json({ message: 'Introuvable' })
+  if (q.coachId !== req.user.id) return res.status(403).json({ message: 'Accès réservé' })
+  res.json({ questionnaire: q, responses: db.questionnaireAnswers.filter(a => a.qId === q.id) })
+})
+
+// Questionnaires reçus (client) — en attente + déjà répondus
+app.get('/api/questionnaires/pending', auth, (req, res) => {
+  const forMe = db.questionnaires.filter(q => q.recipients.includes(req.user.id))
+  const answeredIds = new Set(db.questionnaireAnswers.filter(a => a.clientId === req.user.id).map(a => a.qId))
+  res.json({
+    pending: forMe.filter(q => !answeredIds.has(q.id)).map(({ recipients, ...q }) => ({
+      ...q, coachName: db.users.find(u => u.id === q.coachId)?.name || 'Ton coach',
+    })),
+    answeredCount: forMe.filter(q => answeredIds.has(q.id)).length,
+  })
+})
+
+// Répondre (client destinataire, une seule fois, tout obligatoire)
+app.post('/api/questionnaires/:id/answer', auth, (req, res) => {
+  const q = db.questionnaires.find(x => x.id === req.params.id)
+  if (!q) return res.status(404).json({ message: 'Introuvable' })
+  if (!q.recipients.includes(req.user.id)) return res.status(403).json({ message: 'Tu n\'es pas destinataire' })
+  if (db.questionnaireAnswers.some(a => a.qId === q.id && a.clientId === req.user.id)) {
+    return res.status(400).json({ message: 'Tu as déjà répondu' })
+  }
+  const answers = Array.isArray(req.body?.answers) ? req.body.answers : []
+  const complete = q.questions.every(question =>
+    answers.some(a => a.qid === question.id && String(a.value || '').trim()))
+  if (!complete) return res.status(400).json({ message: 'Toutes les questions sont obligatoires' })
+  const me = db.users.find(u => u.id === req.user.id)
+  db.questionnaireAnswers.push({
+    id: uuidv4(), qId: q.id, clientId: req.user.id, clientName: me?.name || '',
+    answers: q.questions.map(question => ({
+      label: question.label,
+      value: String(answers.find(a => a.qid === question.id)?.value || '').slice(0, 1500),
+    })),
+    createdAt: new Date().toISOString(),
+  })
+  pushNotif(q.coachId, {
+    type: 'questionnaire', title: '📋 Nouvelle réponse',
+    body: `${me?.name || 'Un client'} a répondu à « ${q.title} »`,
+    time: '', link: '/coach/questionnaires',
+  })
+  res.status(201).json({ success: true })
 })
 
 // ── Calendrier personnel ─────────────────────────────

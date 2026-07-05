@@ -19,6 +19,7 @@ const NAV_CLIENT = [
   { to: '/muscles',    label: 'Muscles 3D',        icon: '🦾', short: 'Muscles' },
   { to: '/nutrition',  label: 'Mon Tracker',       icon: '◎', short: 'Tracker' },
   { to: '/progress',   label: 'Ma progression',    icon: '↑', short: 'Progrès' },
+  { to: '/questionnaires', label: 'Questionnaires', icon: '📋', short: 'Quest.' },
   // { to: '/health',       label: 'Applis Santé',    icon: '🔗' }, // masqué temporairement (sync mock) — à remettre plus tard
   { to: '/health-access',label: 'Pros de santé',   icon: '🩺', short: 'Santé' },
   { to: '/community',    label: 'Communauté',      icon: '🌐' },
@@ -39,6 +40,7 @@ const NAV_COACH = [
   { to: '/coach/nutrition',  label: 'Suivi Nutrition',  icon: '◎' },
   { to: '/coach/sante',      label: 'Bilans santé',     icon: '🩺' },
   { to: '/clients',          label: 'Mes clients',      icon: '❯❯' },
+  { to: '/coach/questionnaires', label: 'Questionnaires', icon: '📋', short: 'Quest.' },
   // { to: '/health',           label: 'Applis Santé',     icon: '🔗' }, // masqué temporairement (sync mock) — à remettre plus tard
   { to: '/community',        label: 'Communauté',       icon: '🌐' },
   { to: '/chat',             label: 'Messages',         icon: '◆' },
