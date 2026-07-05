@@ -49,6 +49,7 @@ const db = {
   users: [],
   nutritionLogs:  {},  // { clientId: { 'YYYY-MM-DD': { meals:[], updatedAt } } }
   nutritionGoals: {},  // { clientId: { calories, protein, carbs, fat, setBy, updatedAt } }
+  calendarEvents: {},  // { userId: [ { id, date:'YYYY-MM-DD', title, time, type } ] }
   programs: [
     // ── Force (4)
     { id: 'prog-f1', source: 'admin', title: 'Force Absolue', description: 'Développe une force brute en 12 semaines. Squat, deadlift, bench — les 3 piliers de la puissance.', price: 49, duration: '12 semaines', category: 'Force', level: 'Intermédiaire', sessions: '4x/semaine', nutrition: false, enrollmentCount: 124, gradient: 'linear-gradient(135deg, #1a0a0d 0%, #7d2d38 60%, #a03848 100%)' },
@@ -906,6 +907,16 @@ app.put('/api/nutrition/log', auth, (req, res) => {
   if (!db.nutritionLogs[req.user.id]) db.nutritionLogs[req.user.id] = {}
   db.nutritionLogs[req.user.id][date] = { meals: Array.isArray(meals) ? meals : [], updatedAt: new Date().toISOString() }
   res.json({ success: true, updatedAt: db.nutritionLogs[req.user.id][date].updatedAt })
+})
+
+// ── Calendrier personnel ─────────────────────────────
+app.get('/api/calendar/events', auth, (req, res) => {
+  res.json({ events: db.calendarEvents[req.user.id] || [] })
+})
+app.put('/api/calendar/events', auth, (req, res) => {
+  const { events } = req.body
+  db.calendarEvents[req.user.id] = Array.isArray(events) ? events.slice(0, 500) : []
+  res.json({ success: true })
 })
 
 // Lire ses objectifs macros

@@ -220,6 +220,22 @@ export const useStore = create(
           return { success: true }
         } catch { return { success: false } }
       },
+
+      // ── Calendrier personnel ────────────────────────────
+      fetchCalendarEvents: async () => {
+        try {
+          const { token } = get()
+          const res = await axios.get(`${API}/calendar/events`, { headers: { Authorization: `Bearer ${token}` } })
+          return Array.isArray(res.data.events) ? res.data.events : []
+        } catch { return [] }
+      },
+      saveCalendarEvents: async (events) => {
+        try {
+          const { token } = get()
+          await axios.put(`${API}/calendar/events`, { events }, { headers: { Authorization: `Bearer ${token}` } })
+          return { success: true }
+        } catch { return { success: false } }
+      },
       fetchCoaches: async () => {
         try {
           const { token } = get()
