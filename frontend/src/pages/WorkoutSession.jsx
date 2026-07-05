@@ -23,14 +23,14 @@ function SetRow({ set, index, onChange, onDelete }) {
       <input
         type="number" placeholder="kg" value={set.weight}
         onChange={e => onChange({ ...set, weight: e.target.value })}
-        className="flex-1 px-3 py-2 rounded-xl text-sm text-center font-bold outline-none"
+        className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm text-center font-bold outline-none"
         style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
       />
       <span className="text-xs" style={{ color: 'var(--text-faint)' }}>×</span>
       <input
         type="number" placeholder="reps" value={set.reps}
         onChange={e => onChange({ ...set, reps: e.target.value })}
-        className="flex-1 px-3 py-2 rounded-xl text-sm text-center font-bold outline-none"
+        className="flex-1 min-w-0 px-3 py-2 rounded-xl text-sm text-center font-bold outline-none"
         style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
       />
       <button onClick={onDelete} className="w-7 h-7 rounded-lg flex items-center justify-center text-xs"

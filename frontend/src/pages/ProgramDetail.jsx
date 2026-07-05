@@ -26,11 +26,11 @@ const CAT_ICONS = { Force: '🏋️', Nutrition: '🥗', Combiné: '⚡', Cardio
 function StatPill({ icon, label, value }) {
   return (
     <div className="flex items-center gap-2 px-4 py-2.5 rounded-full"
-      style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
       <span className="text-sm">{icon}</span>
       <div>
-        <p className="text-[11px] leading-none mb-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</p>
-        <p className="text-xs font-black leading-none" style={{ color: '#fff' }}>{value}</p>
+        <p className="text-[11px] leading-none mb-0.5" style={{ color: 'var(--text-muted)' }}>{label}</p>
+        <p className="text-xs font-black leading-none" style={{ color: 'var(--text-primary)' }}>{value}</p>
       </div>
     </div>
   )
