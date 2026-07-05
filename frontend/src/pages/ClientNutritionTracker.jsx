@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useStore } from '../store'
+import BarcodeScannerModal, { fetchFoodByBarcode } from '../components/BarcodeScanner'
 import { v4 as uuidv4 } from 'uuid'
 
 /* ── Describe food with AI ───────────────────────────────── */
@@ -75,22 +76,6 @@ function fmtDate(d) {
 function addDays(d, n) {
   const dt = new Date(d + 'T12:00:00'); dt.setDate(dt.getDate()+n)
   return dt.toISOString().slice(0,10)
-}
-
-async function fetchFoodByBarcode(barcode) {
-  try {
-    const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`)
-    const data = await res.json()
-    if (data.status !== 1) return null
-    const n = data.product.nutriments || {}
-    return {
-      name:     data.product.product_name || data.product.product_name_fr || '',
-      calories: Math.round(n['energy-kcal_100g'] || n['energy-kcal'] || 0),
-      protein:  Math.round((n.proteins_100g        || 0) * 10) / 10,
-      carbs:    Math.round((n.carbohydrates_100g   || 0) * 10) / 10,
-      fat:      Math.round((n.fat_100g             || 0) * 10) / 10,
-    }
-  } catch { return null }
 }
 
 /* ── MacroRing : anneau de progression ─────────────────── */
@@ -264,12 +249,14 @@ function FoodItemRow({ item, onChange, onRemove }) {
 function MealSection({ meal, onChange, onRemove }) {
   const [collapsed, setCollapsed] = useState(false)
   const [showAI, setShowAI]       = useState(false)
+  const [showScan, setShowScan]   = useState(false)
   const items = meal.items || []
 
   const addItem  = () => onChange({...meal, items:[...items,{id:uuidv4(),name:'',qty:'',calories:'',protein:'',carbs:'',fat:''}]})
   const updItem  = (i,u) => { const a=[...items]; a[i]=u; onChange({...meal,items:a}) }
   const remItem  = (i)   => onChange({...meal, items:items.filter((_,idx)=>idx!==i)})
   const addAIItem = (food) => { setShowAI(false); onChange({...meal, items:[...items, { id: uuidv4(), name: food.name, qty: String(food.qty||100), calories: String(food.calories||0), protein: String(food.protein||0), carbs: String(food.carbs||0), fat: String(food.fat||0) }]}) }
+  const addScanItem = (food) => { setShowScan(false); onChange({...meal, items:[...items, { id: uuidv4(), name: food.name, qty: String(food.qty||100), calories: String(food.per100.calories||0), protein: String(food.per100.protein||0), carbs: String(food.per100.carbs||0), fat: String(food.per100.fat||0) }]}) }
 
   const mealCal = items.reduce((s,it)=> s + (it.qty&&it.calories ? Math.round(Number(it.calories)*Number(it.qty)/100) : 0), 0)
   const mealPro = items.reduce((s,it)=> s + (it.qty&&it.protein  ? Math.round(Number(it.protein) *Number(it.qty)/100*10)/10 : 0), 0)
@@ -304,7 +291,13 @@ function MealSection({ meal, onChange, onRemove }) {
               onRemove={()=>remItem(i)}/>
           ))}
           {showAI && <AIFoodSearch onResult={addAIItem} onClose={() => setShowAI(false)}/>}
+          {showScan && <BarcodeScannerModal onAdd={addScanItem} onClose={() => setShowScan(false)}/>}
           <div className="flex gap-2 mt-1">
+            <button onClick={() => setShowScan(true)}
+              className="flex-1 py-2.5 rounded-xl text-sm font-black transition flex items-center justify-center gap-1.5"
+              style={{background:'var(--accent)', color:'#fff', border:'none'}}>
+              📷 Scanner
+            </button>
             <button onClick={addItem}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2"
               style={{border:'2px dashed var(--border)',color:'var(--text-faint)',background:'transparent'}}

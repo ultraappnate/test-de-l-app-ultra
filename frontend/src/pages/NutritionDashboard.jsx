@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
+import BarcodeScannerModal from '../components/BarcodeScanner'
 
 // ─── Helpers ────────────────────────────────────────────
 const MACRO_COLORS = { protein: '#e05a6b', carbs: '#e8a020', fat: '#4a90d9', fiber: '#27ae60' }
@@ -305,12 +306,25 @@ function AddFoodModal({ mealIndex, onAdd, onClose }) {
 
 function TabJournal({ log, goals, onUpdateMeals, selectedDate, setSelectedDate }) {
   const [addMeal, setAddMeal] = useState(null)
-  const meals = log?.meals || MEAL_LABELS.map(() => ({ foods: [] }))
+  const [scanMeal, setScanMeal] = useState(null)
+  // Toujours 4 repas : le serveur renvoie meals:[] pour un jour vierge,
+  // et un .map() sur tableau vide perdait silencieusement l'aliment ajouté
+  const meals = MEAL_LABELS.map((_, i) => (log?.meals || [])[i] || { foods: [] })
   const calGoal = goals?.calories || 2000
 
   const handleAddFood = (mealIdx, food) => {
     const updated = meals.map((m, i) => i === mealIdx ? { ...m, foods: [...(m.foods || []), food] } : m)
     onUpdateMeals(updated)
+  }
+
+  // Le scanner renvoie per100 + total ; ici le modèle stocke les TOTAUX de l'entrée
+  const handleScanAdd = (food) => {
+    handleAddFood(scanMeal, {
+      id: Date.now(), name: food.name, qty: food.qty,
+      calories: food.total.calories, protein: food.total.protein,
+      carbs: food.total.carbs, fat: food.total.fat,
+    })
+    setScanMeal(null)
   }
 
   const handleRemoveFood = (mealIdx, foodIdx) => {
@@ -372,11 +386,18 @@ function TabJournal({ log, goals, onUpdateMeals, selectedDate, setSelectedDate }
                   {foods.length > 0 && <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{foods.length} aliment(s) · {fmt(mealCal)} kcal</p>}
                 </div>
               </div>
-              <button onClick={() => setAddMeal(mi)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
-                + Ajouter
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setScanMeal(mi)} title="Scanner un code-barres"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black"
+                  style={{ background: 'var(--accent)', color: '#fff', border: '1px solid var(--accent)' }}>
+                  📷 Scan
+                </button>
+                <button onClick={() => setAddMeal(mi)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold"
+                  style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
+                  + Ajouter
+                </button>
+              </div>
             </div>
             {foods.length > 0 && (
               <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
@@ -407,6 +428,9 @@ function TabJournal({ log, goals, onUpdateMeals, selectedDate, setSelectedDate }
 
       {addMeal !== null && (
         <AddFoodModal mealIndex={addMeal} onAdd={(food) => handleAddFood(addMeal, food)} onClose={() => setAddMeal(null)} />
+      )}
+      {scanMeal !== null && (
+        <BarcodeScannerModal onAdd={handleScanAdd} onClose={() => setScanMeal(null)} />
       )}
     </div>
   )
@@ -775,7 +799,7 @@ export default function NutritionDashboard() {
           fetchNutritionLog ? fetchNutritionLog(selectedDate) : null,
           fetchNutritionGoals ? fetchNutritionGoals() : null,
         ])
-        if (logData?.meals) setLog(logData)
+        if (logData?.meals) setLog({ ...logData, meals: Array.isArray(logData.meals) ? logData.meals : [] })
         if (goalsData) setGoals(g => ({ ...g, ...goalsData }))
       } catch {}
       setLoading(false)
@@ -786,7 +810,8 @@ export default function NutritionDashboard() {
   const handleUpdateMeals = async (meals) => {
     const newLog = { ...log, meals }
     setLog(newLog)
-    if (saveNutritionLog) await saveNutritionLog(selectedDate, newLog)
+    // saveNutritionLog attend le TABLEAU meals — passer l'objet log corrompait le stockage serveur
+    if (saveNutritionLog) await saveNutritionLog(selectedDate, meals)
   }
 
   const handleSaveGoals = (g) => {

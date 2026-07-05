@@ -895,7 +895,8 @@ app.get('/api/nutrition/log', auth, (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0, 10)
   const log  = db.nutritionLogs[req.user.id]?.[date] || { meals: [] }
   const goals = db.nutritionGoals[req.user.id] || null
-  res.json({ date, meals: log.meals, updatedAt: log.updatedAt, goals })
+  // Défense : d'anciennes entrées corrompues (objet au lieu de tableau) faisaient crasher le client
+  res.json({ date, meals: Array.isArray(log.meals) ? log.meals : [], updatedAt: log.updatedAt, goals })
 })
 
 // Sauvegarder le log
@@ -903,7 +904,7 @@ app.put('/api/nutrition/log', auth, (req, res) => {
   const { date, meals } = req.body
   if (!date) return res.status(400).json({ message: 'date requis' })
   if (!db.nutritionLogs[req.user.id]) db.nutritionLogs[req.user.id] = {}
-  db.nutritionLogs[req.user.id][date] = { meals: meals || [], updatedAt: new Date().toISOString() }
+  db.nutritionLogs[req.user.id][date] = { meals: Array.isArray(meals) ? meals : [], updatedAt: new Date().toISOString() }
   res.json({ success: true, updatedAt: db.nutritionLogs[req.user.id][date].updatedAt })
 })
 
