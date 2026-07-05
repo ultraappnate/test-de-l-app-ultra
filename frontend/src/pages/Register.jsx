@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { ROLE_DATA } from '../data/registerContent'
 
@@ -9,10 +9,9 @@ function pick(arr) {
 
 export default function Register() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { register } = useStore()
-  const initialRole = ['client','coach','nutritionist','health_pro'].includes(searchParams.get('role')) ? searchParams.get('role') : localStorage.getItem('ultra-profile') || 'client'
-  const [formData, setFormData] = useState({ email: '', password: '', name: '', role: initialRole })
+  // Beta : inscription réservée aux clients uniquement (coach/nutri/pro désactivés)
+  const [formData, setFormData] = useState({ email: '', password: '', name: '', role: 'client' })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
@@ -40,12 +39,9 @@ export default function Register() {
       return
     }
     setIsLoading(true)
-    const extra = formData.role === 'health_pro'
-      ? { profession: formData.profession || 'Kinésithérapeute', rpps: formData.rpps || '', acceptedTerms: true }
-      : { acceptedTerms: true }
-    const result = await register(formData.email, formData.password, formData.name, formData.role, extra)
+    const result = await register(formData.email, formData.password, formData.name, 'client', { acceptedTerms: true })
     if (result.success) {
-      navigate(formData.role === 'client' ? '/onboarding' : '/dashboard')
+      navigate('/onboarding')
     } else {
       setError(result.error)
     }
@@ -158,72 +154,6 @@ export default function Register() {
                 />
               </div>
             ))}
-
-            <div>
-              <label className="block text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--text-muted)' }}>
-                {data.roleLabel}
-              </label>
-              <div className="relative">
-                <select
-                  name="role" value={formData.role} onChange={handleChange}
-                  className="w-full text-base px-5 py-4 rounded-xl focus:outline-none transition appearance-none cursor-pointer pr-12"
-                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                >
-                  <option value="client">Athlète / Client</option>
-                  <option value="coach">Coach</option>
-                  <option value="nutritionist">Nutritionniste</option>
-                  <option value="health_pro">Professionnel de santé</option>
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none flex flex-col gap-0.5">
-                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                    <path d="M1 5L5 1L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}/>
-                  </svg>
-                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                    <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}/>
-                  </svg>
-                </div>
-              </div>
-              <p className="mt-2 text-xs" style={{ color: 'var(--text-faint)' }}>
-                ↑ Clique pour choisir ton profil
-              </p>
-            </div>
-
-            {/* Champs spécifiques Professionnel de santé */}
-            {formData.role === 'health_pro' && (
-              <>
-                <div>
-                  <label className="block text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--text-muted)' }}>
-                    Profession
-                  </label>
-                  <div className="relative">
-                    <select name="profession" value={formData.profession || 'Kinésithérapeute'} onChange={handleChange}
-                      className="w-full text-base px-5 py-4 rounded-xl focus:outline-none transition appearance-none cursor-pointer pr-12"
-                      style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
-                      {['Kinésithérapeute','Ostéopathe','Médecin du sport','Podologue','Préparateur physique','Psychologue du sport'].map(p => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-                        <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-muted)' }}/>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--text-muted)' }}>
-                    N° RPPS / ADELI <span style={{ textTransform: 'none', fontWeight: 400 }}>(gage de confiance)</span>
-                  </label>
-                  <input type="text" name="rpps" value={formData.rpps || ''} onChange={handleChange}
-                    placeholder="Ex : 10100456789"
-                    className="w-full text-base px-5 py-4 rounded-xl focus:outline-none transition"
-                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
-                  <p className="mt-2 text-xs" style={{ color: 'var(--text-faint)' }}>
-                    Affiché sur ton profil — statut « en attente de vérification » jusqu'à contrôle par notre équipe
-                  </p>
-                </div>
-              </>
-            )}
 
             {/* Consentement RGPD / CGU */}
             <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl" style={{ background: 'var(--bg-card)', border: `1px solid ${acceptedTerms ? 'var(--accent)' : 'var(--border)'}` }}>

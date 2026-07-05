@@ -402,8 +402,9 @@ app.post('/api/auth/register', async (req, res) => {
   if (String(password).length < 8) {
     return res.status(400).json({ message: 'Le mot de passe doit faire au moins 8 caractères' })
   }
-  // Rôle restreint : impossible de s'inscrire en admin
-  const safeRole = ALLOWED_ROLES.includes(role) ? role : 'client'
+  // Beta : inscription réservée aux clients uniquement (coach/nutri/pro/admin désactivés à l'inscription)
+  // Pour réactiver les autres rôles plus tard : const safeRole = ALLOWED_ROLES.includes(role) ? role : 'client'
+  const safeRole = 'client'
   if (db.users.find(u => u.email.toLowerCase() === email)) {
     return res.status(400).json({ message: 'Email déjà utilisé' })
   }

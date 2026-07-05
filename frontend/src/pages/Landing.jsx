@@ -445,7 +445,7 @@ export default function Landing({ theme, setTheme }) {
   const [activeFeature, setActiveFeature] = useState(0)
   const [openFaq, setOpenFaq] = useState(null)
   const testimonialRef = useRef(null)
-  const [profile, setProfile] = useState(() => localStorage.getItem('ultra-profile') || 'client')
+  const [profile, setProfile] = useState('client') // Beta : client uniquement
   const [hoveredProfile, setHoveredProfile] = useState(null)
   const [showBackToTop, setShowBackToTop] = useState(false)
 
@@ -523,42 +523,7 @@ export default function Landing({ theme, setTheme }) {
             </div>
           </Reveal>
 
-          {/* ── Persona cards ── */}
-          <Reveal delay={80}>
-            <div className="flex justify-center gap-4 mb-10 flex-wrap">
-              {Object.entries(PROFILE_CONTENT).map(([key, val], i) => {
-                const isActive = profile === key
-                const isHov = hoveredProfile === key
-                return (
-                  <TiltCard
-                    key={key}
-                    intensity={8}
-                    glowColor={val.color}
-                    className="cursor-pointer rounded-2xl"
-                    style={{
-                      background: isActive ? val.bg : 'var(--bg-card)',
-                      border: `2px solid ${isActive || isHov ? val.border : 'var(--border)'}`,
-                      padding: '16px 24px',
-                      minWidth: 160,
-                      boxShadow: isActive ? `0 4px 24px ${val.color}33` : 'none',
-                      transition: 'background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
-                    }}
-                    onClick={() => setProfileAndSave(key)}
-                    onMouseEnter={() => setHoveredProfile(key)}
-                    onMouseLeave={() => setHoveredProfile(null)}
-                  >
-                    <div className="flex flex-col items-center gap-2 text-center select-none">
-                      <span className="text-2xl" style={{ filter: isActive || isHov ? 'none' : 'grayscale(0.4)' }}>{val.icon}</span>
-                      <span className="text-sm font-bold" style={{ color: isActive ? val.color : 'var(--text-secondary)' }}>{val.label}</span>
-                      {isActive && (
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: val.color }} />
-                      )}
-                    </div>
-                  </TiltCard>
-                )
-              })}
-            </div>
-          </Reveal>
+          {/* Beta : sélecteur de persona retiré — inscription client uniquement */}
 
           {/* Dynamic headline */}
           <div key={displayProfile} style={{ animation: 'fadeSlideIn 0.35s ease' }}>
@@ -997,11 +962,9 @@ export default function Landing({ theme, setTheme }) {
             <h2 className="text-4xl md:text-5xl font-black" style={{ color: 'var(--text-primary)' }}>ULTRA s'adapte à ton profil.</h2>
           </div>
         </Reveal>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="max-w-md mx-auto">
           {[
             { key: 'client',       title: 'Athlète & Client',  icon: '💪', desc: "Tu veux te transformer, perdre du poids, gagner en force ou améliorer tes performances. ULTRA te connecte aux meilleurs experts.", cta: 'Commencer en tant que client', color: 'var(--accent)' },
-            { key: 'coach',        title: 'Coach Sportif',     icon: '🎓', desc: "Tu veux développer ton activité, coacher plus de clients en ligne et générer des revenus avec tes programmes personnalisés.", cta: 'Créer mon espace coach', color: '#2980b9' },
-            { key: 'nutritionist', title: 'Nutritionniste',    icon: '🥗', desc: "Tu veux digitaliser ta pratique, suivre tes clients plus efficacement et créer des plans alimentaires à grande échelle.", cta: 'Rejoindre en tant que nutritionniste', color: '#27ae60' },
           ].map(({ key, title, icon, desc, cta, color }, i) => (
             <Reveal key={title} delay={i * 110} from="bottom">
               <TiltCard
@@ -1119,7 +1082,7 @@ export default function Landing({ theme, setTheme }) {
       </section>
 
       {/* ── FOOTER ─────────────────────────────────── */}
-      <footer className="px-8 md:px-12 py-10" style={{ borderTop: '1px solid var(--border)' }}>
+      <footer className="px-8 md:px-12 py-10 pb-36 md:pb-10" style={{ borderTop: '1px solid var(--border)' }}>
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <span className="font-black tracking-[0.25em] text-lg" style={{ color: 'var(--text-primary)' }}>ULTRA</span>
           <p className="text-sm" style={{ color: 'var(--text-faint)' }}>© 2025 ULTRA · Coaching & Nutrition · Tous droits réservés</p>
