@@ -12,6 +12,19 @@ const FIELD_LABELS = {
   budget: 'Ton budget', wantsBeta: 'Tester la nouvelle app',
 }
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Fournisseurs d'email reconnus — évite les fautes de frappe type @gmm.com
+const KNOWN_EMAIL_DOMAINS = [
+  'gmail.com', 'googlemail.com',
+  'yahoo.fr', 'yahoo.com', 'ymail.com',
+  'outlook.com', 'outlook.fr', 'hotmail.com', 'hotmail.fr', 'live.com', 'live.fr', 'msn.com',
+  'icloud.com', 'me.com', 'mac.com',
+  'orange.fr', 'wanadoo.fr', 'sfr.fr', 'neuf.fr', 'free.fr', 'laposte.net', 'bbox.fr',
+  'proton.me', 'protonmail.com', 'gmx.com', 'gmx.fr', 'aol.com', 'mail.com',
+]
+const isKnownEmail = (email) => {
+  if (!EMAIL_RE.test(email)) return false
+  return KNOWN_EMAIL_DOMAINS.includes(email.split('@')[1].toLowerCase())
+}
 
 const GOALS = ['Perte de poids', 'Prise de muscle', 'Force', 'Remise en forme', 'Performance', 'Santé / mobilité']
 const FREQS = ['1-2 / semaine', '3-4 / semaine', '5+ / semaine']
@@ -58,7 +71,7 @@ const inputStyle = {
 /* Merci + redirection vers la présentation de l'app */
 function ThankYou({ firstName, wantsBeta }) {
   const navigate = useNavigate()
-  const [count, setCount] = useState(6)
+  const [count, setCount] = useState(15) // laisser le temps de lire avant la redirection
   useEffect(() => {
     const t = setInterval(() => setCount(c => c - 1), 1000)
     return () => clearInterval(t)
@@ -112,8 +125,8 @@ export default function Survey() {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
-    if (!EMAIL_RE.test(form.email.trim())) {
-      setError('Ton adresse email ne semble pas valide — vérifie-la, c\'est là qu\'on t\'écrit 📬')
+    if (!isKnownEmail(form.email.trim())) {
+      setError('Utilise une adresse email d\'un fournisseur reconnu (Gmail, Yahoo, Outlook, iCloud, Orange, SFR, Free…) — vérifie l\'orthographe, c\'est là qu\'on t\'écrit 📬')
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
@@ -191,14 +204,25 @@ export default function Survey() {
         <Field label="Quel programme aimerais-tu avoir aujourd'hui ?" hint="Décris librement, ou inspire-toi des idées ci-dessous">
           <input style={{ ...inputStyle, marginBottom: 10 }} value={form.wantedProgram} onChange={set('wantedProgram')} placeholder="Ex : un programme force + nutrition…" />
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {PROGRAM_IDEAS.map(p => (
-              <button key={p} type="button"
-                onClick={() => setForm(f => ({ ...f, wantedProgram: f.wantedProgram ? `${f.wantedProgram}, ${p}` : p }))}
-                style={{ padding: '6px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                  background: 'var(--bg-card)', border: '1px dashed var(--border)', color: 'var(--text-muted)' }}>
-                + {p}
-              </button>
-            ))}
+            {PROGRAM_IDEAS.map(p => {
+              const parts = form.wantedProgram.split(',').map(s => s.trim()).filter(Boolean)
+              const active = parts.includes(p)
+              // Bascule : un tap ajoute, un re-tap retire — pas de doublon possible
+              const toggle = () => setForm(f => {
+                const cur = f.wantedProgram.split(',').map(s => s.trim()).filter(Boolean)
+                const next = cur.includes(p) ? cur.filter(x => x !== p) : [...cur, p]
+                return { ...f, wantedProgram: next.join(', ') }
+              })
+              return (
+                <button key={p} type="button" onClick={toggle}
+                  style={{ padding: '6px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    background: active ? 'var(--accent)' : 'var(--bg-card)',
+                    border: active ? '1px solid var(--accent)' : '1px dashed var(--border)',
+                    color: active ? '#fff' : 'var(--text-muted)' }}>
+                  {active ? '✓ ' : '+ '}{p}
+                </button>
+              )
+            })}
           </div>
         </Field>
         <Field label="Ton objectif principal en ce moment">

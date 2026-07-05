@@ -969,8 +969,10 @@ app.post('/api/survey', (req, res) => {
   if (required.some(k => !clean(r[k], 500))) {
     return res.status(400).json({ message: 'Toutes les questions (hors optionnelles) sont obligatoires' })
   }
-  if (!EMAIL_RE.test(clean(r.email, 160))) {
-    return res.status(400).json({ message: 'Adresse email invalide' })
+  const emailVal = clean(r.email, 160).toLowerCase()
+  const KNOWN_EMAIL_DOMAINS = ['gmail.com','googlemail.com','yahoo.fr','yahoo.com','ymail.com','outlook.com','outlook.fr','hotmail.com','hotmail.fr','live.com','live.fr','msn.com','icloud.com','me.com','mac.com','orange.fr','wanadoo.fr','sfr.fr','neuf.fr','free.fr','laposte.net','bbox.fr','proton.me','protonmail.com','gmx.com','gmx.fr','aol.com','mail.com']
+  if (!EMAIL_RE.test(emailVal) || !KNOWN_EMAIL_DOMAINS.includes(emailVal.split('@')[1])) {
+    return res.status(400).json({ message: 'Utilise une adresse email d\'un fournisseur reconnu (Gmail, Yahoo, Outlook, iCloud, Orange…)' })
   }
   if (db.surveyResponses.length >= 2000) {
     return res.status(400).json({ message: 'Enquête clôturée' })
