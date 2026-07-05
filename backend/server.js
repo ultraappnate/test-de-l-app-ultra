@@ -913,6 +913,45 @@ app.put('/api/nutrition/log', auth, (req, res) => {
 })
 
 // ── Enquête anciens clients (publique, sans compte) ──
+// Email de remerciement via Brevo (gratuit 300/j, expéditeur vérifié sans domaine).
+// Configurer sur Railway : BREVO_API_KEY + SENDER_EMAIL (l'adresse vérifiée chez Brevo).
+// Sans clé → on saute l'envoi sans bloquer l'enquête.
+async function sendSurveyThanksEmail(to, firstName) {
+  if (!process.env.BREVO_API_KEY) { console.log('[survey] BREVO_API_KEY absente — email de merci non envoyé'); return }
+  const sender = process.env.SENDER_EMAIL || 'nathansummerpro@gmail.com'
+  try {
+    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender: { name: 'Nate — ULTRA', email: sender },
+        to: [{ email: to, name: firstName }],
+        subject: `Merci ${firstName} ! Découvre ULTRA 💪`,
+        htmlContent: `
+<div style="background:#1e1219;padding:40px 16px;font-family:-apple-system,Segoe UI,sans-serif">
+  <div style="max-width:520px;margin:0 auto;background:#2c1a21;border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:40px 28px;text-align:center">
+    <p style="color:#f9f3f4;font-size:26px;font-weight:900;letter-spacing:0.25em;margin:0 0 24px">ULTRA</p>
+    <p style="font-size:44px;margin:0 0 16px">🙏</p>
+    <h1 style="color:#f9f3f4;font-size:22px;font-weight:900;margin:0 0 12px">Merci ${firstName} !</h1>
+    <p style="color:#c9adb2;font-size:14px;line-height:1.7;margin:0 0 28px">
+      Tes réponses à l'enquête sont bien enregistrées — elles vont directement façonner
+      les prochains programmes. En attendant, viens jeter un œil à la nouvelle app :
+    </p>
+    <a href="${FRONTEND_URL}/welcome"
+      style="display:inline-block;background:#a03848;color:#ffffff;font-size:15px;font-weight:900;text-decoration:none;padding:15px 36px;border-radius:14px">
+      Découvrir ULTRA →
+    </a>
+    <p style="color:rgba(255,255,255,0.45);font-size:11px;margin:30px 0 0">
+      © ULTRA · Coaching &amp; Nutrition — tu reçois cet email car tu as répondu à l'enquête.
+    </p>
+  </div>
+</div>`,
+      }),
+    })
+    if (!resp.ok) console.log('[survey] envoi email échoué:', resp.status, await resp.text().catch(() => ''))
+  } catch (e) { console.log('[survey] envoi email erreur:', e.message) }
+}
+
 const surveyIpHits = new Map() // anti-spam léger : max 5 envois / IP / heure
 app.post('/api/survey', (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown'
@@ -925,8 +964,13 @@ app.post('/api/survey', (req, res) => {
 
   const clean = (v, max = 300) => String(v ?? '').slice(0, max).trim()
   const r = req.body || {}
-  if (!clean(r.firstName) || !clean(r.oldProgram, 500)) {
-    return res.status(400).json({ message: 'Prénom et programme requis' })
+  // Tout obligatoire sauf le feedback libre (marqué « optionnel »)
+  const required = ['firstName', 'lastName', 'email', 'oldProgram', 'hadSubscription', 'purchased', 'wantedProgram', 'goal', 'frequency', 'budget', 'wantsBeta']
+  if (required.some(k => !clean(r[k], 500))) {
+    return res.status(400).json({ message: 'Toutes les questions (hors optionnelles) sont obligatoires' })
+  }
+  if (!EMAIL_RE.test(clean(r.email, 160))) {
+    return res.status(400).json({ message: 'Adresse email invalide' })
   }
   if (db.surveyResponses.length >= 2000) {
     return res.status(400).json({ message: 'Enquête clôturée' })
@@ -947,6 +991,8 @@ app.post('/api/survey', (req, res) => {
     wantsBeta: clean(r.wantsBeta, 10),
     createdAt: new Date().toISOString(),
   })
+  // Email de merci en arrière-plan (ne bloque pas la réponse)
+  sendSurveyThanksEmail(clean(r.email, 160), clean(r.firstName, 80))
   res.status(201).json({ success: true })
 })
 // Résultats — réservés coach/admin

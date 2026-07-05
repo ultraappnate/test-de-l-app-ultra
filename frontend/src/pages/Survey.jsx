@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 
+// Tout obligatoire… sauf le feedback libre (marqué « optionnel »)
 const FIELD_LABELS = {
   firstName: 'Ton prénom', lastName: 'Ton nom', email: 'Ton email',
   oldProgram: 'Le programme que tu avais', hadSubscription: 'Abonnement oui/non',
   purchased: 'Acheté ou gratuit', wantedProgram: 'Le programme souhaité',
   goal: 'Ton objectif', frequency: 'Ta fréquence d\'entraînement',
-  budget: 'Ton budget', feedback: 'Ce qui te manquait', wantsBeta: 'Tester la nouvelle app',
+  budget: 'Ton budget', wantsBeta: 'Tester la nouvelle app',
 }
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const GOALS = ['Perte de poids', 'Prise de muscle', 'Force', 'Remise en forme', 'Performance', 'Santé / mobilité']
 const FREQS = ['1-2 / semaine', '3-4 / semaine', '5+ / semaine']
@@ -103,10 +105,15 @@ export default function Survey() {
   const set = (k) => (v) => setForm(f => ({ ...f, [k]: typeof v === 'string' ? v : v.target.value }))
 
   const submit = async () => {
-    // Toutes les réponses sont obligatoires
+    // Tout obligatoire sauf le feedback (optionnel)
     const missing = Object.keys(FIELD_LABELS).filter(k => !String(form[k] || '').trim())
     if (missing.length) {
-      setError(`Il manque : ${missing.map(k => FIELD_LABELS[k]).join(', ')} — toutes les réponses sont nécessaires 🙏`)
+      setError(`Il manque : ${missing.map(k => FIELD_LABELS[k]).join(', ')} 🙏`)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    if (!EMAIL_RE.test(form.email.trim())) {
+      setError('Ton adresse email ne semble pas valide — vérifie-la, c\'est là qu\'on t\'écrit 📬')
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
@@ -145,7 +152,7 @@ export default function Survey() {
             pour préparer la suite, sur ma nouvelle app.
           </p>
           <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '10px 0 0' }}>
-            Toutes les questions sont obligatoires
+            Toutes les questions sont obligatoires, sauf celles marquées « optionnel »
           </p>
         </div>
 
@@ -206,7 +213,7 @@ export default function Survey() {
 
         {/* ── Feedback libre ── */}
         <div style={{ height: 1, background: 'var(--border)', margin: '10px 0 30px' }} />
-        <Field label="Qu'est-ce qui te manquait avant ?" hint="Suivi, motivation, contenu, app… dis-moi tout, ça reste entre nous">
+        <Field label="Qu'est-ce qui te manquait avant ? (optionnel)" hint="Suivi, motivation, contenu, app… dis-moi tout, ça reste entre nous">
           <textarea style={{ ...inputStyle, minHeight: 100, resize: 'vertical', fontFamily: 'inherit' }}
             value={form.feedback} onChange={set('feedback')} placeholder="Réponse libre (optionnel)…" />
         </Field>
