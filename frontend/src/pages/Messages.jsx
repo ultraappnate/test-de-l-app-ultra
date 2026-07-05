@@ -31,12 +31,25 @@ function initials(name) {
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return isMobile
+}
+
 export default function Messages() {
   const { user } = useStore()
   const navigate = useNavigate()
   const { recipientId } = useParams()
+  const isMobile = useIsMobile()
 
   const [activeId, setActiveId] = useState(recipientId || 'c1')
+  // Mobile : un seul panneau à la fois — liste d'abord, chat après sélection
+  const [mobileChatOpen, setMobileChatOpen] = useState(!!recipientId)
   const [msgs, setMsgs]         = useState(MOCK_MSGS[activeId] || [])
   const [input, setInput]       = useState('')
   const [search, setSearch]     = useState('')
@@ -65,10 +78,12 @@ export default function Messages() {
   )
 
   return (
-    <div className="flex h-screen" style={{ background: 'var(--bg-base)' }}>
+    <div className="flex" style={{ background: 'var(--bg-base)', height: '100dvh', paddingBottom: isMobile ? 62 : 0 }}>
 
-      {/* ── Left panel: conversations ── */}
-      <div className="w-72 flex-shrink-0 flex flex-col" style={{ borderRight: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+      {/* ── Left panel: conversations (mobile : plein écran, masqué quand un chat est ouvert) ── */}
+      {(!isMobile || !mobileChatOpen) && (
+      <div className={isMobile ? 'w-full flex flex-col' : 'w-72 flex-shrink-0 flex flex-col'}
+        style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', background: 'var(--bg-card)' }}>
         {/* Header */}
         <div className="px-5 py-5" style={{ borderBottom: '1px solid var(--border)' }}>
           <h2 className="text-lg font-black mb-3" style={{ color: 'var(--text-primary)' }}>Messages</h2>
@@ -84,7 +99,7 @@ export default function Messages() {
         {/* Convo list */}
         <div className="flex-1 overflow-y-auto">
           {filtered.map(c => (
-            <button key={c.id} onClick={() => setActiveId(c.id)}
+            <button key={c.id} onClick={() => { setActiveId(c.id); setMobileChatOpen(true) }}
               className="w-full px-4 py-3.5 text-left flex items-center gap-3 transition-all"
               style={{
                 background: activeId === c.id ? 'var(--accent-subtle)' : 'transparent',
@@ -119,11 +134,20 @@ export default function Messages() {
           ))}
         </div>
       </div>
+      )}
 
-      {/* ── Right panel: chat ── */}
-      <div className="flex-1 flex flex-col">
+      {/* ── Right panel: chat (mobile : plein écran avec bouton retour) ── */}
+      {(!isMobile || mobileChatOpen) && (
+      <div className="flex-1 flex flex-col" style={{ minWidth: 0 }}>
         {/* Chat header */}
-        <div className="px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+        <div className="px-4 md:px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+          {isMobile && (
+            <button onClick={() => setMobileChatOpen(false)} title="Retour aux conversations"
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-base font-bold"
+              style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
+              ←
+            </button>
+          )}
           <div className="relative">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white"
               style={{ background: 'var(--accent)' }}>
@@ -137,20 +161,22 @@ export default function Messages() {
               {convo?.online ? '● En ligne' : '○ Hors ligne'}
             </p>
           </div>
-          <div className="ml-auto flex gap-2">
-            <button className="px-3 py-1.5 rounded-xl text-xs font-bold transition"
-              style={{ background: 'rgba(39,174,96,0.1)', color: '#4ade80', border: '1px solid rgba(39,174,96,0.2)' }}>
-              🥗 Nutrition
-            </button>
-            <button className="px-3 py-1.5 rounded-xl text-xs font-bold transition"
-              style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
-              📋 Programme
-            </button>
-          </div>
+          {!isMobile && (
+            <div className="ml-auto flex gap-2">
+              <button className="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                style={{ background: 'rgba(39,174,96,0.1)', color: '#4ade80', border: '1px solid rgba(39,174,96,0.2)' }}>
+                🥗 Nutrition
+              </button>
+              <button className="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
+                📋 Programme
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-3">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-3">
           {msgs.map(msg => {
             const isMe = msg.from === 'me'
             return (
@@ -183,7 +209,7 @@ export default function Messages() {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSend} className="px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
+        <form onSubmit={handleSend} className="px-4 md:px-6 py-4" style={{ borderTop: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <input value={input} onChange={e => setInput(e.target.value)}
@@ -198,6 +224,7 @@ export default function Messages() {
           </div>
         </form>
       </div>
+      )}
     </div>
   )
 }

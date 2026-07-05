@@ -24,21 +24,24 @@ export default function CalendarPage() {
   const [month,       setMonth]       = useState(now.getMonth())
   const [selectedDay, setSelectedDay] = useState(now.getDate())
   const [visible,     setVisible]     = useState(false)
-  const [allEvents,   setAllEvents]   = useState([])   // [{id, date:'YYYY-MM-DD', title, time, type}]
+  const [allEvents,   setAllEvents]   = useState([])   // [{id, date:'YYYY-MM-DD', endDate?, title, time, type}]
   const [showForm,    setShowForm]    = useState(false)
-  const [form,        setForm]        = useState({ title: '', time: '', type: 'perso' })
+  const [form,        setForm]        = useState({ title: '', time: '', type: 'perso', startDate: '', endDate: '' })
   useEffect(() => { const t = setTimeout(() => setVisible(true), 60); return () => clearTimeout(t) }, [])
   useEffect(() => { fetchCalendarEvents().then(setAllEvents) }, [])
 
   const firstDay    = new Date(year, month, 1).getDay()
   const startOffset = (firstDay === 0 ? 6 : firstDay - 1)
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  // Événements du mois affiché, avec `day` extrait pour le rendu
-  const events = allEvents
-    .filter(e => e.date && e.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}-`))
-    .map(e => ({ ...e, day: Number(e.date.slice(8, 10)) }))
+  // Événements visibles ce mois-ci (un événement peut s'étaler sur plusieurs jours)
+  const monthStart = dateKey(year, month, 1)
+  const monthEnd   = dateKey(year, month, daysInMonth)
+  const events = allEvents.filter(e => e.date && e.date <= monthEnd && (e.endDate || e.date) >= monthStart)
 
-  const eventsForDay   = d => events.filter(e => e.day === d)
+  const eventsForDay = d => {
+    const k = dateKey(year, month, d)
+    return events.filter(e => e.date <= k && (e.endDate || e.date) >= k)
+  }
   const selectedEvents = eventsForDay(selectedDay)
 
   const prevMonth = () => { if (month === 0) { setYear(y => y - 1); setMonth(11) } else setMonth(m => m - 1) }
@@ -48,20 +51,28 @@ export default function CalendarPage() {
     setAllEvents(next)
     saveCalendarEvents(next)
   }
+  const openForm = () => {
+    const d = dateKey(year, month, selectedDay)
+    setForm({ title: '', time: '', type: 'perso', startDate: d, endDate: d })
+    setShowForm(true)
+  }
   const addEvent = () => {
-    if (!form.title.trim()) return
+    if (!form.title.trim() || !form.startDate) return
+    // Si les dates sont inversées, on les remet dans l'ordre
+    let start = form.startDate, end = form.endDate || form.startDate
+    if (end < start) [start, end] = [end, start]
     updateEvents([...allEvents, {
-      id: `ev-${Date.now()}`, date: dateKey(year, month, selectedDay),
+      id: `ev-${Date.now()}`, date: start, ...(end !== start ? { endDate: end } : {}),
       title: form.title.trim(), time: form.time, type: form.type,
     }])
-    setForm({ title: '', time: '', type: 'perso' })
+    setForm({ title: '', time: '', type: 'perso', startDate: '', endDate: '' })
     setShowForm(false)
   }
   const removeEvent = (id) => updateEvents(allEvents.filter(e => e.id !== id))
 
   const todayKey = dateKey(now.getFullYear(), now.getMonth(), now.getDate())
   const upcoming = allEvents
-    .filter(e => e.date >= todayKey)
+    .filter(e => (e.endDate || e.date) >= todayKey)
     .sort((a, b) => a.date === b.date ? String(a.time).localeCompare(String(b.time)) : a.date.localeCompare(b.date))
     .slice(0, 5)
 
@@ -227,16 +238,51 @@ export default function CalendarPage() {
               {showForm ? (
                 <div style={{ marginTop: 12, padding: 14, borderRadius: 16,
                   background: 'var(--bg-base)', border: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: 'var(--text-muted)', margin: '0 0 5px' }}>Titre</p>
                   <input value={form.title} autoFocus
                     onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                     onKeyDown={e => e.key === 'Enter' && addEvent()}
                     placeholder="Titre de l'événement…"
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13, fontWeight: 700,
-                      background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none', marginBottom: 8 }} />
-                  <input type="time" value={form.time}
-                    onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13, fontWeight: 700,
                       background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none', marginBottom: 10 }} />
+
+                  {/* Dates de début et de fin */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                    <div>
+                      <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase',
+                        color: 'var(--text-muted)', margin: '0 0 5px' }}>Date de début</p>
+                      <input type="date" value={form.startDate}
+                        onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                          background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase',
+                        color: 'var(--text-muted)', margin: '0 0 5px' }}>Date de fin</p>
+                      <input type="date" value={form.endDate} min={form.startDate}
+                        onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                          background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }} />
+                    </div>
+                  </div>
+
+                  {/* Heure — libellé explicite tant que rien n'est choisi */}
+                  <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: 'var(--text-muted)', margin: '0 0 5px' }}>Heure</p>
+                  <div style={{ position: 'relative', marginBottom: 10 }}>
+                    <input type="time" value={form.time}
+                      onChange={e => setForm(f => ({ ...f, time: e.target.value }))}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                        background: 'var(--bg-card)', border: '1px solid var(--border)',
+                        color: form.time ? 'var(--text-primary)' : 'transparent', outline: 'none' }} />
+                    {!form.time && (
+                      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                        fontSize: 13, fontWeight: 700, color: 'var(--text-faint)', pointerEvents: 'none' }}>
+                        🕐 Sélectionner l'heure (optionnel)
+                      </span>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
                     {Object.entries(EVENT_TYPES).map(([key, t]) => (
                       <button key={key} onClick={() => setForm(f => ({ ...f, type: key }))}
@@ -250,7 +296,7 @@ export default function CalendarPage() {
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { setShowForm(false); setForm({ title: '', time: '', type: 'perso' }) }}
+                    <button onClick={() => { setShowForm(false); setForm({ title: '', time: '', type: 'perso', startDate: '', endDate: '' }) }}
                       style={{ flex: 1, padding: '10px 0', borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: 'pointer',
                         background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
                       Annuler
@@ -264,7 +310,7 @@ export default function CalendarPage() {
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setShowForm(true)}
+                <button onClick={openForm}
                   style={{ width: '100%', marginTop: 12, padding: '12px 0', borderRadius: 14, cursor: 'pointer',
                     fontSize: 13, fontWeight: 800, background: 'transparent',
                     border: '2px dashed var(--border)', color: 'var(--text-muted)' }}
