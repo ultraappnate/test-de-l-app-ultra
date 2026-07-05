@@ -54,7 +54,7 @@ function segmentBlocks(blocks) {
 }
 
 /* ── Carte exercice (fresque) ───────────────────────────── */
-function ExoCard({ block, onChange, onRemove, onMove, dropHandlers, handleProps, dragging, dropTarget }) {
+function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHandlers, handleProps, dragging, dropTarget }) {
   const set = (k, v) => onChange({ ...block, [k]: v })
   const [showVid, setShowVid] = useState(!!block.url)
   const yt = ytId(block.url)
@@ -81,10 +81,15 @@ function ExoCard({ block, onChange, onRemove, onMove, dropHandlers, handleProps,
       <div className="flex items-center gap-1.5 mb-3">
         <div {...handleProps} title="Glisse cette carte sur une autre pour créer un superset/circuit"
           className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5"
-          style={{ cursor: 'grab', background: 'var(--accent-subtle)', border: '1px dashed var(--accent)' }}>
+          style={{ cursor: 'grab', background: 'var(--accent-subtle)', border: '1px dashed var(--accent)',
+                   touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}>
           <span style={{ fontSize: 13, color: 'var(--accent)' }}>⠿</span>
           <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: 'var(--accent)' }}>Glisser pour lier</span>
         </div>
+        {linkable && (
+          <button onClick={onLink} title="Lier à l'exercice suivant (superset)"
+            style={{ background: 'var(--accent-subtle)', border: '1px solid var(--accent)', borderRadius: 7, width: 26, height: 26, color: 'var(--accent)', cursor: 'pointer', fontSize: 12 }}>🔗</button>
+        )}
         <button onClick={() => onMove(-1)} title="Déplacer à gauche" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 7, width: 26, height: 26, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>←</button>
         <button onClick={() => onMove(1)} title="Déplacer à droite" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 7, width: 26, height: 26, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12 }}>→</button>
         <button onClick={onRemove} title="Supprimer" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 7, width: 26, height: 26, color: '#e06b7e', cursor: 'pointer', fontSize: 13 }}>✕</button>
@@ -263,15 +268,16 @@ export default function CoachProgramBuilder() {
   // ── Glisser-déposer : réordonner + grouper ──
   const [dragId, setDragId] = useState(null)
   const [overId, setOverId] = useState(null)
+  const dragRef = useRef({ id: null, over: null })
 
-  function handleDrop(targetId, mode) {
-    if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return }
+  function applyDrop(sourceId, targetId, mode) {
+    if (!sourceId || sourceId === targetId) { setDragId(null); setOverId(null); return }
     const arr = [...blocks]
-    const from = arr.findIndex(b => b.id === dragId)
-    const to = arr.findIndex(b => b.id === targetId)
-    if (from < 0 || to < 0) { setDragId(null); setOverId(null); return }
+    const from = arr.findIndex(b => b.id === sourceId)
+    if (from < 0) { setDragId(null); setOverId(null); return }
     const [moved] = arr.splice(from, 1)
     const tIdx = arr.findIndex(b => b.id === targetId)
+    if (tIdx < 0) { setDragId(null); setOverId(null); return }
     if (mode === 'group') {
       // Grouper : même `group` que la cible, inséré juste après
       const gid = arr[tIdx].group || uuidv4()
@@ -283,6 +289,69 @@ export default function CoachProgramBuilder() {
     }
     updateDayBlocks(arr)
     setDragId(null); setOverId(null)
+  }
+
+  // Drag unifié souris + tactile (Pointer Events). Le HTML5 DnD ne fonctionne pas
+  // sur mobile (aucun événement drag) et déclenche la sélection de texte au doigt.
+  function startPointerDrag(e, id) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    dragRef.current = { id, over: null, x: 0, y: 0 }
+    setDragId(id); setOverId(null)
+
+    const evalOver = (x, y) => {
+      const el = document.elementFromPoint(x, y)
+      const card = el && el.closest('[data-block-id]')
+      const over = card ? card.getAttribute('data-block-id') : null
+      if (over !== dragRef.current.over) {
+        dragRef.current.over = over
+        setOverId(over && over !== id ? over : null)
+      }
+    }
+    const move = (ev) => {
+      ev.preventDefault()
+      dragRef.current.x = ev.clientX
+      dragRef.current.y = ev.clientY
+      evalOver(ev.clientX, ev.clientY)
+    }
+    // Auto-scroll horizontal quand le doigt approche d'un bord (cartes larges = cible hors écran)
+    let raf
+    const EDGE = 60, SPEED = 14
+    const tick = () => {
+      const sc = scrollRef.current
+      const { x, y } = dragRef.current
+      if (sc && x > 0) {
+        if (x > window.innerWidth - EDGE) { sc.scrollLeft += SPEED; evalOver(x, y) }
+        else if (x < EDGE) { sc.scrollLeft -= SPEED; evalOver(x, y) }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+
+    const end = () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      const { id: dId, over } = dragRef.current
+      dragRef.current = { id: null, over: null, x: 0, y: 0 }
+      if (over && over !== dId) applyDrop(dId, over, 'group')
+      else { setDragId(null); setOverId(null) }
+    }
+    window.addEventListener('pointermove', move, { passive: false })
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+  }
+  // Alternative tactile au glisser : lier une carte à la suivante en un tap
+  function linkWithNext(id) {
+    const arr = [...blocks]
+    const i = arr.findIndex(b => b.id === id)
+    if (i < 0 || i >= arr.length - 1) return
+    const gid = arr[i].group || arr[i + 1].group || uuidv4()
+    arr[i] = { ...arr[i], group: gid }
+    arr[i + 1] = { ...arr[i + 1], group: gid }
+    updateDayBlocks(arr)
   }
   function ungroupSegment(gid) {
     updateDayBlocks(blocks.map(b => b.group === gid ? { ...b, group: null } : b))
@@ -486,24 +555,20 @@ export default function CoachProgramBuilder() {
                     )}
                     <div className="flex gap-2">
                       {seg.items.map(b => (
-                        <div key={b.id} data-card style={{ transition: 'transform .15s, opacity .15s' }}>
+                        <div key={b.id} data-card data-block-id={b.id} style={{ transition: 'transform .15s, opacity .15s' }}>
                           <ExoCard
                             block={b}
                             onChange={nb => updateBlock(b.id, nb)}
                             onRemove={() => removeBlock(b.id)}
                             onMove={dir => moveBlock(b.id, dir)}
+                            onLink={() => linkWithNext(b.id)}
+                            linkable={(() => { const i = blocks.findIndex(x => x.id === b.id); return i >= 0 && i < blocks.length - 1 && !(blocks[i].group && blocks[i].group === blocks[i + 1].group) })()}
                             dragging={dragId === b.id}
                             dropTarget={overId === b.id && dragId && dragId !== b.id}
                             handleProps={{
-                              draggable: true,
-                              onDragStart: () => setDragId(b.id),
-                              onDragEnd: () => { setDragId(null); setOverId(null) },
+                              onPointerDown: e => startPointerDrag(e, b.id),
                             }}
-                            dropHandlers={{
-                              onDragOver: e => { if (dragId && dragId !== b.id) { e.preventDefault(); setOverId(b.id) } },
-                              onDragLeave: () => setOverId(o => o === b.id ? null : o),
-                              onDrop: e => { e.preventDefault(); handleDrop(b.id, 'group') },
-                            }}
+                            dropHandlers={{}}
                           />
                         </div>
                       ))}
