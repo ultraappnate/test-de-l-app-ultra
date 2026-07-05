@@ -85,7 +85,44 @@ body {
   50%       { opacity: 0.4; }
 }
 
-main > * { animation: fadeUp 0.35s ease both; }
+/* `backwards` (pas `both`) : le transform ne reste pas appliqué après l'anim,
+   sinon il piège les descendants en position:fixed (modales) */
+main > * { animation: fadeUp 0.35s ease backwards; }
+
+/* ── Micro-interactions premium ──────────────────── */
+html { scroll-behavior: smooth; }
+body { -webkit-tap-highlight-color: transparent; }
+
+/* Entrée en cascade des sections de page */
+main > * > * { animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+main > * > *:nth-child(2) { animation-delay: 0.05s; }
+main > * > *:nth-child(3) { animation-delay: 0.10s; }
+main > * > *:nth-child(4) { animation-delay: 0.15s; }
+main > * > *:nth-child(5) { animation-delay: 0.20s; }
+main > * > *:nth-child(n+6) { animation-delay: 0.24s; }
+
+/* Feedback tactile : tous les boutons répondent à l'appui */
+button {
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.2s ease,
+              background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+button:not(:disabled):active { transform: scale(0.97); }
+a { transition: color 0.15s ease, opacity 0.15s ease; }
+
+/* Élévation douce des cartes cliquables (desktop seulement) */
+@media (hover: hover) {
+  .cursor-pointer { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .cursor-pointer:hover { transform: translateY(-2px); }
+}
+
+/* Accessibilité : réduction de mouvement */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* ── Skeleton loader ─────────────────────────────── */
 @keyframes shimmer {
