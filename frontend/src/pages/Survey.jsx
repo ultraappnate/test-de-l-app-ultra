@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 
@@ -68,15 +68,41 @@ const inputStyle = {
   color: 'var(--text-primary)', outline: 'none', fontWeight: 600,
 }
 
-/* Merci + redirection vers la présentation de l'app */
-function ThankYou({ firstName, wantsBeta }) {
+/* Merci — deux modes :
+   - normal : bouton + redirection auto vers la présentation de l'app
+   - solo (?solo=1) : merci, puis écran « tu peux fermer cette page » (aucune suite) */
+function ThankYou({ firstName, wantsBeta, solo }) {
   const navigate = useNavigate()
-  const [count, setCount] = useState(15) // laisser le temps de lire avant la redirection
+  const [count, setCount] = useState(solo ? 8 : 15)
+  const [closable, setClosable] = useState(false)
   useEffect(() => {
     const t = setInterval(() => setCount(c => c - 1), 1000)
     return () => clearInterval(t)
   }, [])
-  useEffect(() => { if (count <= 0) navigate('/welcome') }, [count])
+  useEffect(() => {
+    if (count > 0) return
+    if (solo) setClosable(true)
+    else navigate('/welcome')
+  }, [count])
+
+  if (closable) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 420, textAlign: 'center', background: 'var(--bg-card)',
+          border: '1px solid var(--border)', borderRadius: 28, padding: '48px 28px' }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 10 }}>
+            C'est tout bon !
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            Tes réponses ont bien été envoyées.<br />
+            <b style={{ color: 'var(--text-primary)' }}>Tu peux fermer cette page</b> — il n'y a rien d'autre à faire.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)', display: 'flex',
@@ -87,26 +113,32 @@ function ThankYou({ firstName, wantsBeta }) {
         <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 10 }}>
           Merci {firstName} !
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 26 }}>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: solo ? 0 : 26 }}>
           Tes réponses sont bien enregistrées. {wantsBeta === 'Oui'
             ? 'Je te recontacte très vite pour ton accès en avant-première à ULTRA 💪'
             : 'Merci pour ton temps — ça m\'aide énormément à construire la suite.'}
         </p>
-        <button onClick={() => navigate('/welcome')}
-          style={{ width: '100%', padding: '15px 0', borderRadius: 14, fontSize: 15, fontWeight: 900,
-            background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer',
-            boxShadow: '0 8px 30px rgba(160,56,72,0.35)' }}>
-          Découvrir ULTRA →
-        </button>
-        <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 12 }}>
-          Redirection automatique dans {Math.max(count, 0)}s…
-        </p>
+        {!solo && (
+          <>
+            <button onClick={() => navigate('/welcome')}
+              style={{ width: '100%', padding: '15px 0', borderRadius: 14, fontSize: 15, fontWeight: 900,
+                background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer',
+                boxShadow: '0 8px 30px rgba(160,56,72,0.35)' }}>
+              Découvrir ULTRA →
+            </button>
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 12 }}>
+              Redirection automatique dans {Math.max(count, 0)}s…
+            </p>
+          </>
+        )}
       </div>
     </div>
   )
 }
 
 export default function Survey() {
+  const [searchParams] = useSearchParams()
+  const solo = searchParams.get('solo') === '1' // mode enquête seule : pas de redirection vers l'app
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', oldProgram: '', hadSubscription: '',
     purchased: '', wantedProgram: '', goal: '', frequency: '', budget: '',
@@ -145,7 +177,7 @@ export default function Survey() {
     setSending(false)
   }
 
-  if (done) return <ThankYou firstName={form.firstName} wantsBeta={form.wantsBeta} />
+  if (done) return <ThankYou firstName={form.firstName} wantsBeta={form.wantsBeta} solo={solo} />
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)', padding: 'clamp(16px,4vw,40px) clamp(16px,5vw,24px) 80px' }}>
