@@ -2425,7 +2425,23 @@ app.get('/api/marketplace', auth, (req, res) => {
 })
 
 // Profil public complet d'un pro
-app.get('/api/marketplace/:id', auth, (req, res) => {
+// Auth optionnelle : décode le token s'il est présent, sinon continue en anonyme.
+// Permet la fiche coach publique (parcours enquête → profil → créer un compte).
+function authOptional(req, _res, next) {
+  req.user = null
+  const header = req.headers.authorization
+  if (header) {
+    try {
+      const decoded = jwt.verify(header.split(' ')[1], JWT_SECRET)
+      const byId = db.users.find(u => u.id === decoded.id)
+      const byEmail = !byId && decoded.email ? db.users.find(u => u.email === decoded.email) : null
+      req.user = byId ? decoded : (byEmail ? { ...decoded, id: byEmail.id } : null)
+    } catch {}
+  }
+  next()
+}
+
+app.get('/api/marketplace/:id', authOptional, (req, res) => {
   const user = db.users.find(u => u.id === req.params.id)
   if (!user || !['coach', 'nutritionist', 'health_pro'].includes(user.role)) {
     return res.status(404).json({ error: 'Introuvable' })
@@ -2436,7 +2452,7 @@ app.get('/api/marketplace/:id', auth, (req, res) => {
   const avgRating = userReviews.length
     ? Math.round((userReviews.reduce((s, r) => s + r.rating, 0) / userReviews.length) * 10) / 10
     : (user.rating || 0)
-  const isHiredByMe = db.hires.some(h => h.proId === user.id && h.clientId === req.user.id && h.status === 'active')
+  const isHiredByMe = req.user ? db.hires.some(h => h.proId === user.id && h.clientId === req.user.id && h.status === 'active') : false
   // Fiche publique : pas d'email ni d'adresse rue ; RPPS conservé comme gage de confiance
   res.json(toPublicPro(user, {
     rpps: user.rpps || '',

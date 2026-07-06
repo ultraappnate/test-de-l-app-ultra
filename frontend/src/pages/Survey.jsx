@@ -68,13 +68,15 @@ const inputStyle = {
   color: 'var(--text-primary)', outline: 'none', fontWeight: 600,
 }
 
-/* Merci — deux modes :
+/* Merci — trois modes :
    - normal : bouton + redirection auto vers la présentation de l'app
+   - coach (?coach=<id>) : redirection vers le profil du coach avec guide (mise en favori)
    - solo (?solo=1) : merci, puis écran « tu peux fermer cette page » (aucune suite) */
-function ThankYou({ firstName, wantsBeta, solo }) {
+function ThankYou({ firstName, wantsBeta, solo, coach }) {
   const navigate = useNavigate()
   const [count, setCount] = useState(solo ? 8 : 15)
   const [closable, setClosable] = useState(false)
+  const dest = coach ? `/marketplace/${coach}?guide=1` : '/welcome'
   useEffect(() => {
     const t = setInterval(() => setCount(c => c - 1), 1000)
     return () => clearInterval(t)
@@ -82,7 +84,7 @@ function ThankYou({ firstName, wantsBeta, solo }) {
   useEffect(() => {
     if (count > 0) return
     if (solo) setClosable(true)
-    else navigate('/welcome')
+    else navigate(dest)
   }, [count])
 
   if (closable) {
@@ -120,11 +122,11 @@ function ThankYou({ firstName, wantsBeta, solo }) {
         </p>
         {!solo && (
           <>
-            <button onClick={() => navigate('/welcome')}
+            <button onClick={() => navigate(dest)}
               style={{ width: '100%', padding: '15px 0', borderRadius: 14, fontSize: 15, fontWeight: 900,
                 background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer',
                 boxShadow: '0 8px 30px rgba(160,56,72,0.35)' }}>
-              Découvrir ULTRA →
+              {coach ? 'Voir le profil de ton coach →' : 'Découvrir ULTRA →'}
             </button>
             <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 12 }}>
               Redirection automatique dans {Math.max(count, 0)}s…
@@ -139,6 +141,7 @@ function ThankYou({ firstName, wantsBeta, solo }) {
 export default function Survey() {
   const [searchParams] = useSearchParams()
   const solo = searchParams.get('solo') === '1' // mode enquête seule : pas de redirection vers l'app
+  const coach = searchParams.get('coach') || '' // ?coach=<id> : redirection vers le profil du coach à la fin
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', oldProgram: '', hadSubscription: '',
     purchased: '', wantedProgram: '', goal: '', frequency: '', budget: '',
@@ -177,7 +180,7 @@ export default function Survey() {
     setSending(false)
   }
 
-  if (done) return <ThankYou firstName={form.firstName} wantsBeta={form.wantsBeta} solo={solo} />
+  if (done) return <ThankYou firstName={form.firstName} wantsBeta={form.wantsBeta} solo={solo} coach={coach} />
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)', padding: 'clamp(16px,4vw,40px) clamp(16px,5vw,24px) 80px' }}>

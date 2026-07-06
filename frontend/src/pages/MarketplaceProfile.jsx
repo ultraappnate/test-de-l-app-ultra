@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useStore } from '../store'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
@@ -80,7 +80,11 @@ function ReviewCard({ review }) {
 export default function MarketplaceProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { token, user } = useStore()
+  // Guide d'accueil (?guide=1) : pop-ups pas-à-pas pour les visiteurs venus de l'enquête
+  const [guideStep, setGuideStep] = useState(searchParams.get('guide') === '1' ? 1 : 0)
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false)
   const [pro, setPro] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showHireModal, setShowHireModal] = useState(false)
@@ -97,16 +101,17 @@ export default function MarketplaceProfile() {
   const [buyingPkg, setBuyingPkg] = useState(null)
 
   useEffect(() => {
-    fetch(`${API}/marketplace/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {}
+    fetch(`${API}/marketplace/${id}`, { headers: authHeaders })
       .then(r => r.json())
       .then(data => { setPro(data); setHired(data.isHiredByMe || false); setLoading(false) })
       .catch(() => setLoading(false))
-    fetch(`${API}/packages/pro/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API}/packages/pro/${id}`, { headers: authHeaders })
       .then(r => r.json())
       .then(d => setPackages(Array.isArray(d) ? d : []))
       .catch(() => {})
     if (user?.role === 'client') {
-      fetch(`${API}/favorites/ids`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${API}/favorites/ids`, { headers: authHeaders })
         .then(r => r.json())
         .then(ids => setIsFav(Array.isArray(ids) && ids.includes(id)))
         .catch(() => {})
@@ -114,6 +119,8 @@ export default function MarketplaceProfile() {
   }, [id, token])
 
   async function toggleFav() {
+    // Visiteur sans compte : on l'invite à s'inscrire pour enregistrer son coach
+    if (!user) { setShowSignupPrompt(true); return }
     const next = !isFav
     setIsFav(next)
     try {
@@ -195,11 +202,13 @@ export default function MarketplaceProfile() {
       <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => navigate('/marketplace')} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 20, cursor: 'pointer' }}>←</button>
         <p style={{ fontWeight: 900, fontSize: 15, color: 'var(--text-primary)', flex: 1 }}>{pro.name}</p>
-        {user?.role === 'client' && (
-          <button onClick={toggleFav} title={isFav ? 'Retirer des favoris' : 'Enregistrer'} style={{
+        {(!user || user.role === 'client') && (
+          <button onClick={() => { setGuideStep(0); toggleFav() }} title={isFav ? 'Retirer des favoris' : 'Enregistrer'} style={{
             width: 38, height: 38, borderRadius: '50%', border: '1px solid var(--border)',
             background: isFav ? 'rgba(220,38,38,0.12)' : 'var(--bg-base)',
             fontSize: 17, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: guideStep === 2 ? '0 0 0 4px var(--accent), 0 0 26px var(--accent)' : 'none',
+            transition: 'box-shadow 0.3s ease',
           }}>{isFav ? '❤️' : '🤍'}</button>
         )}
         {user?.role === 'client' && (
@@ -504,6 +513,82 @@ export default function MarketplaceProfile() {
             <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-faint)', marginTop: 8 }}>
               CB · Apple Pay · Google Pay · Virement — 100% sécurisé
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Guide d'accueil (arrivée depuis l'enquête) ── */}
+      {guideStep === 1 && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ maxWidth: 380, width: '100%', textAlign: 'center', background: 'var(--bg-card)',
+            border: '1px solid var(--border)', borderRadius: 24, padding: '36px 26px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontSize: 46, marginBottom: 12 }}>👋</div>
+            <h2 style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 10 }}>
+              Bienvenue sur le profil de ton coach !
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 24 }}>
+              C'est ici que tu retrouves ses programmes, ses avis et ses offres de coaching.
+            </p>
+            <button onClick={() => setGuideStep(2)}
+              style={{ width: '100%', padding: '14px 0', borderRadius: 14, fontSize: 15, fontWeight: 900,
+                background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer' }}>
+              Suivant →
+            </button>
+          </div>
+        </div>
+      )}
+      {guideStep === 2 && (
+        <div onClick={() => setGuideStep(0)}
+          style={{ position: 'fixed', left: 0, right: 0, bottom: 0, top: 64, zIndex: 2000,
+            background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '18px 24px' }}>
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth: 380, width: '100%', textAlign: 'center', background: 'var(--bg-card)',
+            border: '1px solid var(--border)', borderRadius: 24, padding: '28px 24px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontSize: 34, marginBottom: 8 }}>👆</div>
+            <h2 style={{ fontSize: 18, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 8 }}>
+              Ajoute-le en favori
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 18 }}>
+              Appuie sur le cœur 🤍 <b style={{ color: 'var(--text-primary)' }}>en haut à droite</b> pour
+              retrouver ton coach facilement.
+            </p>
+            <button onClick={() => setGuideStep(0)}
+              style={{ width: '100%', padding: '12px 0', borderRadius: 13, fontSize: 14, fontWeight: 800,
+                background: 'var(--bg-base)', color: 'var(--text-secondary)', border: '1px solid var(--border)', cursor: 'pointer' }}>
+              Compris !
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Invitation à créer un compte (visiteur sans compte) ── */}
+      {showSignupPrompt && (
+        <div onClick={() => setShowSignupPrompt(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.8)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth: 380, width: '100%', textAlign: 'center', background: 'var(--bg-card)',
+            border: '1px solid var(--border)', borderRadius: 24, padding: '36px 26px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontSize: 46, marginBottom: 12 }}>❤️</div>
+            <h2 style={{ fontSize: 19, fontWeight: 900, color: 'var(--text-primary)', marginBottom: 10 }}>
+              Crée ton compte gratuit
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 22 }}>
+              Inscris-toi en 30 secondes pour enregistrer <b style={{ color: 'var(--text-primary)' }}>{pro.name}</b> en
+              favori et accéder à ses programmes.
+            </p>
+            <button onClick={() => navigate('/register')}
+              style={{ width: '100%', padding: '14px 0', borderRadius: 14, fontSize: 15, fontWeight: 900,
+                background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer', marginBottom: 8 }}>
+              Créer mon compte →
+            </button>
+            <button onClick={() => setShowSignupPrompt(false)}
+              style={{ width: '100%', padding: '11px 0', borderRadius: 13, fontSize: 13, fontWeight: 700,
+                background: 'transparent', color: 'var(--text-faint)', border: 'none', cursor: 'pointer' }}>
+              Plus tard
+            </button>
           </div>
         </div>
       )}

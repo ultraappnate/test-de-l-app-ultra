@@ -238,7 +238,8 @@ export default function App() {
           <Route path="/nutri/insights" element={<PrivateRoute><ComingSoon title="Radar Clients IA" emoji="📡" desc="Les insights IA proactifs sur tes clients arrivent très bientôt." /></PrivateRoute>} />
           <Route path="/pro/insights" element={<PrivateRoute><ComingSoon title="Radar Patient IA" emoji="📡" desc="Le suivi IA de la charge et des risques de rechute de tes patients arrive très bientôt." /></PrivateRoute>} />
           <Route path="/marketplace" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
-          <Route path="/marketplace/:id" element={<PrivateRoute><MarketplaceProfile /></PrivateRoute>} />
+          {/* Fiche pro publique : parcours enquête → profil coach → créer un compte */}
+          <Route path="/marketplace/:id" element={<MarketplaceProfile />} />
           <Route path="/promotions" element={<PrivateRoute><PromotionsManager /></PrivateRoute>} />
           <Route path="/packages" element={<PrivateRoute><PackagesManager /></PrivateRoute>} />
         </Routes>
