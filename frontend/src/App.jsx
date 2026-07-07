@@ -106,6 +106,13 @@ function useIsMobile() {
   return isMobile
 }
 
+// Remonte en haut de page à chaque navigation (sinon on arrive au milieu de la nouvelle page)
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  return null
+}
+
 function Layout({ theme, setTheme, children }) {
   const { user, token } = useStore()
   const { pathname } = useLocation()
@@ -165,6 +172,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Layout theme={theme} setTheme={setTheme}>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -242,6 +250,8 @@ export default function App() {
           <Route path="/marketplace/:id" element={<MarketplaceProfile />} />
           <Route path="/promotions" element={<PrivateRoute><PromotionsManager /></PrivateRoute>} />
           <Route path="/packages" element={<PrivateRoute><PackagesManager /></PrivateRoute>} />
+          {/* 404 — URL inconnue */}
+          <Route path="*" element={<ComingSoon title="Page introuvable" emoji="🧭" desc="Cette page n'existe pas ou a été déplacée. Reviens à l'accueil pour retrouver ton chemin." />} />
         </Routes>
       </Layout>
     </BrowserRouter>
