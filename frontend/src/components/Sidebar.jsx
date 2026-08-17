@@ -41,6 +41,7 @@ const NAV_COACH = [
   { to: '/coach/sante',      label: 'Bilans santé',     icon: '🩺' },
   { to: '/clients',          label: 'Mes clients',      icon: '❯❯' },
   { to: '/coach/questionnaires', label: 'Questionnaires', icon: '📋', short: 'Quest.' },
+  { to: '/enquete/resultats',    label: 'Enquête',        icon: '📊', short: 'Enquête' },
   // { to: '/health',           label: 'Applis Santé',     icon: '🔗' }, // masqué temporairement (sync mock) — à remettre plus tard
   { to: '/community',        label: 'Communauté',       icon: '🌐' },
   { to: '/chat',             label: 'Messages',         icon: '◆' },

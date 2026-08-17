@@ -122,6 +122,15 @@ export default function SurveyResults() {
 
   const betaYes = rows.filter(r => r.wantsBeta === 'Oui')
 
+  const deleteRow = async (e, r) => {
+    e.stopPropagation()
+    if (!window.confirm(`Supprimer la réponse de ${r.firstName} ${r.lastName} ? (définitif)`)) return
+    const res = await fetch(`${API}/survey/responses/${r.id}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => null)
+    if (res?.ok) setRows(prev => prev.filter(x => x.id !== r.id))
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-base)', padding: 'clamp(16px,4vw,32px)' }}>
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
@@ -198,6 +207,14 @@ export default function SurveyResults() {
                   </div>
                   {r.wantsBeta === 'Oui' && <span style={{ fontSize: 9, fontWeight: 900, padding: '3px 8px', borderRadius: 99,
                     background: 'var(--accent)', color: '#fff', flexShrink: 0 }}>BETA</span>}
+                  <span onClick={e => deleteRow(e, r)} title="Supprimer cette réponse" role="button"
+                    style={{ width: 28, height: 28, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontSize: 12, color: 'var(--text-faint)',
+                      background: 'var(--bg-base)', border: '1px solid var(--border)' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#e06b7e'; e.currentTarget.style.borderColor = '#e06b7e' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.borderColor = 'var(--border)' }}>
+                    ✕
+                  </span>
                   <span style={{ color: 'var(--text-faint)', flexShrink: 0 }}>›</span>
                 </button>
               ))}

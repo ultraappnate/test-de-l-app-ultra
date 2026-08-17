@@ -1004,6 +1004,16 @@ app.get('/api/survey/responses', auth, (req, res) => {
   }
   res.json({ responses: db.surveyResponses })
 })
+// Supprimer une réponse (purge des tests) — coach/admin
+app.delete('/api/survey/responses/:id', auth, (req, res) => {
+  if (!['coach', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Accès réservé' })
+  }
+  const before = db.surveyResponses.length
+  db.surveyResponses = db.surveyResponses.filter(r => r.id !== req.params.id)
+  if (db.surveyResponses.length === before) return res.status(404).json({ message: 'Réponse introuvable' })
+  res.json({ success: true })
+})
 
 // ── Questionnaires coach → clients ───────────────────
 // Les clients d'un coach = rattachés (coachId) ∪ inscrits à l'un de ses programmes
