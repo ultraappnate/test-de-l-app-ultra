@@ -1193,11 +1193,53 @@ app.get('/api/coach/clients/:clientId/nutrition/stream', auth, (req, res) => {
 
 // ─── MESSAGES ───────────────────────────────────────────
 
+// Mes conversations : relations métier (coach ↔ clients, engagements) ∪ historique de messages
+app.get('/api/conversations', auth, (req, res) => {
+  const me = req.user.id
+  const meUser = db.users.find(u => u.id === me)
+  const partnerIds = new Set()
+
+  if (meUser?.role === 'client') {
+    // Mes coachs : propriétaires des programmes suivis + engagements actifs + rattachement direct
+    const progIds = db.enrollments.filter(e => e.userId === me).map(e => e.programId)
+    db.programs.filter(p => progIds.includes(p.id) && p.coachId).forEach(p => partnerIds.add(p.coachId))
+    db.hires.filter(h => h.clientId === me && h.status === 'active').forEach(h => partnerIds.add(h.proId))
+    if (meUser.coachId) partnerIds.add(meUser.coachId)
+  } else if (meUser?.role === 'coach') {
+    getCoachClients(me).forEach(c => partnerIds.add(c.id))
+  } else {
+    db.hires.filter(h => h.proId === me && h.status === 'active').forEach(h => partnerIds.add(h.clientId))
+  }
+  // + toute personne avec qui j'ai déjà échangé
+  db.messages.forEach(m => {
+    if (m.senderId === me) partnerIds.add(m.recipientId)
+    if (m.recipientId === me) partnerIds.add(m.senderId)
+  })
+  partnerIds.delete(me)
+
+  const convos = [...partnerIds].map(pid => {
+    const u = db.users.find(x => x.id === pid)
+    if (!u) return null
+    const thread = db.messages.filter(m =>
+      (m.senderId === me && m.recipientId === pid) || (m.senderId === pid && m.recipientId === me))
+    const last = thread[thread.length - 1]
+    return {
+      id: pid, name: u.name, role: u.role,
+      lastMsg: last?.message || '', lastAt: last?.createdAt || null,
+      unread: thread.filter(m => m.recipientId === me && !m.read).length,
+    }
+  }).filter(Boolean)
+    .sort((a, b) => String(b.lastAt || '').localeCompare(String(a.lastAt || '')))
+  res.json(convos)
+})
+
 app.get('/api/messages/:recipientId', auth, (req, res) => {
   const msgs = db.messages.filter(
     m => (m.senderId === req.user.id && m.recipientId === req.params.recipientId) ||
          (m.senderId === req.params.recipientId && m.recipientId === req.user.id)
   )
+  // Ouvrir le fil = marquer comme lus les messages reçus
+  msgs.forEach(m => { if (m.recipientId === req.user.id) m.read = true })
   res.json(msgs)
 })
 

@@ -9,7 +9,6 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Programs from './pages/Programs'
 import ProgramDetail from './pages/ProgramDetail'
-import Chat from './pages/Chat'
 import AdminDashboard from './pages/AdminDashboard'
 import CoachProfile from './pages/CoachProfile'
 import CoachPrograms from './pages/CoachPrograms'
@@ -208,7 +207,6 @@ export default function App() {
           <Route path="/onboarding" element={<PrivateRoute><Onboarding /></PrivateRoute>} />
           <Route path="/programs" element={<PrivateRoute><Programs /></PrivateRoute>} />
           <Route path="/programs/:programId" element={<PrivateRoute><ProgramDetail /></PrivateRoute>} />
-          <Route path="/chat/:recipientId" element={<PrivateRoute><Chat /></PrivateRoute>} />
           <Route path="/admin" element={<PrivateRoute><AdminDashboard /></PrivateRoute>} />
           <Route path="/coach/:coachId" element={<PrivateRoute><CoachProfile /></PrivateRoute>} />
           <Route path="/success" element={<PrivateRoute><Success /></PrivateRoute>} />

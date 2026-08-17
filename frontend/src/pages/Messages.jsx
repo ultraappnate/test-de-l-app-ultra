@@ -2,33 +2,22 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store'
 
-const MOCK_CONVOS = [
-  { id: 'c1', name: 'Alexandre Martin', role: 'client', lastMsg: 'Merci coach, j\'ai fait la séance 💪', time: 'il y a 12 min', unread: 2, online: true,  avatar: null },
-  { id: 'c2', name: 'Marie Dubois',     role: 'client', lastMsg: 'Est-ce que je peux modifier le plan ?', time: 'il y a 1h',    unread: 0, online: true,  avatar: null },
-  { id: 'c3', name: 'Thomas Bernard',  role: 'client', lastMsg: 'Ok j\'ai compris, merci !',             time: 'il y a 3h',    unread: 0, online: false, avatar: null },
-  { id: 'c4', name: 'Lucas Petit',     role: 'client', lastMsg: 'Nouveau PR au deadlift 🔥 230kg',       time: 'hier',         unread: 1, online: false, avatar: null },
-  { id: 'c5', name: 'Sophie Moreau',   role: 'client', lastMsg: 'Je n\'ai pas pu faire la session...',   time: 'il y a 2j',    unread: 0, online: false, avatar: null },
-]
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 
-const MOCK_MSGS = {
-  c1: [
-    { id: 1, from: 'c1',   text: 'Bonjour coach !',                               time: '09:12' },
-    { id: 2, from: 'me',   text: 'Bonjour Alex ! Comment ça se passe ?',           time: '09:14' },
-    { id: 3, from: 'c1',   text: 'Super, j\'ai suivi le programme à la lettre 💪', time: '09:15' },
-    { id: 4, from: 'me',   text: 'Excellent ! Les sensations sur le squat ?',       time: '09:16' },
-    { id: 5, from: 'c1',   text: 'Très bien, j\'ai pris 5kg depuis la semaine dernière sur le back squat', time: '09:18' },
-    { id: 6, from: 'me',   text: 'Parfait, continue comme ça. Semaine prochaine on passe à 80% du max.',  time: '09:20' },
-    { id: 7, from: 'c1',   text: 'Merci coach, j\'ai fait la séance 💪',           time: 'il y a 12 min' },
-  ],
-  c2: [
-    { id: 1, from: 'c2',   text: 'Bonjour, je voulais vous parler du plan nutrition', time: '10:00' },
-    { id: 2, from: 'me',   text: 'Bien sûr Marie, dites-moi',                          time: '10:02' },
-    { id: 3, from: 'c2',   text: 'Est-ce que je peux modifier le plan ?',              time: '10:05' },
-  ],
-}
+const ROLE_LABEL = { coach: 'Coach', nutritionist: 'Nutritionniste', health_pro: 'Pro de santé', client: 'Client' }
 
 function initials(name) {
-  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+  return String(name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function fmtTime(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const today = new Date()
+  if (d.toDateString() === today.toDateString()) {
+    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  }
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
 function useIsMobile() {
@@ -42,40 +31,102 @@ function useIsMobile() {
 }
 
 export default function Messages() {
-  const { user } = useStore()
+  const { user, token } = useStore()
   const navigate = useNavigate()
   const { recipientId } = useParams()
   const isMobile = useIsMobile()
 
-  const [activeId, setActiveId] = useState(recipientId || 'c1')
+  const [convos, setConvos]     = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [activeId, setActiveId] = useState(recipientId || null)
   // Mobile : un seul panneau à la fois — liste d'abord, chat après sélection
   const [mobileChatOpen, setMobileChatOpen] = useState(!!recipientId)
-  const [msgs, setMsgs]         = useState(MOCK_MSGS[activeId] || [])
+  const [msgs, setMsgs]         = useState([])
   const [input, setInput]       = useState('')
   const [search, setSearch]     = useState('')
-  const bottomRef               = useRef()
+  const [sending, setSending]   = useState(false)
+  // Contact ouvert par URL directe mais pas (encore) dans mes conversations
+  const [extraContact, setExtraContact] = useState(null)
+  const bottomRef = useRef()
+  const authHeaders = { Authorization: `Bearer ${token}` }
 
-  const convo = MOCK_CONVOS.find(c => c.id === activeId)
+  const loadConvos = () =>
+    fetch(`${API}/conversations`, { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setConvos(d) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
 
+  const loadThread = (id) =>
+    fetch(`${API}/messages/${id}`, { headers: authHeaders })
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) setMsgs(d) })
+      .catch(() => {})
+
+  // Conversations : chargement + rafraîchissement (non-lus, derniers messages)
   useEffect(() => {
-    setMsgs(MOCK_MSGS[activeId] || [])
+    loadConvos()
+    const t = setInterval(loadConvos, 5000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Fil actif : chargement + polling
+  useEffect(() => {
+    if (!activeId) return
+    setMsgs([])
+    loadThread(activeId)
+    const t = setInterval(() => loadThread(activeId), 3000)
+    return () => clearInterval(t)
   }, [activeId])
+
+  // Arrivée par URL directe (ex. bouton « Contacter » d'un profil) : résoudre le nom si inconnu
+  useEffect(() => {
+    if (!recipientId) return
+    setActiveId(recipientId)
+    setMobileChatOpen(true)
+    if (!convos.some(c => c.id === recipientId)) {
+      fetch(`${API}/marketplace/${recipientId}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.name) setExtraContact({ id: recipientId, name: d.name, role: d.role, lastMsg: '', unread: 0 }) })
+        .catch(() => {})
+    }
+  }, [recipientId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [msgs])
+  }, [msgs.length])
 
-  const handleSend = e => {
+  const allConvos = extraContact && !convos.some(c => c.id === extraContact.id)
+    ? [extraContact, ...convos] : convos
+  const convo = allConvos.find(c => c.id === activeId)
+
+  const handleSend = async e => {
     e.preventDefault()
-    if (!input.trim()) return
-    const newMsg = { id: msgs.length + 1, from: 'me', text: input.trim(), time: 'à l\'instant' }
-    setMsgs(prev => [...prev, newMsg])
+    const text = input.trim()
+    if (!text || sending || !activeId) return
+    setSending(true)
     setInput('')
+    // Affichage optimiste
+    setMsgs(prev => [...prev, { id: `tmp-${Date.now()}`, senderId: user.id, recipientId: activeId, message: text, createdAt: new Date().toISOString() }])
+    try {
+      const res = await fetch(`${API}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ recipientId: activeId, message: text }),
+      })
+      if (!res.ok) throw new Error()
+      await loadThread(activeId)
+      loadConvos()
+    } catch {
+      setInput(text) // rends le texte à l'utilisateur en cas d'échec
+      setMsgs(prev => prev.filter(m => !String(m.id).startsWith('tmp-')))
+    }
+    setSending(false)
   }
 
-  const filtered = MOCK_CONVOS.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const openConvo = (id) => { setActiveId(id); setMobileChatOpen(true) }
+
+  const filtered = allConvos.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <div className="flex" style={{ background: 'var(--bg-base)', height: '100dvh', paddingBottom: isMobile ? 62 : 0 }}>
@@ -98,8 +149,22 @@ export default function Messages() {
 
         {/* Convo list */}
         <div className="flex-1 overflow-y-auto">
+          {loading && (
+            <p className="px-5 py-6 text-xs" style={{ color: 'var(--text-faint)' }}>Chargement…</p>
+          )}
+          {!loading && filtered.length === 0 && (
+            <div className="px-5 py-10 text-center">
+              <p style={{ fontSize: 30, margin: '0 0 8px' }}>💬</p>
+              <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)', marginBottom: 4 }}>Aucune conversation</p>
+              <p className="text-[11px]" style={{ color: 'var(--text-faint)' }}>
+                {user?.role === 'coach'
+                  ? 'Tes clients apparaîtront ici dès qu\'ils rejoindront tes programmes.'
+                  : 'Rejoins un programme ou engage un coach pour discuter avec lui ici.'}
+              </p>
+            </div>
+          )}
           {filtered.map(c => (
-            <button key={c.id} onClick={() => { setActiveId(c.id); setMobileChatOpen(true) }}
+            <button key={c.id} onClick={() => openConvo(c.id)}
               className="w-full px-4 py-3.5 text-left flex items-center gap-3 transition-all"
               style={{
                 background: activeId === c.id ? 'var(--accent-subtle)' : 'transparent',
@@ -113,18 +178,16 @@ export default function Messages() {
                   style={{ background: 'var(--accent)' }}>
                   {initials(c.name)}
                 </div>
-                {c.online && (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400"
-                    style={{ border: '2px solid var(--bg-card)' }}/>
-                )}
               </div>
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-black truncate" style={{ color: 'var(--text-primary)' }}>{c.name}</p>
-                  <span className="text-[9px] flex-shrink-0 ml-1" style={{ color: 'var(--text-faint)' }}>{c.time}</span>
+                  <span className="text-[9px] flex-shrink-0 ml-1" style={{ color: 'var(--text-faint)' }}>{fmtTime(c.lastAt)}</span>
                 </div>
-                <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--text-faint)' }}>{c.lastMsg}</p>
+                <p className="text-[11px] truncate mt-0.5" style={{ color: c.unread > 0 ? 'var(--text-primary)' : 'var(--text-faint)', fontWeight: c.unread > 0 ? 700 : 400 }}>
+                  {c.lastMsg || `${ROLE_LABEL[c.role] || ''} — démarre la conversation`}
+                </p>
               </div>
               {c.unread > 0 && (
                 <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black text-white flex-shrink-0"
@@ -139,6 +202,13 @@ export default function Messages() {
       {/* ── Right panel: chat (mobile : plein écran avec bouton retour) ── */}
       {(!isMobile || mobileChatOpen) && (
       <div className="flex-1 flex flex-col" style={{ minWidth: 0 }}>
+        {!convo ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-2 px-8 text-center">
+            <p style={{ fontSize: 36 }}>💬</p>
+            <p className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>Sélectionne une conversation</p>
+          </div>
+        ) : (
+        <>
         {/* Chat header */}
         <div className="px-4 md:px-6 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
           {isMobile && (
@@ -148,43 +218,31 @@ export default function Messages() {
               ←
             </button>
           )}
-          <div className="relative">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white"
-              style={{ background: 'var(--accent)' }}>
-              {convo ? initials(convo.name) : '?'}
-            </div>
-            {convo?.online && <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400" style={{ border: '2px solid var(--bg-card)' }}/>}
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white flex-shrink-0"
+            style={{ background: 'var(--accent)' }}>
+            {initials(convo.name)}
           </div>
-          <div>
-            <p className="font-black text-sm" style={{ color: 'var(--text-primary)' }}>{convo?.name}</p>
-            <p className="text-[10px]" style={{ color: convo?.online ? '#4ade80' : 'var(--text-faint)' }}>
-              {convo?.online ? '● En ligne' : '○ Hors ligne'}
-            </p>
+          <div style={{ minWidth: 0 }}>
+            <p className="font-black text-sm truncate" style={{ color: 'var(--text-primary)' }}>{convo.name}</p>
+            <p className="text-[10px]" style={{ color: 'var(--text-faint)' }}>{ROLE_LABEL[convo.role] || ''}</p>
           </div>
-          {!isMobile && (
-            <div className="ml-auto flex gap-2">
-              <button className="px-3 py-1.5 rounded-xl text-xs font-bold transition"
-                style={{ background: 'rgba(39,174,96,0.1)', color: '#4ade80', border: '1px solid rgba(39,174,96,0.2)' }}>
-                🥗 Nutrition
-              </button>
-              <button className="px-3 py-1.5 rounded-xl text-xs font-bold transition"
-                style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
-                📋 Programme
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5 space-y-3">
+          {msgs.length === 0 && (
+            <p className="text-center text-xs pt-10" style={{ color: 'var(--text-faint)' }}>
+              Aucun message pour l'instant — écris le premier 👇
+            </p>
+          )}
           {msgs.map(msg => {
-            const isMe = msg.from === 'me'
+            const isMe = msg.senderId === user?.id
             return (
               <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                 {!isMe && (
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black text-white mr-2 flex-shrink-0 self-end"
                     style={{ background: 'var(--accent)' }}>
-                    {convo ? initials(convo.name) : '?'}
+                    {initials(convo.name)}
                   </div>
                 )}
                 <div className="max-w-sm">
@@ -195,11 +253,12 @@ export default function Messages() {
                       border: isMe ? 'none' : '1px solid var(--border)',
                       borderBottomRightRadius: isMe ? 4 : undefined,
                       borderBottomLeftRadius:  isMe ? undefined : 4,
+                      overflowWrap: 'anywhere',
                     }}>
-                    {msg.text}
+                    {msg.message}
                   </div>
                   <p className={`text-[9px] mt-1 ${isMe ? 'text-right' : 'text-left'}`} style={{ color: 'var(--text-faint)' }}>
-                    {msg.time}
+                    {fmtTime(msg.createdAt)}
                   </p>
                 </div>
               </div>
@@ -213,16 +272,18 @@ export default function Messages() {
           <div className="flex items-center gap-3 px-4 py-3 rounded-2xl"
             style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             <input value={input} onChange={e => setInput(e.target.value)}
-              placeholder={`Message à ${convo?.name?.split(' ')[0] || ''}…`}
+              placeholder={`Message à ${convo.name?.split(' ')[0] || ''}…`}
               className="flex-1 text-sm bg-transparent focus:outline-none"
               style={{ color: 'var(--text-primary)' }}/>
-            <button type="submit" disabled={!input.trim()}
+            <button type="submit" disabled={!input.trim() || sending}
               className="w-8 h-8 rounded-xl flex items-center justify-center text-white transition disabled:opacity-30"
               style={{ background: 'var(--accent)' }}>
               ↑
             </button>
           </div>
         </form>
+        </>
+        )}
       </div>
       )}
     </div>
