@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store'
+import { searchExercises } from '../data/exerciseCatalog'
 import { v4 as uuidv4 } from 'uuid'
 
 /* ── Constantes ─────────────────────────────────────────── */
@@ -61,6 +62,24 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
   const vm = vimeoId(block.url)
   const inputStyle = { background: 'var(--bg-base)', border: '1px solid var(--border-soft, var(--border))', color: 'var(--text-primary)' }
 
+  // Autocomplete : suggestions du catalogue pendant la frappe du nom
+  const [suggestions, setSuggestions] = useState([])
+  const [showSugg, setShowSugg] = useState(false)
+  const handleTitleChange = (v) => {
+    set('title', v)
+    setSuggestions(searchExercises(v))
+    setShowSugg(true)
+  }
+  const pickSuggestion = (ex) => {
+    // Remplit le nom + les défauts UNIQUEMENT sur les champs encore vides
+    onChange({
+      ...block, title: ex.name,
+      sets: block.sets || ex.sets, reps: block.reps || ex.reps,
+      rest: block.rest || ex.rest, rpe: block.rpe || ex.rpe,
+    })
+    setShowSugg(false)
+  }
+
   return (
     <div
       {...dropHandlers}
@@ -95,12 +114,37 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
         <button onClick={onRemove} title="Supprimer" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 7, width: 26, height: 26, color: '#e06b7e', cursor: 'pointer', fontSize: 13 }}>✕</button>
       </div>
 
-      <input
-        value={block.title || ''} onChange={e => set('title', e.target.value)}
-        placeholder="Nom de l'exercice"
-        className="w-full font-black text-base mb-3 rounded-lg px-2 py-1.5 focus:outline-none"
-        style={{ ...inputStyle, color: 'var(--text-primary)' }}
-      />
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <input
+          value={block.title || ''} onChange={e => handleTitleChange(e.target.value)}
+          onFocus={() => { setSuggestions(searchExercises(block.title || '')); setShowSugg(true) }}
+          onBlur={() => setTimeout(() => setShowSugg(false), 180)}
+          placeholder="Nom de l'exercice"
+          className="w-full font-black text-base rounded-lg px-2 py-1.5 focus:outline-none"
+          style={{ ...inputStyle, color: 'var(--text-primary)' }}
+        />
+        {showSugg && suggestions.length > 0 && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: 4,
+            background: 'var(--bg-card-2, var(--bg-card))', border: '1px solid var(--accent)', borderRadius: 12,
+            overflow: 'hidden', boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }}>
+            {suggestions.map(ex => (
+              <button key={ex.name} type="button"
+                onMouseDown={e => { e.preventDefault(); pickSuggestion(ex) }}
+                className="w-full text-left px-3 py-2 flex items-center justify-between gap-2"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-subtle)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {ex.name}
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+                  {ex.cat} · {ex.sets}×{ex.reps}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Séries / reps / repos / RPE */}
       <div className="grid grid-cols-4 gap-1.5 mb-3">
