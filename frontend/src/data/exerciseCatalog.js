@@ -114,14 +114,26 @@ export const EXERCISE_CATALOG = [
 
 // Recherche insensible aux accents/majuscules
 const norm = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-export function searchExercises(query, limit = 6) {
+
+// Catalogue complet : les vidéos de Nate d'abord (elles ont un `url`), puis le générique
+// (en retirant les doublons exacts du générique).
+import { NATE_EXERCISES } from './nateExercises'
+const nateNames = new Set(NATE_EXERCISES.map(e => norm(e.name)))
+export const FULL_CATALOG = [
+  ...NATE_EXERCISES,
+  ...EXERCISE_CATALOG.filter(e => !nateNames.has(norm(e.name))),
+]
+
+export function searchExercises(query, limit = 7) {
   const q = norm(query).trim()
   if (q.length < 2) return []
   const starts = [], contains = []
-  for (const ex of EXERCISE_CATALOG) {
+  for (const ex of FULL_CATALOG) {
     const n = norm(ex.name)
     if (n.startsWith(q)) starts.push(ex)
     else if (n.includes(q) || norm(ex.cat).includes(q)) contains.push(ex)
   }
-  return [...starts, ...contains].slice(0, limit)
+  // Priorité : commence par la saisie, puis avec vidéo avant sans vidéo
+  const rank = (a, b) => (b.url ? 1 : 0) - (a.url ? 1 : 0)
+  return [...starts.sort(rank), ...contains.sort(rank)].slice(0, limit)
 }

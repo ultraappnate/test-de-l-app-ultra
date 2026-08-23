@@ -71,12 +71,15 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
     setShowSugg(true)
   }
   const pickSuggestion = (ex) => {
-    // Remplit le nom + les défauts UNIQUEMENT sur les champs encore vides
+    // Remplit le nom + les défauts UNIQUEMENT sur les champs encore vides,
+    // et attache la vidéo de démo si l'exercice en a une (vidéos de Nate)
     onChange({
       ...block, title: ex.name,
       sets: block.sets || ex.sets, reps: block.reps || ex.reps,
       rest: block.rest || ex.rest, rpe: block.rpe || ex.rpe,
+      url: block.url || ex.url || '',
     })
+    if (ex.url && !block.url) setShowVid(true)
     setShowSugg(false)
   }
 
@@ -135,7 +138,7 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-subtle)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {ex.name}
+                  {ex.url && <span title="Ta vidéo de démo" style={{ marginRight: 5 }}>🎥</span>}{ex.name}
                 </span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
                   {ex.cat} · {ex.sets}×{ex.reps}
