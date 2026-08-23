@@ -36,7 +36,7 @@ function MuscleTag({ label, selected, onToggle }) {
   )
 }
 
-function ExerciseCard({ ex, onEdit, onDelete }) {
+function ExerciseCard({ ex, onEdit, onDelete, onPlay }) {
   return (
     <div style={{
       background: 'var(--bg-card)',
@@ -45,10 +45,21 @@ function ExerciseCard({ ex, onEdit, onDelete }) {
       overflow: 'hidden',
       transition: 'transform 0.15s',
     }}>
-      {/* Image */}
-      <div style={{ height: 120, background: 'var(--bg-hover)', position: 'relative', overflow: 'hidden' }}>
+      {/* Image / miniature vidéo (clic = lecture) */}
+      <div onClick={() => ex.videoId && onPlay?.(ex)}
+        style={{ height: 120, background: 'var(--bg-hover)', position: 'relative', overflow: 'hidden', cursor: ex.videoId ? 'pointer' : 'default' }}>
         {ex.imageUrl ? (
           <img src={ex.imageUrl} alt={ex.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+        ) : ex.videoId ? (
+          <>
+            <img src={`https://i.ytimg.com/vi/${ex.videoId}/hqdefault.jpg`} alt={ex.name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(160,56,72,0.92)', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, paddingLeft: 3,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>▶</div>
+            </div>
+          </>
         ) : (
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>🏋️</div>
         )}
@@ -246,6 +257,7 @@ export default function AdminExerciseLibrary() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const [playing, setPlaying] = useState(null) // exercice dont la vidéo est en lecture
   const [editingEx, setEditingEx] = useState(null)
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('Tous')
@@ -373,6 +385,7 @@ export default function AdminExerciseLibrary() {
                 ex={ex}
                 onEdit={() => { setEditingEx(ex); setShowForm(true) }}
                 onDelete={() => handleDelete(ex.id)}
+                onPlay={setPlaying}
               />
             ))}
           </div>
@@ -385,6 +398,23 @@ export default function AdminExerciseLibrary() {
           onSave={handleSaved}
           onCancel={() => { setShowForm(false); setEditingEx(null) }}
         />
+      )}
+      {playing && (
+        <div onClick={() => setPlaying(null)} style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.88)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 860 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <p style={{ color: '#fff', fontWeight: 900, fontSize: 16, margin: 0 }}>🎥 {playing.name}</p>
+              <button onClick={() => setPlaying(null)} style={{ width: 34, height: 34, borderRadius: 99, cursor: 'pointer',
+                background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}>✕</button>
+            </div>
+            <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
+              <iframe src={`https://www.youtube.com/embed/${playing.videoId}?autoplay=1&rel=0&modestbranding=1`}
+                title={playing.name} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
+            </div>
+          </div>
+        </div>
       )}
       {showImport && (
         <ImportLinksModal token={token}
