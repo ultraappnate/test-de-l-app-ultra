@@ -3629,7 +3629,7 @@ app.post('/api/exercise-library/import', auth, async (req, res) => {
     const ex = {
       id: `ex-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: name.slice(0, 120), muscles: Array.isArray(it.muscles) ? it.muscles : [],
-      category: it.category || req.body.category || 'Force', equipment: it.equipment || '', imageUrl: '',
+      category: it.category || req.body.category || 'À classer', equipment: it.equipment || '', imageUrl: '',
       videoId, tips: '', createdAt: new Date().toISOString(),
     }
     db.exerciseLibrary.push(ex); known.add(videoId); added.push(ex)

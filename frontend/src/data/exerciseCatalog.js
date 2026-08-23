@@ -132,6 +132,7 @@ const CAT_DEFAULTS = {
   Core:        { sets: '3', reps: '12-15', rest: '45s', rpe: '8' },
   Mobilité:    { sets: '2', reps: '45s',   rest: '30s', rpe: '' },
   Fonctionnel: { sets: '3', reps: '10-12', rest: '60s', rpe: '8' },
+  'À classer': { sets: '3', reps: '10-12', rest: '60s', rpe: '8' },
 }
 export function setLibraryExercises(list) {
   LIBRARY = (Array.isArray(list) ? list : []).filter(e => e?.name).map(e => ({

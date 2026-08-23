@@ -4,7 +4,7 @@ import { useStore } from '../store'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
 
-const CATEGORIES = ['Force', 'Cardio', 'Core', 'Mobilité', 'Fonctionnel']
+const CATEGORIES = ['À classer', 'Force', 'Cardio', 'Core', 'Mobilité', 'Fonctionnel']
 const MUSCLES_PRESETS = [
   'Quadriceps', 'Ischio-jambiers', 'Fessiers', 'Mollets',
   'Pectoraux', 'Grand dorsal', 'Épaules', 'Biceps', 'Triceps',
@@ -428,7 +428,7 @@ export default function AdminExerciseLibrary() {
 /* ── Import par liens YouTube collés ─────────────────────── */
 function ImportLinksModal({ token, onDone, onClose }) {
   const [text, setText] = useState('')
-  const [category, setCategory] = useState('Force')
+  const [category, setCategory] = useState('À classer')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
   const linkCount = (text.match(/https?:\/\/[^\s,;]+/g) || []).length
