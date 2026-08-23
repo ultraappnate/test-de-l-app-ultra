@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store'
-import { searchExercises } from '../data/exerciseCatalog'
+import { searchExercises, setLibraryExercises } from '../data/exerciseCatalog'
 import { v4 as uuidv4 } from 'uuid'
 
 /* ── Constantes ─────────────────────────────────────────── */
@@ -204,7 +204,16 @@ export default function CoachProgramBuilder() {
   const navigate = useNavigate()
   const { programId } = useParams()
   const isEdit = !!programId
-  const { createProgram, updateProgram, fetchProgram } = useStore()
+  const { createProgram, updateProgram, fetchProgram, token } = useStore()
+
+  // Bibliothèque d'exercices admin (vidéos) → alimente l'autocomplete
+  useEffect(() => {
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+    fetch(`${API}/exercise-library`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(list => setLibraryExercises(list))
+      .catch(() => {})
+  }, [token])
 
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')

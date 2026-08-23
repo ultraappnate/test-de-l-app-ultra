@@ -245,6 +245,7 @@ export default function AdminExerciseLibrary() {
   const [exercises, setExercises] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [editingEx, setEditingEx] = useState(null)
   const [search, setSearch] = useState('')
   const [filterCat, setFilterCat] = useState('Tous')
@@ -306,11 +307,18 @@ export default function AdminExerciseLibrary() {
             <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{exercises.length} exercice{exercises.length !== 1 ? 's' : ''} · Admin</p>
           </div>
         </div>
-        <button onClick={() => { setEditingEx(null); setShowForm(true) }} style={{
-          padding: '8px 16px', borderRadius: 10,
-          border: 'none', background: 'var(--accent)',
-          color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer',
-        }}>+ Ajouter</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setShowImport(true)} style={{
+            padding: '8px 14px', borderRadius: 10,
+            border: '1px solid var(--accent)', background: 'var(--accent-subtle)',
+            color: 'var(--accent)', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+          }}>📋 Importer des liens</button>
+          <button onClick={() => { setEditingEx(null); setShowForm(true) }} style={{
+            padding: '8px 16px', borderRadius: 10,
+            border: 'none', background: 'var(--accent)',
+            color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+          }}>+ Ajouter</button>
+        </div>
       </div>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: 'clamp(16px,4vw,28px)' }}>
@@ -378,6 +386,97 @@ export default function AdminExerciseLibrary() {
           onCancel={() => { setShowForm(false); setEditingEx(null) }}
         />
       )}
+      {showImport && (
+        <ImportLinksModal token={token}
+          onDone={(added) => { setExercises(prev => [...prev, ...added]) }}
+          onClose={() => setShowImport(false)} />
+      )}
+    </div>
+  )
+}
+
+/* ── Import par liens YouTube collés ─────────────────────── */
+function ImportLinksModal({ token, onDone, onClose }) {
+  const [text, setText] = useState('')
+  const [category, setCategory] = useState('Force')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const linkCount = (text.match(/https?:\/\/[^\s,;]+/g) || []).length
+
+  const run = async () => {
+    if (!linkCount) return
+    setBusy(true); setResult(null)
+    try {
+      const res = await fetch(`${API}/exercise-library/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ links: text, items: [], category }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur')
+      // Applique la catégorie choisie aux nouveaux (le backend prend it.category par item ; ici on renvoie en masse)
+      setResult(data)
+      if (data.added?.length) onDone(data.added)
+    } catch (e) { setResult({ error: String(e.message) }) }
+    setBusy(false)
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.8)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, maxHeight: '92dvh', overflowY: 'auto',
+        background: 'var(--bg-card)', borderRadius: '24px 24px 0 0', border: '1px solid var(--border)', borderBottom: 'none', padding: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>📋 Importer des vidéos YouTube</h2>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 99, cursor: 'pointer',
+            background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>✕</button>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
+          Colle un ou plusieurs liens (un par ligne, ou séparés par des espaces). Le titre de chaque vidéo est
+          récupéré automatiquement. Les vidéos déjà présentes sont ignorées.
+        </p>
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={6}
+          placeholder={'https://youtu.be/xxxx\nhttps://www.youtube.com/watch?v=yyyy\n…'}
+          style={{ width: '100%', padding: '12px 14px', borderRadius: 13, fontSize: 13, fontFamily: 'monospace',
+            background: 'var(--bg-base)', border: '1.5px solid var(--border)', color: 'var(--text-primary)',
+            outline: 'none', resize: 'vertical', marginBottom: 10 }} />
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+          {CATEGORIES.map(c => (
+            <button key={c} onClick={() => setCategory(c)} style={{
+              padding: '7px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              background: category === c ? 'var(--accent)' : 'var(--bg-base)',
+              border: `1px solid ${category === c ? 'var(--accent)' : 'var(--border)'}`,
+              color: category === c ? '#fff' : 'var(--text-secondary)' }}>{c}</button>
+          ))}
+        </div>
+        <button onClick={run} disabled={busy || !linkCount}
+          style={{ width: '100%', padding: '14px 0', borderRadius: 14, fontSize: 14, fontWeight: 900, cursor: 'pointer',
+            background: 'var(--accent)', color: '#fff', border: 'none', opacity: (busy || !linkCount) ? 0.5 : 1 }}>
+          {busy ? 'Import en cours…' : `Importer ${linkCount} lien${linkCount > 1 ? 's' : ''} →`}
+        </button>
+        {result && (
+          <div style={{ marginTop: 14, padding: 14, borderRadius: 14, background: 'var(--bg-base)', border: '1px solid var(--border)', fontSize: 13 }}>
+            {result.error ? <p style={{ color: '#ff8a8a', fontWeight: 700, margin: 0 }}>{result.error}</p> : (
+              <>
+                <p style={{ color: '#27ae60', fontWeight: 800, margin: '0 0 6px' }}>✓ {result.added.length} ajouté(s)</p>
+                {result.skipped.length > 0 && <p style={{ color: 'var(--text-muted)', margin: '0 0 4px' }}>↷ {result.skipped.length} déjà présent(s)</p>}
+                {result.failed.length > 0 && (
+                  <div style={{ color: '#ff8a8a', marginTop: 6 }}>
+                    ✕ {result.failed.length} échec(s) :
+                    {result.failed.map((f, i) => <div key={i} style={{ fontSize: 11, opacity: 0.85 }}>· {f.url} — {f.reason}</div>)}
+                  </div>
+                )}
+                {result.added.length > 0 && (
+                  <div style={{ marginTop: 8, color: 'var(--text-secondary)', fontSize: 12 }}>
+                    {result.added.slice(0, 8).map(a => <div key={a.id}>🎥 {a.name}</div>)}
+                    {result.added.length > 8 && <div>… et {result.added.length - 8} autre(s)</div>}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

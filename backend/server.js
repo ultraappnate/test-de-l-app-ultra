@@ -3589,6 +3589,54 @@ app.post('/api/exercise-library', auth, (req, res) => {
   res.status(201).json(ex)
 })
 
+// Import en masse par liens YouTube (admin) : colle 1..N liens, titre récupéré via oEmbed
+function extractYouTubeId(raw) {
+  try {
+    const u = new URL(String(raw).trim())
+    if (u.searchParams.get('v')) return u.searchParams.get('v')
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split(/[/?]/)[0]
+    if (u.pathname.includes('/shorts/')) return u.pathname.split('/shorts/')[1].split(/[/?]/)[0]
+    if (u.pathname.includes('/embed/')) return u.pathname.split('/embed/')[1].split(/[/?]/)[0]
+  } catch {}
+  return null
+}
+async function fetchYouTubeTitle(videoId) {
+  try {
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 6000)
+    const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`, { signal: ctrl.signal })
+    clearTimeout(t)
+    if (!r.ok) return null
+    return (await r.json()).title || null
+  } catch { return null }
+}
+app.post('/api/exercise-library/import', auth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
+  // Accepte { links: "texte avec des liens" } et/ou { items: [{ url, name?, category?, muscles? }] }
+  const items = Array.isArray(req.body?.items) ? [...req.body.items] : []
+  if (typeof req.body?.links === 'string') {
+    const urls = req.body.links.match(/https?:\/\/[^\s,;]+/g) || []
+    urls.forEach(url => items.push({ url }))
+  }
+  if (!items.length) return res.status(400).json({ error: 'Aucun lien fourni' })
+  const added = [], skipped = [], failed = []
+  const known = new Set(db.exerciseLibrary.map(e => e.videoId).filter(Boolean))
+  for (const it of items.slice(0, 400)) {
+    const videoId = extractYouTubeId(it.url)
+    if (!videoId) { failed.push({ url: it.url, reason: 'Lien YouTube non reconnu' }); continue }
+    if (known.has(videoId)) { skipped.push({ url: it.url, reason: 'Déjà dans la bibliothèque' }); continue }
+    const name = String(it.name || '').trim() || (await fetchYouTubeTitle(videoId))
+    if (!name) { failed.push({ url: it.url, reason: 'Titre introuvable (vidéo privée ?)' }); continue }
+    const ex = {
+      id: `ex-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: name.slice(0, 120), muscles: Array.isArray(it.muscles) ? it.muscles : [],
+      category: it.category || req.body.category || 'Force', equipment: it.equipment || '', imageUrl: '',
+      videoId, tips: '', createdAt: new Date().toISOString(),
+    }
+    db.exerciseLibrary.push(ex); known.add(videoId); added.push(ex)
+  }
+  res.json({ added, skipped, failed, total: db.exerciseLibrary.length })
+})
+
 app.put('/api/exercise-library/:id', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
   const idx = db.exerciseLibrary.findIndex(e => e.id === req.params.id)

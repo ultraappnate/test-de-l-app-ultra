@@ -124,11 +124,31 @@ export const FULL_CATALOG = [
   ...EXERCISE_CATALOG.filter(e => !nateNames.has(norm(e.name))),
 ]
 
+// Bibliothèque admin (serveur) : injectée par le builder au chargement, prioritaire sur le statique
+let LIBRARY = []
+const CAT_DEFAULTS = {
+  Force:       { sets: '3', reps: '8-12',  rest: '90s', rpe: '8' },
+  Cardio:      { sets: '4', reps: '30-45s', rest: '45s', rpe: '8' },
+  Core:        { sets: '3', reps: '12-15', rest: '45s', rpe: '8' },
+  Mobilité:    { sets: '2', reps: '45s',   rest: '30s', rpe: '' },
+  Fonctionnel: { sets: '3', reps: '10-12', rest: '60s', rpe: '8' },
+}
+export function setLibraryExercises(list) {
+  LIBRARY = (Array.isArray(list) ? list : []).filter(e => e?.name).map(e => ({
+    name: e.name, cat: (e.muscles && e.muscles[0]) || e.category || 'Force',
+    ...(CAT_DEFAULTS[e.category] || CAT_DEFAULTS.Force),
+    url: e.videoId ? `https://youtu.be/${e.videoId}` : '',
+    fromLibrary: true,
+  }))
+}
+
 export function searchExercises(query, limit = 7) {
   const q = norm(query).trim()
   if (q.length < 2) return []
   const starts = [], contains = []
-  for (const ex of FULL_CATALOG) {
+  const libNames = new Set(LIBRARY.map(e => norm(e.name)))
+  const source = [...LIBRARY, ...FULL_CATALOG.filter(e => !libNames.has(norm(e.name)))]
+  for (const ex of source) {
     const n = norm(ex.name)
     if (n.startsWith(q)) starts.push(ex)
     else if (n.includes(q) || norm(ex.cat).includes(q)) contains.push(ex)
