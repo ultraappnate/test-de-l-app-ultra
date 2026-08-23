@@ -115,14 +115,9 @@ export const EXERCISE_CATALOG = [
 // Recherche insensible aux accents/majuscules
 const norm = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 
-// Catalogue complet : les vidéos de Nate d'abord (elles ont un `url`), puis le générique
-// (en retirant les doublons exacts du générique).
-import { NATE_EXERCISES } from './nateExercises'
-const nateNames = new Set(NATE_EXERCISES.map(e => norm(e.name)))
-export const FULL_CATALOG = [
-  ...NATE_EXERCISES,
-  ...EXERCISE_CATALOG.filter(e => !nateNames.has(norm(e.name))),
-]
+// Catalogue statique = générique uniquement (sans vidéo). Les vidéos de chaque coach
+// viennent de SA bibliothèque serveur (injectée ci-dessous), jamais partagées entre coachs.
+export const FULL_CATALOG = EXERCISE_CATALOG
 
 // Bibliothèque admin (serveur) : injectée par le builder au chargement, prioritaire sur le statique
 let LIBRARY = []

@@ -20,6 +20,7 @@ const NAV_CLIENT = [
   { to: '/nutrition',  label: 'Mon Tracker',       icon: '◎', short: 'Tracker' },
   { to: '/progress',   label: 'Ma progression',    icon: '↑', short: 'Progrès' },
   { to: '/questionnaires', label: 'Questionnaires', icon: '📋', short: 'Quest.' },
+  { to: '/bibliotheque',   label: 'Exercices',      icon: '🎬', short: 'Exos' },
   // { to: '/health',       label: 'Applis Santé',    icon: '🔗' }, // masqué temporairement (sync mock) — à remettre plus tard
   { to: '/health-access',label: 'Pros de santé',   icon: '🩺', short: 'Santé' },
   { to: '/community',    label: 'Communauté',      icon: '🌐' },
@@ -41,6 +42,7 @@ const NAV_COACH = [
   { to: '/coach/sante',      label: 'Bilans santé',     icon: '🩺' },
   { to: '/clients',          label: 'Mes clients',      icon: '❯❯' },
   { to: '/coach/questionnaires', label: 'Questionnaires', icon: '📋', short: 'Quest.' },
+  { to: '/coach/bibliotheque',   label: 'Ma bibliothèque', icon: '🎬', short: 'Biblio' },
   { to: '/enquete/resultats',    label: 'Enquête',        icon: '📊', short: 'Enquête' },
   // { to: '/health',           label: 'Applis Santé',     icon: '🔗' }, // masqué temporairement (sync mock) — à remettre plus tard
   { to: '/community',        label: 'Communauté',       icon: '🌐' },

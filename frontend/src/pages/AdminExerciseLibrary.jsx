@@ -36,7 +36,7 @@ function MuscleTag({ label, selected, onToggle }) {
   )
 }
 
-function ExerciseCard({ ex, onEdit, onDelete, onPlay }) {
+function ExerciseCard({ ex, onEdit, onDelete, onPlay, showOwner }) {
   return (
     <div style={{
       background: 'var(--bg-card)',
@@ -80,6 +80,9 @@ function ExerciseCard({ ex, onEdit, onDelete, onPlay }) {
 
       <div style={{ padding: '12px 14px' }}>
         <p style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>{ex.name}</p>
+        {showOwner && ex.ownerName && (
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--gold)', marginBottom: 4 }}>👤 {ex.ownerName}</p>
+        )}
         {ex.muscles?.length > 0 && (
           <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
             {ex.muscles.join(' · ')}
@@ -295,10 +298,11 @@ export default function AdminExerciseLibrary() {
     return matchSearch && matchCat
   })
 
-  if (user?.role !== 'admin') {
+  const isAdmin = user?.role === 'admin'
+  if (!['admin', 'coach', 'nutritionist', 'health_pro'].includes(user?.role)) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--text-muted)' }}>
-        Accès réservé à l'admin.
+        Accès réservé aux coachs.
       </div>
     )
   }
@@ -315,8 +319,10 @@ export default function AdminExerciseLibrary() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', fontSize: 20, cursor: 'pointer' }}>←</button>
           <div>
-            <p style={{ fontWeight: 900, fontSize: 16, color: 'var(--text-primary)' }}>Bibliothèque d'exercices</p>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>{exercises.length} exercice{exercises.length !== 1 ? 's' : ''} · Admin</p>
+            <p style={{ fontWeight: 900, fontSize: 16, color: 'var(--text-primary)' }}>{isAdmin ? 'Bibliothèque d\'exercices' : 'Ma bibliothèque'}</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              {exercises.length} exercice{exercises.length !== 1 ? 's' : ''} · {isAdmin ? 'Admin — tous les coachs' : 'Visible par tes clients et dans ton builder'}
+            </p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -370,7 +376,7 @@ export default function AdminExerciseLibrary() {
               {exercises.length === 0 ? 'Bibliothèque vide' : 'Aucun résultat'}
             </p>
             <p style={{ fontSize: 13 }}>
-              {exercises.length === 0 ? 'Commence à ajouter tes exercices !' : 'Essaie une autre recherche.'}
+              {exercises.length === 0 ? 'Ajoute tes exercices à la main ou importe tes vidéos YouTube en collant les liens — tes clients les verront dans leurs programmes.' : 'Essaie une autre recherche.'}
             </p>
           </div>
         ) : (
@@ -386,6 +392,7 @@ export default function AdminExerciseLibrary() {
                 onEdit={() => { setEditingEx(ex); setShowForm(true) }}
                 onDelete={() => handleDelete(ex.id)}
                 onPlay={setPlaying}
+                showOwner={isAdmin}
               />
             ))}
           </div>

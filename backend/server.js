@@ -3566,12 +3566,35 @@ app.post('/api/promotions/validate-code', auth, (req, res) => {
 
 // ─── BIBLIOTHÈQUE D'EXERCICES (admin) ───────────────────
 
+// Bibliothèque d'exercices PAR COACH : chaque entrée a un ownerId.
+// admin → tout ; coach/pro → ses entrées ; client → entrées des coachs qui le suivent.
+function clientCoachIds(clientId) {
+  const me = db.users.find(u => u.id === clientId)
+  const ids = new Set()
+  const progIds = db.enrollments.filter(e => e.userId === clientId).map(e => e.programId)
+  db.programs.filter(p => progIds.includes(p.id) && p.coachId).forEach(p => ids.add(p.coachId))
+  db.hires.filter(h => h.clientId === clientId && h.status === 'active').forEach(h => ids.add(h.proId))
+  if (me?.coachId) ids.add(me.coachId)
+  return ids
+}
+function withOwner(ex) {
+  const o = ex.ownerId ? db.users.find(u => u.id === ex.ownerId) : null
+  return { ...ex, ownerName: o?.name || (ex.ownerId ? '' : 'ULTRA') }
+}
 app.get('/api/exercise-library', auth, (req, res) => {
-  res.json(db.exerciseLibrary)
+  const role = req.user.role
+  if (role === 'admin') return res.json(db.exerciseLibrary.map(withOwner))
+  if (role === 'client') {
+    const coaches = clientCoachIds(req.user.id)
+    return res.json(db.exerciseLibrary.filter(e => e.ownerId && coaches.has(e.ownerId)).map(withOwner))
+  }
+  res.json(db.exerciseLibrary.filter(e => e.ownerId === req.user.id).map(withOwner))
 })
+const canEditExercise = (req, ex) => req.user.role === 'admin' || (ex.ownerId && ex.ownerId === req.user.id)
+const canCreateExercise = (req) => ['admin', 'coach', 'nutritionist', 'health_pro'].includes(req.user.role)
 
 app.post('/api/exercise-library', auth, (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
+  if (!canCreateExercise(req)) return res.status(403).json({ error: 'Réservé aux coachs' })
   const { name, muscles, category, equipment, imageUrl, videoId, tips } = req.body
   if (!name?.trim()) return res.status(400).json({ error: 'Nom requis' })
   const ex = {
@@ -3583,10 +3606,11 @@ app.post('/api/exercise-library', auth, (req, res) => {
     imageUrl: imageUrl || '',
     videoId: videoId || '',
     tips: tips || '',
+    ownerId: req.user.role === 'admin' ? (req.body.ownerId || null) : req.user.id,
     createdAt: new Date().toISOString(),
   }
   db.exerciseLibrary.push(ex)
-  res.status(201).json(ex)
+  res.status(201).json(withOwner(ex))
 })
 
 // Import en masse par liens YouTube (admin) : colle 1..N liens, titre récupéré via oEmbed
@@ -3610,7 +3634,8 @@ async function fetchYouTubeTitle(videoId) {
   } catch { return null }
 }
 app.post('/api/exercise-library/import', auth, async (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
+  if (!canCreateExercise(req)) return res.status(403).json({ error: 'Réservé aux coachs' })
+  const ownerId = req.user.role === 'admin' ? (req.body.ownerId || null) : req.user.id
   // Accepte { links: "texte avec des liens" } et/ou { items: [{ url, name?, category?, muscles? }] }
   const items = Array.isArray(req.body?.items) ? [...req.body.items] : []
   if (typeof req.body?.links === 'string') {
@@ -3619,7 +3644,7 @@ app.post('/api/exercise-library/import', auth, async (req, res) => {
   }
   if (!items.length) return res.status(400).json({ error: 'Aucun lien fourni' })
   const added = [], skipped = [], failed = []
-  const known = new Set(db.exerciseLibrary.map(e => e.videoId).filter(Boolean))
+  const known = new Set(db.exerciseLibrary.filter(e => (e.ownerId || null) === ownerId).map(e => e.videoId).filter(Boolean))
   for (const it of items.slice(0, 400)) {
     const videoId = extractYouTubeId(it.url)
     if (!videoId) { failed.push({ url: it.url, reason: 'Lien YouTube non reconnu' }); continue }
@@ -3630,23 +3655,28 @@ app.post('/api/exercise-library/import', auth, async (req, res) => {
       id: `ex-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: name.slice(0, 120), muscles: Array.isArray(it.muscles) ? it.muscles : [],
       category: it.category || req.body.category || 'À classer', equipment: it.equipment || '', imageUrl: '',
-      videoId, tips: '', createdAt: new Date().toISOString(),
+      videoId, tips: '', ownerId, createdAt: new Date().toISOString(),
     }
-    db.exerciseLibrary.push(ex); known.add(videoId); added.push(ex)
+    db.exerciseLibrary.push(ex); known.add(videoId); added.push(withOwner(ex))
   }
   res.json({ added, skipped, failed, total: db.exerciseLibrary.length })
 })
 
 app.put('/api/exercise-library/:id', auth, (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
   const idx = db.exerciseLibrary.findIndex(e => e.id === req.params.id)
   if (idx === -1) return res.status(404).json({ error: 'Exercice introuvable' })
-  db.exerciseLibrary[idx] = { ...db.exerciseLibrary[idx], ...req.body, id: req.params.id }
-  res.json(db.exerciseLibrary[idx])
+  if (!canEditExercise(req, db.exerciseLibrary[idx])) return res.status(403).json({ error: 'Accès refusé' })
+  const { ownerId, ownerName, ...patch } = req.body || {}
+  db.exerciseLibrary[idx] = { ...db.exerciseLibrary[idx], ...patch, id: req.params.id,
+    // seul l'admin peut réattribuer un exercice
+    ...(req.user.role === 'admin' && ownerId !== undefined ? { ownerId } : {}) }
+  res.json(withOwner(db.exerciseLibrary[idx]))
 })
 
 app.delete('/api/exercise-library/:id', auth, (req, res) => {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin uniquement' })
+  const ex = db.exerciseLibrary.find(e => e.id === req.params.id)
+  if (!ex) return res.status(404).json({ error: 'Exercice introuvable' })
+  if (!canEditExercise(req, ex)) return res.status(403).json({ error: 'Accès refusé' })
   db.exerciseLibrary = db.exerciseLibrary.filter(e => e.id !== req.params.id)
   res.json({ ok: true })
 })
