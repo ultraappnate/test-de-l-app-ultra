@@ -403,6 +403,9 @@ function TabCompte() {
         )}
       </div>
 
+      {/* Mot de passe */}
+      <PasswordCard token={token} />
+
       {/* Informations légales */}
       <div className="p-5 rounded-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
         <p className="text-[10px] font-black tracking-widest uppercase mb-3" style={{ color: 'var(--text-faint)' }}>Informations légales</p>
@@ -435,6 +438,47 @@ const TABS = [
   { id: 'notifications', label: 'Notifs',     icon: '🔔' },
   { id: 'compte',        label: 'Compte',     icon: '👤' },
 ]
+
+// ─── Changement de mot de passe (tous rôles) ──────────────
+function PasswordCard({ token }) {
+  const [pw, setPw] = useState({ current: '', next: '', confirm: '' })
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const inp = { width: '100%', padding: '11px 13px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+    background: 'var(--bg-base)', border: '1.5px solid var(--border)', color: 'var(--text-primary)', outline: 'none' }
+  const submit = async () => {
+    setMsg('')
+    if (pw.next.length < 8) return setMsg('Le nouveau mot de passe doit faire au moins 8 caractères')
+    if (pw.next !== pw.confirm) return setMsg('Les deux mots de passe ne correspondent pas')
+    setBusy(true)
+    try {
+      const r = await fetch(`${SETTINGS_API}/account/password`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword: pw.current, newPassword: pw.next }),
+      })
+      const d = await r.json()
+      if (!r.ok) throw new Error(d.message || 'Erreur')
+      setPw({ current: '', next: '', confirm: '' }); setMsg('✓ Mot de passe modifié')
+    } catch (e) { setMsg(String(e.message)) }
+    setBusy(false)
+  }
+  return (
+    <div className="p-5 rounded-2xl" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <p className="text-[10px] font-black tracking-widest uppercase mb-3" style={{ color: 'var(--text-faint)' }}>🔒 Mot de passe</p>
+      <div className="space-y-2">
+        <input type="password" style={inp} value={pw.current} onChange={e => setPw(p => ({ ...p, current: e.target.value }))} placeholder="Mot de passe actuel" autoComplete="current-password" />
+        <input type="password" style={inp} value={pw.next} onChange={e => setPw(p => ({ ...p, next: e.target.value }))} placeholder="Nouveau mot de passe (8 caractères min.)" autoComplete="new-password" />
+        <input type="password" style={inp} value={pw.confirm} onChange={e => setPw(p => ({ ...p, confirm: e.target.value }))} placeholder="Confirmer le nouveau mot de passe" autoComplete="new-password" />
+      </div>
+      {msg && <p className="text-xs font-bold mt-3" style={{ color: msg.startsWith('✓') ? '#27ae60' : '#ff8a8a' }}>{msg}</p>}
+      <button onClick={submit} disabled={busy || !pw.current || !pw.next}
+        className="w-full mt-3 py-3 rounded-xl text-sm font-extrabold"
+        style={{ background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer', opacity: (busy || !pw.current || !pw.next) ? 0.5 : 1 }}>
+        {busy ? 'Modification…' : 'Modifier le mot de passe'}
+      </button>
+    </div>
+  )
+}
 
 export default function Settings() {
   const { user, logout } = useStore()

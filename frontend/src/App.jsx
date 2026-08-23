@@ -71,6 +71,7 @@ import SurveyResults from './pages/SurveyResults'
 import CoachQuestionnaires from './pages/CoachQuestionnaires'
 import ClientQuestionnaires from './pages/ClientQuestionnaires'
 import ClientLibrary from './pages/ClientLibrary'
+import ClientMyProfile from './pages/ClientMyProfile'
 import { registerPush } from './services/pushNotifications'
 
 function PrivateRoute({ children }) {
@@ -184,6 +185,7 @@ export default function App() {
           <Route path="/questionnaires" element={<PrivateRoute><ClientQuestionnaires /></PrivateRoute>} />
           <Route path="/coach/bibliotheque" element={<PrivateRoute><AdminExerciseLibrary /></PrivateRoute>} />
           <Route path="/bibliotheque" element={<PrivateRoute><ClientLibrary /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><ClientMyProfile /></PrivateRoute>} />
           {/* ── Pages légales (publiques) ── */}
           <Route path="/legal" element={<LegalPage />} />
           <Route path="/legal/:slug" element={<LegalPage />} />

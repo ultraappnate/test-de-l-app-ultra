@@ -772,9 +772,21 @@ app.put('/api/profile', auth, (req, res) => {
   if (idx === -1) return res.status(404).json({ message: 'Utilisateur introuvable' })
   const { name, bio, specialties, calendlyUrl, avatar, banner, instagram, photos, videoUrl, videoData, shop,
           certifications, tarifConsultation, tarifSuivi, linkedin,
-          profession, rpps, location, locationEnabled, price } = req.body
+          profession, rpps, location, locationEnabled, price,
+          // Champs client (onboarding + « Mon profil »)
+          onboardingDone, objective, level, preference, budget, weight, height, age, gender } = req.body
+  const numOrKeep = (v, prev) => (v === '' || v === null) ? null : (v !== undefined && !isNaN(Number(v)) ? Number(v) : prev)
   db.users[idx] = {
     ...db.users[idx],
+    onboardingDone: onboardingDone !== undefined ? !!onboardingDone : db.users[idx].onboardingDone,
+    objective:   objective  ?? db.users[idx].objective,
+    level:       level      ?? db.users[idx].level,
+    preference:  preference ?? db.users[idx].preference,
+    budget:      budget     ?? db.users[idx].budget,
+    weight:      weight  !== undefined ? numOrKeep(weight, db.users[idx].weight) : db.users[idx].weight,
+    height:      height  !== undefined ? numOrKeep(height, db.users[idx].height) : db.users[idx].height,
+    age:         age     !== undefined ? numOrKeep(age, db.users[idx].age) : db.users[idx].age,
+    gender:      gender     ?? db.users[idx].gender,
     name:               name               ? name.trim() : db.users[idx].name,
     bio:                bio                ?? db.users[idx].bio,
     specialties:        specialties        ?? db.users[idx].specialties,
@@ -799,6 +811,21 @@ app.put('/api/profile', auth, (req, res) => {
   }
   const { password, ...safe } = db.users[idx]
   res.json(safe)
+})
+
+// Changer son mot de passe (tous rôles) — ancien mot de passe requis
+app.put('/api/account/password', auth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {}
+  const me = db.users.find(u => u.id === req.user.id)
+  if (!me) return res.status(404).json({ message: 'Introuvable' })
+  if (!currentPassword || !(await bcrypt.compare(currentPassword, me.password))) {
+    return res.status(400).json({ message: 'Mot de passe actuel incorrect' })
+  }
+  if (!newPassword || String(newPassword).length < 8) {
+    return res.status(400).json({ message: 'Le nouveau mot de passe doit faire au moins 8 caractères' })
+  }
+  me.password = await bcrypt.hash(String(newPassword), 10)
+  res.json({ success: true })
 })
 
 // Lire son propre profil
