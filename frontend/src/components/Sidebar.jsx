@@ -87,7 +87,8 @@ const NAV_HEALTH_PRO = [
 ]
 const NAV_ADMIN = [
   { to: '/admin',             label: 'Panneau admin',      icon: '👑' },
-  { to: '/programs',          label: 'Programmes',         icon: '◉' },
+  { to: '/programs',          label: 'Catalogue',          icon: '◉' },
+  { to: '/coach/programs',    label: 'Mes programmes',     icon: '▦', short: 'Prog' },
   { to: '/admin/exercises',   label: 'Biblio. exercices',  icon: '🏋️' },
   { to: '/analytics',         label: 'Analytiques',        icon: '↑' },
 ]
