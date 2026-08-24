@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store'
 import { searchExercises, setLibraryExercises } from '../data/exerciseCatalog'
@@ -74,11 +75,13 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
     const r = el.getBoundingClientRect()
     previewTimer.current = setTimeout(() => {
       const W = 300, H = 190
-      const fitsRight = r.right + W + 12 < window.innerWidth
+      const vw = window.innerWidth || document.documentElement.clientWidth
+      const vh = window.innerHeight || document.documentElement.clientHeight
+      const fitsRight = r.right + W + 12 < vw
       setPreview({
         url: ex.url, name: ex.name,
         x: fitsRight ? r.right + 10 : Math.max(8, r.left - W - 10),
-        y: Math.min(Math.max(8, r.top - 40), window.innerHeight - H - 8),
+        y: Math.min(Math.max(8, r.top - 40), Math.max(8, vh - H - 8)),
       })
     }, 1000)
   }
@@ -144,8 +147,8 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
           className="w-full font-black text-base rounded-lg px-2 py-1.5 focus:outline-none"
           style={{ ...inputStyle, color: 'var(--text-primary)' }}
         />
-        {preview && (
-          <div style={{ position: 'fixed', left: preview.x, top: preview.y, zIndex: 200, width: 300,
+        {preview && createPortal(
+          <div style={{ position: 'fixed', left: preview.x, top: preview.y, zIndex: 2000, width: 300,
             background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: 14,
             boxShadow: '0 16px 44px rgba(0,0,0,0.55)', overflow: 'hidden', pointerEvents: 'none' }}>
             <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
@@ -155,7 +158,8 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
             </div>
             <p style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-primary)', margin: 0, padding: '7px 10px',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🎥 {preview.name}</p>
-          </div>
+          </div>,
+          document.body
         )}
         {showSugg && suggestions.length > 0 && (
           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: 4,
