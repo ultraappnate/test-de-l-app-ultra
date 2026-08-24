@@ -59,6 +59,7 @@ function segmentBlocks(blocks) {
 function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHandlers, handleProps, dragging, dropTarget }) {
   const set = (k, v) => onChange({ ...block, [k]: v })
   const [showVid, setShowVid] = useState(!!block.url)
+  const [playing, setPlaying] = useState(false) // lecteur vidéo plein écran
   const yt = ytId(block.url)
   const vm = vimeoId(block.url)
   const inputStyle = { background: 'var(--bg-base)', border: '1px solid var(--border-soft, var(--border))', color: 'var(--text-primary)' }
@@ -215,15 +216,44 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
             className="w-full text-xs rounded-lg px-3 py-2 focus:outline-none"
             style={inputStyle} />
           {yt && (
-            <div className="mt-2 rounded-lg overflow-hidden relative" style={{ aspectRatio: '16/9', background: '#000' }}>
+            <div onClick={() => setPlaying(true)} title="Lire la vidéo"
+              className="mt-2 rounded-lg overflow-hidden relative" style={{ aspectRatio: '16/9', background: '#000', cursor: 'pointer' }}>
               <img src={`https://img.youtube.com/vi/${yt}/hqdefault.jpg`} alt="" className="w-full h-full object-cover" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span style={{ fontSize: 30, filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.6))' }}>▶️</span>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(160,56,72,0.92)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, paddingLeft: 3,
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.5)' }}>▶</div>
               </div>
             </div>
           )}
           {!yt && vm && (
-            <p className="text-[10px] mt-2" style={{ color: 'var(--text-faint)' }}>🎬 Vidéo Vimeo liée</p>
+            <button onClick={() => setPlaying(true)} type="button"
+              className="text-[10px] mt-2 font-bold" style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              🎬 Vidéo Vimeo liée — ▶ lire
+            </button>
+          )}
+          {/* Lecteur plein écran (portail : hors des cartes transformées) */}
+          {playing && (yt || vm) && createPortal(
+            <div onClick={() => setPlaying(false)} style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.88)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+              <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 860 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <p style={{ color: '#fff', fontWeight: 900, fontSize: 16, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    🎥 {block.title || 'Vidéo de démo'}
+                  </p>
+                  <button onClick={() => setPlaying(false)} style={{ width: 34, height: 34, borderRadius: 99, cursor: 'pointer', flexShrink: 0,
+                    background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}>✕</button>
+                </div>
+                <div style={{ position: 'relative', paddingTop: '56.25%', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
+                  <iframe
+                    src={yt ? `https://www.youtube.com/embed/${yt}?autoplay=1&rel=0&modestbranding=1`
+                            : `https://player.vimeo.com/video/${vm}?autoplay=1`}
+                    title={block.title || 'Vidéo'} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }} />
+                </div>
+              </div>
+            </div>,
+            document.body
           )}
         </>
       ) : (
