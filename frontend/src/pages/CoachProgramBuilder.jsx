@@ -65,6 +65,24 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
   // Autocomplete : suggestions du catalogue pendant la frappe du nom
   const [suggestions, setSuggestions] = useState([])
   const [showSugg, setShowSugg] = useState(false)
+  // Aperçu vidéo au survol (>1s) d'une suggestion — desktop uniquement
+  const [preview, setPreview] = useState(null) // { url, name, x, y, left }
+  const previewTimer = useRef(null)
+  const startPreview = (ex, el) => {
+    clearTimeout(previewTimer.current)
+    if (!ex.url) return
+    const r = el.getBoundingClientRect()
+    previewTimer.current = setTimeout(() => {
+      const W = 300, H = 190
+      const fitsRight = r.right + W + 12 < window.innerWidth
+      setPreview({
+        url: ex.url, name: ex.name,
+        x: fitsRight ? r.right + 10 : Math.max(8, r.left - W - 10),
+        y: Math.min(Math.max(8, r.top - 40), window.innerHeight - H - 8),
+      })
+    }, 1000)
+  }
+  const stopPreview = () => { clearTimeout(previewTimer.current); setPreview(null) }
   const handleTitleChange = (v) => {
     set('title', v)
     setSuggestions(searchExercises(v))
@@ -121,11 +139,24 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
         <input
           value={block.title || ''} onChange={e => handleTitleChange(e.target.value)}
           onFocus={() => { setSuggestions(searchExercises(block.title || '')); setShowSugg(true) }}
-          onBlur={() => setTimeout(() => setShowSugg(false), 180)}
+          onBlur={() => { setTimeout(() => setShowSugg(false), 180); stopPreview() }}
           placeholder="Nom de l'exercice"
           className="w-full font-black text-base rounded-lg px-2 py-1.5 focus:outline-none"
           style={{ ...inputStyle, color: 'var(--text-primary)' }}
         />
+        {preview && (
+          <div style={{ position: 'fixed', left: preview.x, top: preview.y, zIndex: 200, width: 300,
+            background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: 14,
+            boxShadow: '0 16px 44px rgba(0,0,0,0.55)', overflow: 'hidden', pointerEvents: 'none' }}>
+            <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+              <iframe src={`https://www.youtube.com/embed/${ytId(preview.url)}?autoplay=1&mute=1&rel=0&controls=0&modestbranding=1`}
+                title={preview.name} allow="autoplay; encrypted-media"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }} />
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-primary)', margin: 0, padding: '7px 10px',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🎥 {preview.name}</p>
+          </div>
+        )}
         {showSugg && suggestions.length > 0 && (
           <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: 4,
             background: 'var(--bg-card-2, var(--bg-card))', border: '1px solid var(--accent)', borderRadius: 12,
@@ -135,8 +166,8 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
                 onMouseDown={e => { e.preventDefault(); pickSuggestion(ex) }}
                 className="w-full text-left px-3 py-2 flex items-center justify-between gap-2"
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-subtle)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-subtle)'; startPreview(ex, e.currentTarget) }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; stopPreview() }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {ex.url && <span title="Ta vidéo de démo" style={{ marginRight: 5 }}>🎥</span>}{ex.name}
                 </span>
