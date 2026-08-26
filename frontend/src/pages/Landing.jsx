@@ -290,7 +290,7 @@ const FEATURES = [
     tab: 'Dashboard',
     label: 'Vue d\'ensemble',
     title: 'Tout centralisé. Rien d\'oublié.',
-    desc: "Progression, séances, objectifs, messages — tout au même endroit. Que tu sois client, coach ou nutritionniste, tu sais exactement où tu en es à tout moment.",
+    desc: "Progression, séances, objectifs, messages — tout au même endroit. Client comme coach, tu sais exactement où tu en es à tout moment.",
     bullets: ["Vue d'ensemble en temps réel", "Alertes et rappels intelligents", "Synchronisation multi-appareils"],
     mock: <MockDashboard />,
   },
@@ -298,39 +298,31 @@ const FEATURES = [
     tab: 'Messagerie',
     label: 'Communication directe',
     title: 'Ton expert, direct dans ta poche.',
-    desc: "Plus d'emails perdus, plus de suivi approximatif. Tout passe par ULTRA : messages, ajustements de plan, feedback en temps réel — entre client, coach et nutritionniste.",
-    bullets: ["Messagerie instantanée avec ton expert", "Partage de fichiers et de données", "Notification dès qu'un plan est ajusté"],
+    desc: "Plus d'emails perdus, plus de suivi approximatif. Tout passe par ULTRA : messages, ajustements de programme, feedback en temps réel — directement entre toi et ton coach.",
+    bullets: ["Messagerie instantanée avec ton coach", "Notifié à chaque nouveau message", "Historique complet de vos échanges"],
     mock: <MockChat />,
   },
   {
     tab: 'Nutrition',
     label: 'Plans alimentaires',
     title: 'La nutrition pensée pour toi.',
-    desc: "Plans alimentaires créés par des nutritionnistes certifiés, synchronisés avec tes entraînements. Adapté à tes goûts, tes objectifs, ton emploi du temps.",
-    bullets: ["Macros calculées selon ton objectif", "Base de 10 000+ aliments", "Ajustements automatiques semaine par semaine"],
+    desc: "Ton journal alimentaire avec scanner de code-barres intégré. Scanne, entre la quantité, les macros se calculent — et ton coach voit ton suivi en temps réel.",
+    bullets: ["Scanner de code-barres (base Open Food Facts)", "Macros calculées selon ton objectif", "Suivi visible par ton coach en temps réel"],
     mock: <MockNutrition />,
   },
   {
     tab: 'Suivi clients',
     label: 'Gestion pro',
     title: 'Coache, suis, développe ton activité.',
-    desc: "Pour les coaches et nutritionnistes : tous tes clients en un tableau de bord. Compliance, progression, paiements — tout automatisé pour que tu te concentres sur l'essentiel.",
-    bullets: ["Tous tes clients en un tableau de bord", "Programmes et plans créés en quelques clics", "Paiements automatisés, zéro relance"],
+    desc: "Pour les coachs : tous tes clients en un tableau de bord, ta bibliothèque d'exercices vidéo, tes programmes construits en quelques clics.",
+    bullets: ["Tous tes clients en un tableau de bord", "Bibliothèque d'exercices vidéo personnelle", "Builder de programmes avec vidéos intégrées"],
     mock: <MockProgram />,
   },
 ]
 
-const TESTIMONIALS = [
-  { name: 'Sarah K.', role: 'Cliente · 6 mois', result: '−14 kg', text: "En 6 mois j'ai perdu 14 kilos et retrouvé une énergie que j'avais perdue depuis des années. Le suivi de mon coach change absolument tout.", avatar: 'S', color: '#c0392b' },
-  { name: 'Thomas R.', role: 'Coach sportif · 2 ans', result: '×3 revenus', text: "J'ai multiplié mes revenus par 3 en 4 mois. ULTRA m'a permis de professionnaliser mon activité et de coacher 40 clients au lieu de 12.", avatar: 'T', color: '#8e44ad' },
-  { name: 'Marie D.', role: 'Cliente · 1 an', result: '1er marathon', text: "Après 5 ans de yo-yo, j'ai enfin une méthode qui tient. Mon coach ajuste mon plan en temps réel. Je n'avais jamais connu ça.", avatar: 'M', color: '#2980b9' },
-  { name: 'Lucas H.', role: 'Client · 3 mois', result: '+18 kg muscle', text: "Mon premier semi-marathon en 3 mois de prépa ULTRA. Et en parallèle j'ai pris 18 kg au développé couché. Objectif largement dépassé.", avatar: 'L', color: '#27ae60' },
-  { name: 'Camille V.', role: 'Nutritionniste · 18 mois', result: '60 clients', text: "Avant ULTRA je jonglais entre WhatsApp, Excel et PDF. Maintenant tout est centralisé. Je passe 3h de moins à administrer chaque semaine.", avatar: 'C', color: '#e67e22' },
-]
-
 const STEPS = [
-  { num: '01', title: 'Crée ton profil', desc: "Renseigne tes objectifs et ton rôle en 2 minutes. L'IA adapte l'expérience selon que tu es client, coach ou nutritionniste.", icon: '👤' },
-  { num: '02', title: 'Connecte ton équipe', desc: "Trouve le coach ou nutritionniste idéal, ou accède à ta clientèle. Tout démarre en quelques clics.", icon: '🤝' },
+  { num: '01', title: 'Crée ton profil', desc: "Renseigne tes objectifs et ton niveau en 2 minutes. Ton espace s'adapte à ton profil dès la première connexion.", icon: '👤' },
+  { num: '02', title: 'Rejoins ton coach', desc: "Choisis ton programme ou ton coach sur la marketplace. Messagerie, suivi et bilans démarrent aussitôt.", icon: '🤝' },
   { num: '03', title: 'Lance-toi', desc: "Ton espace est prêt dès le premier jour. Programmes, plans alimentaires, suivi — tout t'attend.", icon: '🚀' },
 ]
 
@@ -396,7 +388,7 @@ const PROFILE_CONTENT = {
     subHeadline: 'Trouve ton équilibre.',
     sub: 'Programmes personnalisés, experts certifiés, nutrition sur mesure. Tout ce qu\'il faut pour atteindre tes objectifs — au même endroit.',
     cta: 'Commencer ma transformation',
-    stats: [['2 400+', 'Athlètes actifs'], ['−12 kg', 'Résultat moyen en 3 mois'], ['98%', 'Satisfaction client']],
+    stats: [['300+', 'Vidéos de démo par ton coach'], ['📷', 'Scanner nutrition intégré'], ['1:1', 'Messagerie directe avec ton coach']],
     accent: 'Transforme ton corps.',
     color: 'var(--accent)',
     bg: 'rgba(160,56,72,0.12)',
@@ -479,7 +471,6 @@ export default function Landing({ theme, setTheme }) {
         <div className="hidden md:flex items-center gap-8 text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
           <a href="#innovations" className="hover:opacity-75 transition">Innovations</a>
           <a href="#fonctionnalites" className="hover:opacity-75 transition">Fonctionnalités</a>
-          <a href="#temoignages" className="hover:opacity-75 transition">Témoignages</a>
           <a href="#faq" className="hover:opacity-75 transition">FAQ</a>
         </div>
         <div className="flex items-center gap-2">
@@ -553,14 +544,14 @@ export default function Landing({ theme, setTheme }) {
               </GlowButton>
               <GlowButton
                 primary={false}
-                onClick={() => navigate('/discover')}
+                onClick={() => document.getElementById('innovations')?.scrollIntoView({ behavior: 'smooth' })}
                 className="px-9 py-4 text-base"
               >
-                🗺 Trouver un expert près de moi
+                Découvrir l'app ↓
               </GlowButton>
             </div>
             <p className="text-sm text-center" style={{ color: 'var(--text-faint)' }}>
-              Accès immédiat
+              Beta privée · Gratuit pendant la beta · Sans engagement
             </p>
 
             <div className="grid grid-cols-3 gap-4 mt-16 max-w-xl mx-auto">
@@ -591,7 +582,7 @@ export default function Landing({ theme, setTheme }) {
       <div className="py-5 mt-10 overflow-hidden" style={{ borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
         <div className="marquee-track flex gap-16 w-max">
           {[...Array(3)].flatMap(() =>
-            ['CrossFit Paris', '·', 'BasicFit Pro', '·', 'FitNation', '·', 'SportElite', '·', 'NutriCoach', '·', 'AthleteHub', '·', 'PeakPerformance', '·', 'EliteCoach', '·']
+            ['Programmes sur mesure', '·', 'Vidéos de démo', '·', 'Scanner nutrition', '·', 'Messagerie directe', '·', 'Suivi en temps réel', '·', 'Bilans réguliers', '·', 'Calendrier intégré', '·', 'Sans engagement', '·']
           ).map((name, i) => (
             <span key={i} className="text-sm font-black tracking-widest uppercase flex-shrink-0"
               style={{ color: name === '·' ? 'var(--accent)' : 'var(--text-faint)', opacity: name === '·' ? 1 : 0.55 }}>
@@ -611,7 +602,7 @@ export default function Landing({ theme, setTheme }) {
               <span style={{ color: 'var(--accent)' }}>qui changent vraiment tout.</span>
             </h2>
             <p className="mt-4 text-base max-w-xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-              ULTRA n'est pas un simple outil de suivi. C'est une plateforme complète, pensée pour révolutionner la relation coach–client–nutritionniste.
+              ULTRA n'est pas un simple outil de suivi. C'est une plateforme complète, pensée pour transformer la relation entre toi et ton coach.
             </p>
           </div>
         </Reveal>
@@ -619,39 +610,38 @@ export default function Landing({ theme, setTheme }) {
         {/* Big feature cards — 2 columns */}
         <div className="grid md:grid-cols-2 gap-6 mb-6">
 
-          {/* Géolocalisation */}
+          {/* Bibliothèque vidéo */}
           <Reveal delay={0} from="left">
-            <TiltCard intensity={6} glowColor="#4a90d9"
+            <TiltCard intensity={6} glowColor="#a03848"
               className="p-8 rounded-3xl h-full flex flex-col gap-5 overflow-hidden relative"
-              style={{ background: 'linear-gradient(135deg, #0a1020 0%, #0d1a3d 60%, #1a2e6b 100%)', border: '1px solid rgba(74,144,217,0.3)' }}
-              onClick={() => navigate('/discover')}>
+              style={{ background: 'linear-gradient(135deg, #1a0a0d 0%, #5c1a24 60%, #8b2635 100%)', border: '1px solid rgba(160,56,72,0.4)' }}>
               <div className="absolute top-0 right-0 w-48 h-48 opacity-10 pointer-events-none"
-                style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, #4a90d9, transparent 70%)' }} />
+                style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, #e8c84a, transparent 70%)' }} />
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl"
-                style={{ background: 'rgba(74,144,217,0.2)', border: '1px solid rgba(74,144,217,0.4)' }}>🗺</div>
+                style={{ background: 'rgba(232,200,74,0.15)', border: '1px solid rgba(232,200,74,0.35)' }}>🎥</div>
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-black px-2.5 py-1 rounded-full" style={{ background: 'rgba(74,144,217,0.2)', color: '#4a90d9' }}>NOUVEAU</span>
+                  <span className="text-xs font-black px-2.5 py-1 rounded-full" style={{ background: 'rgba(232,200,74,0.15)', color: '#e8c84a' }}>SIGNATURE ULTRA</span>
                 </div>
-                <h3 className="text-2xl font-black mb-2" style={{ color: '#fff' }}>Trouve un expert près de toi</h3>
+                <h3 className="text-2xl font-black mb-2" style={{ color: '#fff' }}>Chaque exercice, démontré en vidéo par ton coach</h3>
                 <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                  Géolocalisation en temps réel. Carte interactive avec tous les coaches et nutritionnistes disponibles autour de toi. Filtre par spécialité, budget, présentiel ou en ligne.
+                  Plus de 300 vidéos de démonstration filmées par ton coach. Sur chaque exercice de ton programme :
+                  la technique exacte, montrée par celui qui te suit — pas une vidéo générique trouvée sur internet.
                 </p>
               </div>
               <div className="flex items-center gap-2 mt-auto">
-                <span className="text-sm font-bold" style={{ color: '#4a90d9' }}>Explorer la carte →</span>
+                <span className="text-sm font-bold" style={{ color: '#e8c84a' }}>La technique juste, à chaque séance →</span>
               </div>
-              {/* Mini map preview */}
-              <div className="rounded-2xl overflow-hidden mt-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(74,144,217,0.2)', height: 100 }}>
-                <div className="h-full flex items-center justify-center relative">
-                  <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'repeating-linear-gradient(0deg, rgba(74,144,217,0.3) 0px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(74,144,217,0.3) 0px, transparent 1px, transparent 20px)', backgroundSize: '20px 20px' }} />
-                  {[['30%','40%','#a03848','🎓'],['55%','30%','#27ae60','🥗'],['70%','60%','#a03848','🎓'],['45%','65%','#27ae60','🥗'],['20%','65%','#a03848','🎓']].map(([x,y,c,e],i) => (
-                    <div key={i} style={{ position:'absolute', left:x, top:y, width:24, height:24, borderRadius:'50% 50% 50% 0', background:c, border:'2px solid white', transform:'rotate(-45deg)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, boxShadow:'0 2px 8px rgba(0,0,0,0.5)' }}>
-                      <span style={{ transform:'rotate(45deg)' }}>{e}</span>
+              {/* Aperçu bandes vidéo */}
+              <div className="flex gap-2 mt-2">
+                {['Squat', 'Hip thrust', 'Landmine', 'Box jump'].map((t, i) => (
+                  <div key={t} className="flex-1 rounded-xl overflow-hidden relative" style={{ height: 64, background: `rgba(255,255,255,${0.05 + i * 0.02})`, border: '1px solid rgba(255,255,255,0.12)' }}>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(160,56,72,0.95)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, paddingLeft: 1 }}>▶</div>
                     </div>
-                  ))}
-                  <div style={{ width:12, height:12, borderRadius:'50%', background:'#4a90d9', border:'2px solid white', boxShadow:'0 0 0 5px rgba(74,144,217,0.25)', position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)' }} />
-                </div>
+                    <span className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-bold" style={{ color: 'rgba(255,255,255,0.55)' }}>{t}</span>
+                  </div>
+                ))}
               </div>
             </TiltCard>
           </Reveal>
@@ -669,21 +659,22 @@ export default function Landing({ theme, setTheme }) {
                   style={{ background: 'rgba(39,174,96,0.2)', border: '1px solid rgba(39,174,96,0.4)' }}>🥗</div>
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(39,174,96,0.2)', color: '#27ae60' }}>NUTRITIONNISTE</span>
+                    <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(39,174,96,0.2)', color: '#27ae60' }}>NUTRITION</span>
                   </div>
-                  <h3 className="text-lg font-black mb-1.5" style={{ color: '#fff' }}>Interface 100% dédiée nutrition</h3>
+                  <h3 className="text-lg font-black mb-1.5" style={{ color: '#fff' }}>Scanne tes aliments, comme sur MyFitnessPal</h3>
                   <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                    Plans alimentaires, recettes, bilans, ebooks, consultations, suivi compliance — tout en un, rien de superflu.
+                    Scanner de code-barres intégré : scanne un produit, entre la quantité, les macros se calculent
+                    toutes seules. Ton coach voit ton suivi en temps réel.
                   </p>
                   <div className="flex gap-2 mt-3 flex-wrap">
-                    {['Plans repas','Recettes','Ebooks','Consultations','Stats'].map(f => (
+                    {['Scan code-barres','Macros auto','Objectifs perso','Journal quotidien'].map(f => (
                       <span key={f} className="text-[10px] px-2 py-1 rounded-lg font-bold" style={{ background: 'rgba(39,174,96,0.15)', color: '#27ae60' }}>{f}</span>
                     ))}
                   </div>
                 </div>
               </TiltCard>
 
-              {/* Boutique coach */}
+              {/* Bilans & questionnaires */}
               <TiltCard intensity={6} glowColor="#e8a020"
                 className="p-6 rounded-3xl flex-1 flex gap-5 items-start overflow-hidden relative"
                 style={{ background: 'linear-gradient(135deg, #1a0f00 0%, #3d2200 60%, #6b3d00 100%)', border: '1px solid rgba(232,160,32,0.3)' }}>
@@ -693,14 +684,15 @@ export default function Landing({ theme, setTheme }) {
                   style={{ background: 'rgba(232,160,32,0.2)', border: '1px solid rgba(232,160,32,0.4)' }}>🛍</div>
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(232,160,32,0.2)', color: '#e8a020' }}>COACH</span>
+                    <span className="text-xs font-black px-2 py-0.5 rounded-full" style={{ background: 'rgba(232,160,32,0.2)', color: '#e8a020' }}>SUIVI</span>
                   </div>
-                  <h3 className="text-lg font-black mb-1.5" style={{ color: '#fff' }}>Ta boutique intégrée</h3>
+                  <h3 className="text-lg font-black mb-1.5" style={{ color: '#fff' }}>Des bilans réguliers, pas un suivi fantôme</h3>
                   <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                    Vêtements, compléments, programmes, consultations, ebooks — vends directement depuis ton profil ULTRA.
+                    Ton coach t'envoie des questionnaires de suivi directement dans l'app. Tu réponds en 2 minutes,
+                    il ajuste ton programme en conséquence.
                   </p>
                   <div className="flex gap-2 mt-3 flex-wrap">
-                    {['Vêtements','Compléments','Programmes','Ebooks','Collaborations'].map(f => (
+                    {['Bilans du mois','Réponses in-app','Ajustements','Notifications'].map(f => (
                       <span key={f} className="text-[10px] px-2 py-1 rounded-lg font-bold" style={{ background: 'rgba(232,160,32,0.15)', color: '#e8a020' }}>{f}</span>
                     ))}
                   </div>
@@ -715,18 +707,18 @@ export default function Landing({ theme, setTheme }) {
           {[
             {
               icon: '🔔', title: 'Notifications intelligentes', color: '#8e44ad', bg: 'rgba(142,68,173,0.12)', border: 'rgba(142,68,173,0.3)',
-              desc: 'Chaque action importante te parvient en temps réel — message coach, repas loggé, paiement reçu, rappel de séance.',
+              desc: 'Chaque action importante te parvient en temps réel — message de ton coach, nouveau questionnaire, rappel de séance.',
               tags: ['In-app','Temps réel','Par rôle'],
             },
             {
-              icon: '🧙', title: 'Onboarding personnalisé', color: '#4a90d9', bg: 'rgba(74,144,217,0.12)', border: 'rgba(74,144,217,0.3)',
-              desc: 'En 4 étapes, chaque nouvel utilisateur est guidé vers les experts qui correspondent exactement à ses objectifs et à son budget.',
-              tags: ['Wizard 4 étapes','Matching','Géo'],
+              icon: '🧭', title: 'Onboarding personnalisé', color: '#4a90d9', bg: 'rgba(74,144,217,0.12)', border: 'rgba(74,144,217,0.3)',
+              desc: 'En 4 étapes, tu renseignes tes objectifs et ton niveau — ton espace et tes programmes s\'adaptent à ton profil.',
+              tags: ['4 étapes','Objectifs','Profil'],
             },
             {
-              icon: '🤖', title: 'IA génération de programmes', color: '#a03848', bg: 'var(--accent-subtle)', border: 'var(--accent)',
-              desc: 'Claude AI génère des programmes sur mesure en quelques secondes. Objectif, niveau, équipement — l\'IA adapte chaque séance.',
-              tags: ['Claude AI','Sur mesure','Auto'],
+              icon: '🗓', title: 'Calendrier intégré', color: '#a03848', bg: 'var(--accent-subtle)', border: 'var(--accent)',
+              desc: 'Tes séances, tes rendez-vous et tes événements perso au même endroit — utilise-le comme ton vrai calendrier.',
+              tags: ['Séances','Événements','Multi-jours'],
             },
           ].map(({ icon, title, color, bg, border, desc, tags }, i) => (
             <Reveal key={title} delay={i * 100} from="bottom">
@@ -749,6 +741,18 @@ export default function Landing({ theme, setTheme }) {
             </Reveal>
           ))}
         </div>
+
+        {/* Roadmap assumée */}
+        <Reveal delay={120}>
+          <div className="mt-10 p-6 rounded-2xl flex flex-wrap items-center justify-center gap-3"
+            style={{ background: 'var(--bg-card)', border: '1px dashed var(--border)' }}>
+            <span className="text-xs font-black tracking-widest uppercase mr-2" style={{ color: 'var(--gold)' }}>Bientôt sur ULTRA</span>
+            {['🤖 Coach IA', '🧍 Analyse posturale', '🗺 Carte des experts', '🦾 Atlas musculaire 3D'].map(f => (
+              <span key={f} className="text-xs font-bold px-3 py-1.5 rounded-full"
+                style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>{f}</span>
+            ))}
+          </div>
+        </Reveal>
       </section>
 
       {/* ── FEATURES ───────────────────────────────── */}
@@ -899,61 +903,6 @@ export default function Landing({ theme, setTheme }) {
         </Reveal>
       </section>
 
-      {/* ── TESTIMONIALS ───────────────────────────── */}
-      <section id="temoignages" className="py-24" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)' }}>
-        <div className="px-8 md:px-12 mb-10">
-          <Reveal>
-            <div className="flex items-end justify-between max-w-7xl mx-auto">
-              <div>
-                <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--gold)' }}>Témoignages</p>
-                <h2 className="text-4xl md:text-5xl font-black" style={{ color: 'var(--text-primary)' }}>
-                  Ils ont transformé<br />leur vie.
-                </h2>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => scrollTestimonials(-1)}
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-200 hover:scale-110"
-                  style={{ background: 'var(--bg-base)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>←</button>
-                <button onClick={() => scrollTestimonials(1)}
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-200 hover:scale-110"
-                  style={{ background: 'var(--accent)', color: 'white' }}>→</button>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-
-        <div ref={testimonialRef} className="flex gap-5 px-8 md:px-12 overflow-x-auto pb-4"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {TESTIMONIALS.map(({ name, role, result, text, avatar, color }, i) => (
-            <Reveal key={name} delay={i * 80} from="bottom">
-              <TiltCard
-                intensity={5}
-                glowColor={color}
-                className="flex-shrink-0 w-80 p-7 rounded-2xl flex flex-col gap-5"
-                style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-black text-base flex-shrink-0"
-                    style={{ background: color }}>{avatar}</div>
-                  <div>
-                    <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{name}</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{role}</p>
-                  </div>
-                  <div className="ml-auto px-3 py-1 rounded-full text-xs font-black"
-                    style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>
-                    {result}
-                  </div>
-                </div>
-                <p className="text-sm leading-relaxed flex-1" style={{ color: 'var(--text-secondary)' }}>"{text}"</p>
-                <div className="flex gap-1">
-                  {[1,2,3,4,5].map(s => <span key={s} style={{ color: 'var(--gold)', fontSize: 14 }}>★</span>)}
-                </div>
-              </TiltCard>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
       {/* ── FOR WHO ────────────────────────────────── */}
       <section className="px-8 md:px-12 py-24 max-w-6xl mx-auto">
         <Reveal>
@@ -1058,7 +1007,7 @@ export default function Landing({ theme, setTheme }) {
                 <span style={{ opacity: 0.6 }}>Change ta trajectoire.</span>
               </h2>
               <p className="text-lg mb-8" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                2 400 athlètes, coaches et nutritionnistes ont déjà transformé leur quotidien avec ULTRA.
+                La beta privée est ouverte : accès gratuit, places limitées, et ton retour façonne directement l'app.
               </p>
               <GlowButton
                 onClick={() => navigate('/register')}
@@ -1069,7 +1018,7 @@ export default function Landing({ theme, setTheme }) {
               </GlowButton>
               <div className="mt-12 pt-10" style={{ borderTop: '1px solid rgba(255,255,255,0.10)',
                 display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                {[['2 400+', 'Membres actifs'], ['98%', 'Satisfaction'], ['3 profils', 'Client · Coach · Nutritionniste']].map(([v, l]) => (
+                {[['300+', "Vidéos d'exercices"], ['100%', 'Programmes sur mesure'], ['0€', 'Pendant la beta']].map(([v, l]) => (
                   <div key={l} style={{ textAlign: 'center', minWidth: 0 }}>
                     <p className="font-black text-white" style={{ fontSize: 'clamp(20px, 5vw, 28px)', whiteSpace: 'nowrap' }}>{v}</p>
                     <p className="mt-1" style={{ color: 'rgba(255,255,255,0.35)', fontSize: 'clamp(11px, 2.8vw, 14px)' }}>{l}</p>
