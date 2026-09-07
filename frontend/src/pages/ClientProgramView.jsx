@@ -21,7 +21,7 @@ function SessionLogger({ program, onSave, onClose }) {
     const init = {}
     exercises.forEach(ex => {
       const n = parseInt(ex.sets) || 3
-      init[ex.name] = Array.from({ length: n }, () => ({ weight: '', reps: ex.reps || '' }))
+      init[ex.name] = Array.from({ length: n }, () => ({ weight: '', reps: ex.unit === 'time' ? '' : (ex.reps || '') }))
     })
     setLogs(init)
   }, [weekIdx, dayIdx])
@@ -103,7 +103,7 @@ function SessionLogger({ program, onSave, onClose }) {
                     <div>
                       <p className="font-black text-sm" style={{ color: 'var(--text-primary)' }}>{ex.name}</p>
                       <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                        {ex.sets} séries × {ex.reps} reps{ex.rest ? ` · repos ${ex.rest}` : ''}
+                        {ex.sets} séries × {ex.reps}{ex.unit === 'time' ? (/^\d+$/.test(String(ex.reps || '').trim()) ? 's' : '') : ' reps'}{ex.rest ? ` · repos ${ex.rest}` : ''}
                       </p>
                     </div>
                   </div>

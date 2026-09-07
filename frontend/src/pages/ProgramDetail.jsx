@@ -141,7 +141,8 @@ function WeekCard({ week, index, onExercise, hasAccess }) {
                     const renderBlock = (b, bi) => {
                       const name = b.title || b.exercise || b.name || `Bloc ${bi + 1}`
                       const isEx = b.type === 'exercise' || (!b.type && (b.sets || b.reps))
-                      const meta = [b.sets && `${b.sets} séries`, b.reps && `${b.reps} reps`, b.rest && `repos ${b.rest}`].filter(Boolean).join(' · ')
+                      const repsLbl = b.unit === 'time' ? `${b.reps}${/^\d+$/.test(String(b.reps).trim()) ? 's' : ''}` : `${b.reps} reps`
+                      const meta = [b.sets && `${b.sets} séries`, b.reps && repsLbl, b.rest && `repos ${b.rest}`].filter(Boolean).join(' · ')
                       return (
                         <div key={b.id || bi} className="rounded-xl p-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                           <div className="flex items-center gap-2">

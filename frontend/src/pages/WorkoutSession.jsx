@@ -117,7 +117,7 @@ export default function WorkoutSession() {
         const initial = {}
         exs.forEach(e => {
           const n = parseInt(e.sets) || 3
-          initial[e.title] = Array.from({ length: n }, () => ({ weight: '', reps: e.reps || '', done: false }))
+          initial[e.title] = Array.from({ length: n }, () => ({ weight: '', reps: e.unit === 'time' ? '' : (e.reps || ''), done: false }))
         })
         setLogs(initial)
       }

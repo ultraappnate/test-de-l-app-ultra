@@ -55,11 +55,59 @@ function segmentBlocks(blocks) {
   return segs
 }
 
+/* ── Estimation de la séance (durée + kcal) ─────────────── */
+// "90s" → 90 · "2min" → 120 · "1,5 min" → 90
+function parseSecs(v, dflt = 0) {
+  if (!v) return dflt
+  const s = String(v).toLowerCase().replace(',', '.')
+  const m = s.match(/(\d+(?:\.\d+)?)\s*(min|mn)/)
+  if (m) return Math.round(parseFloat(m[1]) * 60)
+  const n = s.match(/(\d+(?:\.\d+)?)/)
+  return n ? Math.round(parseFloat(n[1])) : dflt
+}
+// "10-12" → 11 · "10" → 10
+function avgNum(v, dflt) {
+  const nums = String(v || '').match(/\d+(?:\.\d+)?/g)
+  if (!nums || !nums.length) return dflt
+  return nums.map(Number).reduce((a, b) => a + b, 0) / nums.length
+}
+// Temps de travail d'une série (secondes) : temps affiché, ou ~4s par rep
+function setWorkSecs(b) {
+  if (b.unit === 'time') return parseSecs(b.reps, 40)
+  return Math.max(20, Math.round(avgNum(b.reps, 10) * 4))
+}
+function estimateSession(blocks) {
+  const parts = []
+  let total = 0
+  segmentBlocks(blocks).forEach(seg => {
+    const rounds = Math.max(1, ...seg.items.map(b => Math.round(avgNum(b.sets, 3))))
+    const work = seg.items.reduce((s, b) => s + setWorkSecs(b), 0)
+    const rest = parseSecs(seg.items[0]?.rest, 60)
+    const secs = rounds * work + Math.max(0, rounds - 1) * rest + 45 // +45s installation/transition
+    parts.push({ label: seg.items.map(b => b.title || 'Exercice').join(' + '), secs, group: !!seg.group, count: seg.items.length })
+    total += secs
+  })
+  return { totalSecs: total, parts }
+}
+// kcal ≈ MET × 75 kg × heures (Force ~5, Combiné ~6.5, Cardio ~8)
+function estimateKcal(totalSecs, category) {
+  const MET = category === 'Cardio' ? 8 : category === 'Combiné' ? 6.5 : 5
+  return Math.round((MET * 75 * (totalSecs / 3600)) / 10) * 10
+}
+
 /* ── Carte exercice (fresque) ───────────────────────────── */
-function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHandlers, handleProps, dragging, dropTarget }) {
+function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, inGroup, dropHandlers, handleProps, dragging, dropTarget }) {
   const set = (k, v) => onChange({ ...block, [k]: v })
   const [showVid, setShowVid] = useState(!!block.url)
   const [playing, setPlaying] = useState(false) // lecteur vidéo plein écran
+  const [unitMenu, setUnitMenu] = useState(false) // petit menu reps ⇄ temps
+  const isTime = block.unit === 'time'
+  useEffect(() => {
+    if (!unitMenu) return
+    const close = () => setUnitMenu(false)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
+  }, [unitMenu])
   const yt = ytId(block.url)
   const vm = vimeoId(block.url)
   const inputStyle = { background: 'var(--bg-base)', border: '1px solid var(--border-soft, var(--border))', color: 'var(--text-primary)' }
@@ -185,16 +233,47 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, dropHand
         )}
       </div>
 
-      {/* Séries / reps / repos / RPE */}
-      <div className="grid grid-cols-4 gap-1.5 mb-3">
+      {/* Séries / reps ou temps / repos (masqué en superset : repos commun) / RPE */}
+      <div className={`grid ${inGroup ? 'grid-cols-3' : 'grid-cols-4'} gap-1.5 mb-3`}>
         {[
           { k: 'sets', label: 'Séries', ph: '4' },
-          { k: 'reps', label: 'Reps', ph: '10' },
-          { k: 'rest', label: 'Repos', ph: '90s' },
+          { k: 'reps', label: isTime ? 'Temps' : 'Reps', ph: isTime ? '45s' : '10', switchable: true },
+          ...(inGroup ? [] : [{ k: 'rest', label: 'Repos', ph: '90s' }]),
           { k: 'rpe', label: 'RPE', ph: '8' },
-        ].map(({ k, label, ph }) => (
-          <div key={k}>
-            <label className="block text-[8px] font-black uppercase tracking-wide mb-1 text-center" style={{ color: 'var(--text-muted)' }}>{label}</label>
+        ].map(({ k, label, ph, switchable }) => (
+          <div key={k} style={switchable ? { position: 'relative' } : undefined}>
+            {switchable ? (
+              <>
+                <button type="button"
+                  onPointerDown={e => e.stopPropagation()}
+                  onClick={() => setUnitMenu(m => !m)}
+                  title="Basculer entre répétitions et temps"
+                  className="block w-full text-[8px] font-black uppercase tracking-wide mb-1 text-center"
+                  style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  {label} ▾
+                </button>
+                {unitMenu && (
+                  <div onPointerDown={e => e.stopPropagation()}
+                    style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 60, marginTop: 2,
+                      background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: 10, overflow: 'hidden',
+                      boxShadow: '0 10px 26px rgba(0,0,0,0.5)', width: 132 }}>
+                    {[['reps', '🔁 Répétitions'], ['time', '⏱ Temps (sec)']].map(([u, lbl]) => {
+                      const on = isTime ? u === 'time' : u === 'reps'
+                      return (
+                        <button key={u} type="button" onClick={() => { set('unit', u); setUnitMenu(false) }}
+                          className="w-full text-left px-3 py-2"
+                          style={{ background: on ? 'var(--accent-subtle)' : 'transparent', border: 'none', cursor: 'pointer',
+                            fontSize: 11, fontWeight: 800, color: on ? 'var(--accent)' : 'var(--text-secondary)' }}>
+                          {lbl}{on ? ' ✓' : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
+            ) : (
+              <label className="block text-[8px] font-black uppercase tracking-wide mb-1 text-center" style={{ color: 'var(--text-muted)' }}>{label}</label>
+            )}
             <input value={block[k] || ''} onChange={e => set(k, e.target.value)} placeholder={ph}
               className="w-full text-center text-sm font-bold rounded-lg px-0.5 py-2 focus:outline-none"
               style={inputStyle} />
@@ -400,10 +479,13 @@ export default function CoachProgramBuilder() {
     const tIdx = arr.findIndex(b => b.id === targetId)
     if (tIdx < 0) { setDragId(null); setOverId(null); return }
     if (mode === 'group') {
-      // Grouper : même `group` que la cible, inséré juste après
+      // Grouper : même `group` que la cible, inséré juste après.
+      // Le repos devient commun à tout le groupe (celui de la cible en priorité).
       const gid = arr[tIdx].group || uuidv4()
       arr[tIdx] = { ...arr[tIdx], group: gid }
       arr.splice(tIdx + 1, 0, { ...moved, group: gid })
+      const commonRest = arr[tIdx].rest || moved.rest || ''
+      for (let k = 0; k < arr.length; k++) if (arr[k].group === gid) arr[k] = { ...arr[k], rest: commonRest }
     } else {
       // Réordonner avant la cible, hors groupe
       arr.splice(tIdx, 0, { ...moved, group: null })
@@ -470,12 +552,17 @@ export default function CoachProgramBuilder() {
     const i = arr.findIndex(b => b.id === id)
     if (i < 0 || i >= arr.length - 1) return
     const gid = arr[i].group || arr[i + 1].group || uuidv4()
+    const commonRest = arr[i].rest || arr[i + 1].rest || ''
     arr[i] = { ...arr[i], group: gid }
     arr[i + 1] = { ...arr[i + 1], group: gid }
-    updateDayBlocks(arr)
+    updateDayBlocks(arr.map(b => b.group === gid ? { ...b, rest: commonRest } : b))
   }
   function ungroupSegment(gid) {
     updateDayBlocks(blocks.map(b => b.group === gid ? { ...b, group: null } : b))
+  }
+  // Repos commun d'un superset/circuit : une seule valeur pour tout le groupe
+  function setGroupRest(gid, v) {
+    updateDayBlocks(blocks.map(b => b.group === gid ? { ...b, rest: v } : b))
   }
 
   async function handleSave() {
@@ -646,6 +733,53 @@ export default function CoachProgramBuilder() {
               <span className="text-xs" style={{ color: 'var(--text-faint)' }}>{blocks.length} exo{blocks.length > 1 ? 's' : ''}</span>
             </div>
 
+            {/* ── Résumé de la séance : durée, kcal, exos + frise planning ── */}
+            {blocks.length > 0 && (() => {
+              const { totalSecs, parts } = estimateSession(blocks)
+              const mins = Math.max(1, Math.round(totalSecs / 60))
+              const kcal = estimateKcal(totalSecs, form.category)
+              const stats = [
+                { icon: '⏱', v: `~${mins} min`, l: 'Durée totale' },
+                { icon: '🔥', v: `≈${kcal} kcal`, l: 'Dépense estimée' },
+                { icon: '🏋️', v: blocks.length, l: `Exercice${blocks.length > 1 ? 's' : ''}` },
+              ]
+              return (
+                <div className="rounded-2xl p-4 mb-3" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--gold)', margin: 0 }}>Résumé de la séance</p>
+                    <p className="text-[9px] font-bold" style={{ color: 'var(--text-faint)', margin: 0 }}>estimation</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    {stats.map(s => (
+                      <div key={s.l} className="rounded-xl py-2.5 px-1 text-center" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-soft, var(--border))' }}>
+                        <p style={{ fontSize: 'clamp(13px,3.5vw,16px)', fontWeight: 900, color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap' }}>{s.icon} {s.v}</p>
+                        <p className="text-[8px] font-black uppercase tracking-wide" style={{ color: 'var(--text-muted)', margin: '3px 0 0' }}>{s.l}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Frise planning : chaque bloc proportionnel à son temps estimé */}
+                  <div className="flex w-full" style={{ height: 30, gap: 3 }}>
+                    {parts.map((p, i) => (
+                      <div key={i} title={`${p.label} — ~${Math.max(1, Math.round(p.secs / 60))} min`}
+                        style={{ flexGrow: p.secs, flexBasis: 0, minWidth: 16, borderRadius: 8, overflow: 'hidden',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: p.group ? 'linear-gradient(135deg, var(--accent), #7d2d38)' : 'var(--accent-subtle)',
+                          border: `1px solid ${p.group ? 'var(--accent)' : 'var(--border)'}` }}>
+                        <span style={{ fontSize: 8, fontWeight: 900, padding: '0 5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          color: p.group ? '#fff' : 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {p.group ? `Superset ×${p.count}` : p.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[8px] font-bold" style={{ color: 'var(--text-faint)' }}>0 min</span>
+                    <span className="text-[8px] font-bold" style={{ color: 'var(--text-faint)' }}>~{mins} min</span>
+                  </div>
+                </div>
+              )
+            })()}
+
             {blocks.length > 0 && (
               <p className="text-[11px] mb-2" style={{ color: 'var(--text-faint)' }}>
                 💡 Glisse une carte <strong>sur</strong> une autre pour créer un <strong>superset/circuit</strong>, ou <strong>entre</strong> deux pour réordonner.
@@ -684,6 +818,7 @@ export default function CoachProgramBuilder() {
                             onMove={dir => moveBlock(b.id, dir)}
                             onLink={() => linkWithNext(b.id)}
                             linkable={(() => { const i = blocks.findIndex(x => x.id === b.id); return i >= 0 && i < blocks.length - 1 && !(blocks[i].group && blocks[i].group === blocks[i + 1].group) })()}
+                            inGroup={!!seg.group}
                             dragging={dragId === b.id}
                             dropTarget={overId === b.id && dragId && dragId !== b.id}
                             handleProps={{
@@ -695,9 +830,20 @@ export default function CoachProgramBuilder() {
                       ))}
                     </div>
                     {seg.group && (
-                      <button onClick={() => ungroupSegment(seg.group)} title="Dissocier"
-                        className="flex-shrink-0 self-center text-[10px] font-bold px-2 py-1 rounded-lg"
-                        style={{ background: 'var(--bg-card)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>⛓ Dissocier</button>
+                      <div className="flex flex-col items-center justify-center gap-3 flex-shrink-0 self-center px-1">
+                        {/* Repos commun à tout le superset/circuit */}
+                        <div className="flex flex-col items-center">
+                          <label className="text-[8px] font-black uppercase tracking-wide mb-1" style={{ color: 'var(--accent)' }}>Repos</label>
+                          <input value={seg.items[0]?.rest || ''} onChange={e => setGroupRest(seg.group, e.target.value)}
+                            placeholder="90s" inputMode="text"
+                            className="text-center text-sm font-bold rounded-lg py-2 focus:outline-none"
+                            style={{ width: 58, background: 'var(--bg-card)', border: '1.5px solid var(--accent)', color: 'var(--text-primary)' }} />
+                          <span className="text-[8px] font-bold mt-1" style={{ color: 'var(--text-faint)' }}>commun</span>
+                        </div>
+                        <button onClick={() => ungroupSegment(seg.group)} title="Dissocier"
+                          className="text-[10px] font-bold px-2 py-1 rounded-lg"
+                          style={{ background: 'var(--bg-card)', color: 'var(--accent)', border: '1px solid var(--accent)' }}>⛓ Dissocier</button>
+                      </div>
                     )}
                   </div>
                 )
