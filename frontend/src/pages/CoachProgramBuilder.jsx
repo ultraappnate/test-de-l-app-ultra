@@ -157,7 +157,6 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, inGroup,
     <div
       {...dropHandlers}
       style={{
-        scrollSnapAlign: 'center',
         flexShrink: 0,
         width: 'min(80vw, 300px)',
         background: 'var(--bg-card)',
@@ -585,6 +584,22 @@ export default function CoachProgramBuilder() {
     else setSaveMsg(res.error || 'Erreur')
   }
 
+  // Pan à la souris : agripper le fond de la fresque (hors cartes/boutons) pour
+  // la faire défiler librement, sans dépendre de la barre de défilement
+  function startPanDrag(e) {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return
+    if (e.target.closest('[data-card], button, input, textarea, select, a')) return
+    const sc = scrollRef.current
+    if (!sc) return
+    e.preventDefault()
+    const startX = e.clientX, startLeft = sc.scrollLeft
+    sc.style.cursor = 'grabbing'
+    const move = ev => { sc.scrollLeft = startLeft - (ev.clientX - startX) }
+    const up = () => { sc.style.cursor = 'grab'; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
   // Animation fresque : scale/opacité selon distance au centre
   const scrollRef = useRef(null)
   const rafRef = useRef(null)
@@ -789,7 +804,8 @@ export default function CoachProgramBuilder() {
             {/* La fresque */}
             <div ref={scrollRef} onScroll={animateFresco}
               className="flex gap-3 overflow-x-auto pb-4"
-              style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}>
+              onPointerDown={startPanDrag}
+              style={{ WebkitOverflowScrolling: 'touch', cursor: 'grab' }}>
 
               {segmentBlocks(blocks).map((seg, si) => {
                 const inner = (
@@ -852,7 +868,7 @@ export default function CoachProgramBuilder() {
 
               {/* Carte "ajouter" */}
               <button onClick={addExo}
-                style={{ scrollSnapAlign: 'center', flexShrink: 0, width: 'min(60vw, 200px)', minHeight: 240, borderRadius: 20, border: '2px dashed var(--border)', background: 'transparent', color: 'var(--text-faint)', fontWeight: 800, cursor: 'pointer' }}
+                style={{ flexShrink: 0, width: 'min(60vw, 200px)', minHeight: 240, borderRadius: 20, border: '2px dashed var(--border)', background: 'transparent', color: 'var(--text-faint)', fontWeight: 800, cursor: 'pointer' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-faint)' }}>
                 + Ajouter un exercice
