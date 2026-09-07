@@ -232,10 +232,10 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, inGroup,
         )}
       </div>
 
-      {/* Séries / reps ou temps / repos (masqué en superset : repos commun) / RPE */}
-      <div className={`grid ${inGroup ? 'grid-cols-3' : 'grid-cols-4'} gap-1.5 mb-3`}>
+      {/* Séries / reps ou temps / repos / RPE — en superset, séries et repos sont communs au groupe */}
+      <div className={`grid ${inGroup ? 'grid-cols-2' : 'grid-cols-4'} gap-1.5 mb-3`}>
         {[
-          { k: 'sets', label: 'Séries', ph: '4' },
+          ...(inGroup ? [] : [{ k: 'sets', label: 'Séries', ph: '4' }]),
           { k: 'reps', label: isTime ? 'Temps' : 'Reps', ph: isTime ? '45s' : '10', switchable: true },
           ...(inGroup ? [] : [{ k: 'rest', label: 'Repos', ph: '90s' }]),
           { k: 'rpe', label: 'RPE', ph: '8' },
@@ -484,7 +484,8 @@ export default function CoachProgramBuilder() {
       arr[tIdx] = { ...arr[tIdx], group: gid }
       arr.splice(tIdx + 1, 0, { ...moved, group: gid })
       const commonRest = arr[tIdx].rest || moved.rest || ''
-      for (let k = 0; k < arr.length; k++) if (arr[k].group === gid) arr[k] = { ...arr[k], rest: commonRest }
+      const commonSets = arr[tIdx].sets || moved.sets || ''
+      for (let k = 0; k < arr.length; k++) if (arr[k].group === gid) arr[k] = { ...arr[k], rest: commonRest, sets: commonSets }
     } else {
       // Réordonner avant la cible, hors groupe
       arr.splice(tIdx, 0, { ...moved, group: null })
@@ -552,16 +553,20 @@ export default function CoachProgramBuilder() {
     if (i < 0 || i >= arr.length - 1) return
     const gid = arr[i].group || arr[i + 1].group || uuidv4()
     const commonRest = arr[i].rest || arr[i + 1].rest || ''
+    const commonSets = arr[i].sets || arr[i + 1].sets || ''
     arr[i] = { ...arr[i], group: gid }
     arr[i + 1] = { ...arr[i + 1], group: gid }
-    updateDayBlocks(arr.map(b => b.group === gid ? { ...b, rest: commonRest } : b))
+    updateDayBlocks(arr.map(b => b.group === gid ? { ...b, rest: commonRest, sets: commonSets } : b))
   }
   function ungroupSegment(gid) {
     updateDayBlocks(blocks.map(b => b.group === gid ? { ...b, group: null } : b))
   }
-  // Repos commun d'un superset/circuit : une seule valeur pour tout le groupe
+  // Repos et séries communs d'un superset/circuit : une seule valeur pour tout le groupe
   function setGroupRest(gid, v) {
     updateDayBlocks(blocks.map(b => b.group === gid ? { ...b, rest: v } : b))
+  }
+  function setGroupSets(gid, v) {
+    updateDayBlocks(blocks.map(b => b.group === gid ? { ...b, sets: v } : b))
   }
 
   async function handleSave() {
@@ -828,14 +833,21 @@ export default function CoachProgramBuilder() {
                     </div>
                     {seg.group && (
                       <div className="flex flex-col items-center justify-center gap-3 flex-shrink-0 self-center px-1">
-                        {/* Repos commun à tout le superset/circuit */}
+                        {/* Séries + repos communs à tout le superset/circuit */}
+                        <div className="flex flex-col items-center">
+                          <label className="text-[8px] font-black uppercase tracking-wide mb-1" style={{ color: 'var(--accent)' }}>Séries</label>
+                          <input value={seg.items[0]?.sets || ''} onChange={e => setGroupSets(seg.group, e.target.value)}
+                            placeholder="4" inputMode="numeric"
+                            className="text-center text-sm font-bold rounded-lg py-2 focus:outline-none"
+                            style={{ width: 58, background: 'var(--bg-card)', border: '1.5px solid var(--accent)', color: 'var(--text-primary)' }} />
+                        </div>
                         <div className="flex flex-col items-center">
                           <label className="text-[8px] font-black uppercase tracking-wide mb-1" style={{ color: 'var(--accent)' }}>Repos</label>
                           <input value={seg.items[0]?.rest || ''} onChange={e => setGroupRest(seg.group, e.target.value)}
                             placeholder="90s" inputMode="text"
                             className="text-center text-sm font-bold rounded-lg py-2 focus:outline-none"
                             style={{ width: 58, background: 'var(--bg-card)', border: '1.5px solid var(--accent)', color: 'var(--text-primary)' }} />
-                          <span className="text-[8px] font-bold mt-1" style={{ color: 'var(--text-faint)' }}>commun</span>
+                          <span className="text-[8px] font-bold mt-1" style={{ color: 'var(--text-faint)' }}>communs</span>
                         </div>
                         <button onClick={() => ungroupSegment(seg.group)} title="Dissocier"
                           className="text-[10px] font-bold px-2 py-1 rounded-lg"
