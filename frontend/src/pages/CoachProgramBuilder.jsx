@@ -748,9 +748,9 @@ export default function CoachProgramBuilder() {
               <span className="text-xs" style={{ color: 'var(--text-faint)' }}>{blocks.length} exo{blocks.length > 1 ? 's' : ''}</span>
             </div>
 
-            {/* ── Résumé de la séance : durée, kcal, exos + frise planning ── */}
+            {/* ── Résumé de la séance : durée, kcal, exos ── */}
             {blocks.length > 0 && (() => {
-              const { totalSecs, parts } = estimateSession(blocks)
+              const { totalSecs } = estimateSession(blocks)
               const mins = Math.max(1, Math.round(totalSecs / 60))
               const kcal = estimateKcal(totalSecs, form.category)
               const stats = [
@@ -764,32 +764,13 @@ export default function CoachProgramBuilder() {
                     <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--gold)', margin: 0 }}>Résumé de la séance</p>
                     <p className="text-[9px] font-bold" style={{ color: 'var(--text-faint)', margin: 0 }}>estimation</p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="grid grid-cols-3 gap-2">
                     {stats.map(s => (
                       <div key={s.l} className="rounded-xl py-2.5 px-1 text-center" style={{ background: 'var(--bg-base)', border: '1px solid var(--border-soft, var(--border))' }}>
                         <p style={{ fontSize: 'clamp(13px,3.5vw,16px)', fontWeight: 900, color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap' }}>{s.icon} {s.v}</p>
                         <p className="text-[8px] font-black uppercase tracking-wide" style={{ color: 'var(--text-muted)', margin: '3px 0 0' }}>{s.l}</p>
                       </div>
                     ))}
-                  </div>
-                  {/* Frise planning : chaque bloc proportionnel à son temps estimé */}
-                  <div className="flex w-full" style={{ height: 30, gap: 3 }}>
-                    {parts.map((p, i) => (
-                      <div key={i} title={`${p.label} — ~${Math.max(1, Math.round(p.secs / 60))} min`}
-                        style={{ flexGrow: p.secs, flexBasis: 0, minWidth: 16, borderRadius: 8, overflow: 'hidden',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: p.group ? 'linear-gradient(135deg, var(--accent), #7d2d38)' : 'var(--accent-subtle)',
-                          border: `1px solid ${p.group ? 'var(--accent)' : 'var(--border)'}` }}>
-                        <span style={{ fontSize: 8, fontWeight: 900, padding: '0 5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                          color: p.group ? '#fff' : 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          {p.group ? `Superset ×${p.count}` : p.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-[8px] font-bold" style={{ color: 'var(--text-faint)' }}>0 min</span>
-                    <span className="text-[8px] font-bold" style={{ color: 'var(--text-faint)' }}>~{mins} min</span>
                   </div>
                 </div>
               )
