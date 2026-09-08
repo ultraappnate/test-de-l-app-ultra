@@ -138,6 +138,11 @@ export function setLibraryExercises(list) {
   }))
 }
 
+// Liste complète de la bibliothèque (picker du builder)
+export function getLibraryExercises() {
+  return LIBRARY
+}
+
 export function searchExercises(query, limit = 7) {
   const q = norm(query).trim()
   if (q.length < 2) return []

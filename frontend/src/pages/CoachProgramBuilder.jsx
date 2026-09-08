@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store'
-import { searchExercises, setLibraryExercises } from '../data/exerciseCatalog'
+import { searchExercises, setLibraryExercises, getLibraryExercises } from '../data/exerciseCatalog'
 import { v4 as uuidv4 } from 'uuid'
 
 /* ── Constantes ─────────────────────────────────────────── */
@@ -342,6 +342,128 @@ function ExoCard({ block, onChange, onRemove, onMove, onLink, linkable, inGroup,
   )
 }
 
+/* ── Pop-up bibliothèque : ajout d'un exercice en un clic ── */
+const normName = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim()
+
+function LibraryPicker({ onClose, onAdd, existing }) {
+  const all = getLibraryExercises()
+  const [q, setQ] = useState('')
+  const [cat, setCat] = useState('Tous')
+  const [added, setAdded] = useState(0)
+  const [flash, setFlash] = useState(null)
+
+  const inDay = new Set((existing || []).map(normName))
+  const cats = ['Tous', ...[...new Set(all.map(e => e.cat))].sort((a, b) => a.localeCompare(b, 'fr'))]
+  const list = all
+    .filter(e => cat === 'Tous' || e.cat === cat)
+    .filter(e => !q || normName(e.name).includes(normName(q)))
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const pick = (ex) => {
+    onAdd(ex)
+    setAdded(n => n + 1)
+    setFlash(ex.name)
+    setTimeout(() => setFlash(f => (f === ex.name ? null : f)), 900)
+  }
+
+  return createPortal(
+    <div onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 2600, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(2px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ width: 'min(94vw, 620px)', maxHeight: '76vh', display: 'flex', flexDirection: 'column',
+          background: 'var(--bg-base)', border: '1px solid var(--border)', borderRadius: 22,
+          boxShadow: '0 30px 80px rgba(0,0,0,0.6)', overflow: 'hidden' }}>
+
+        {/* En-tête */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <p style={{ fontSize: 15, fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>📚 Bibliothèque d'exercices</p>
+            <p style={{ fontSize: 10, color: 'var(--text-faint)', margin: '2px 0 0' }}>Clique un exercice pour l'ajouter à la séance</p>
+          </div>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: 99, cursor: 'pointer', flexShrink: 0,
+            background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>✕</button>
+        </div>
+
+        {/* Recherche + catégories */}
+        <div className="px-4 pt-3 pb-2" style={{ borderBottom: '1px solid var(--border)' }}>
+          <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Rechercher un exercice…"
+            className="w-full text-sm font-bold rounded-xl px-3 py-2.5 focus:outline-none"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+          {cats.length > 2 && (
+            <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1">
+              {cats.map(c => (
+                <button key={c} onClick={() => setCat(c)}
+                  className="flex-shrink-0 text-[10px] font-black px-2.5 py-1 rounded-full"
+                  style={{ cursor: 'pointer',
+                    background: cat === c ? 'var(--accent)' : 'var(--bg-card)',
+                    border: `1px solid ${cat === c ? 'var(--accent)' : 'var(--border)'}`,
+                    color: cat === c ? '#fff' : 'var(--text-secondary)' }}>{c}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Liste */}
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 120 }}>
+          {all.length === 0 ? (
+            <p className="text-center text-xs px-6 py-10" style={{ color: 'var(--text-muted)' }}>
+              Ta bibliothèque est vide.<br />Ajoute tes vidéos dans l'onglet <b>Bibliothèque</b> (import par liens).
+            </p>
+          ) : list.length === 0 ? (
+            <p className="text-center text-xs px-6 py-10" style={{ color: 'var(--text-muted)' }}>Aucun exercice ne correspond à « {q} ».</p>
+          ) : list.map(ex => {
+            const y = ytId(ex.url)
+            const already = inDay.has(normName(ex.name))
+            const flashing = flash === ex.name
+            return (
+              <button key={ex.name} onClick={() => pick(ex)}
+                className="w-full flex items-center gap-3 px-4 py-2 text-left"
+                style={{ background: flashing ? 'rgba(39,174,96,0.14)' : 'transparent', border: 'none',
+                  borderBottom: '1px solid var(--border-soft, var(--border))', cursor: 'pointer', transition: 'background .15s' }}
+                onMouseEnter={e => { if (!flashing) e.currentTarget.style.background = 'var(--accent-subtle)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = flashing ? 'rgba(39,174,96,0.14)' : 'transparent' }}>
+                {y ? (
+                  <img src={`https://i.ytimg.com/vi/${y}/mqdefault.jpg`} alt="" loading="lazy"
+                    style={{ width: 68, height: 40, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: '#000' }} />
+                ) : (
+                  <div style={{ width: 68, height: 40, borderRadius: 8, flexShrink: 0, background: 'var(--bg-card)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>🎬</div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-primary)', margin: 0,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ex.name}</p>
+                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', margin: '2px 0 0' }}>
+                    {ex.cat} · {ex.sets}×{ex.reps}{already ? ' · déjà dans la séance' : ''}
+                  </p>
+                </div>
+                <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 900,
+                  color: flashing ? '#27ae60' : 'var(--accent)' }}>{flashing ? '✓ Ajouté' : '+ Ajouter'}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Pied */}
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: added > 0 ? '#27ae60' : 'var(--text-faint)' }}>
+            {added > 0 ? `✓ ${added} exercice${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''}` : `${list.length} exercice${list.length > 1 ? 's' : ''}`}
+          </span>
+          <button onClick={onClose} className="text-xs font-black px-4 py-2 rounded-xl"
+            style={{ background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer' }}>Terminé</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 /* ── Composant principal ────────────────────────────────── */
 export default function CoachProgramBuilder() {
   const navigate = useNavigate()
@@ -364,6 +486,7 @@ export default function CoachProgramBuilder() {
   const [weekIdx, setWeekIdx] = useState(0)
   const [selDay, setSelDay] = useState(null) // weekday 0-6 sélectionné
   const [showMeta, setShowMeta] = useState(!isEdit)
+  const [libOpen, setLibOpen] = useState(false) // pop-up bibliothèque
 
   const DRAFT_KEY = `ultra-draft-${programId || 'new'}`
   const draftTimer = useRef()
@@ -453,6 +576,11 @@ export default function CoachProgramBuilder() {
   const blocks = curDay?.blocks || []
 
   const addExo = () => updateDayBlocks([...blocks, { id: uuidv4(), type: 'exercise', title: '', sets: '', reps: '', rest: '', notes: '', url: '' }])
+  // Ajout en un clic depuis la pop-up bibliothèque : nom + défauts + vidéo, puis scroll en bout de fresque
+  const addFromLibrary = (ex) => {
+    updateDayBlocks([...blocks, { id: uuidv4(), type: 'exercise', title: ex.name, sets: ex.sets || '', reps: ex.reps || '', rest: ex.rest || '', rpe: ex.rpe || '', notes: '', url: ex.url || '' }])
+    setTimeout(() => { const sc = scrollRef.current; if (sc) sc.scrollLeft = sc.scrollWidth }, 60)
+  }
   const updateBlock = (id, nb) => updateDayBlocks(blocks.map(b => b.id === id ? nb : b))
   const removeBlock = (id) => updateDayBlocks(blocks.filter(b => b.id !== id))
   const moveBlock = (id, dir) => {
@@ -747,10 +875,17 @@ export default function CoachProgramBuilder() {
           </div>
         ) : (
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 gap-2">
               <input value={curDay?.label || DAYS_FR[selDay]} onChange={e => updateWeek(w => ({ ...w, days: w.days.map(d => d.weekday === selDay ? { ...d, label: e.target.value } : d) }))}
-                className="font-black text-lg bg-transparent focus:outline-none" style={{ color: 'var(--text-primary)' }} />
-              <span className="text-xs" style={{ color: 'var(--text-faint)' }}>{blocks.length} exo{blocks.length > 1 ? 's' : ''}</span>
+                className="font-black text-lg bg-transparent focus:outline-none" style={{ color: 'var(--text-primary)', minWidth: 0, flex: 1 }} />
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => setLibOpen(true)}
+                  className="text-[11px] font-black px-3 py-1.5 rounded-xl"
+                  style={{ background: 'var(--accent-subtle)', color: 'var(--accent)', border: '1px solid var(--accent)', cursor: 'pointer' }}>
+                  📚 Bibliothèque
+                </button>
+                <span className="text-xs" style={{ color: 'var(--text-faint)' }}>{blocks.length} exo{blocks.length > 1 ? 's' : ''}</span>
+              </div>
             </div>
 
             {/* ── Résumé de la séance : durée, kcal, exos ── */}
@@ -859,17 +994,28 @@ export default function CoachProgramBuilder() {
                 return inner
               })}
 
-              {/* Carte "ajouter" */}
-              <button onClick={addExo}
-                style={{ flexShrink: 0, width: 'min(60vw, 200px)', minHeight: 240, borderRadius: 20, border: '2px dashed var(--border)', background: 'transparent', color: 'var(--text-faint)', fontWeight: 800, cursor: 'pointer' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-faint)' }}>
-                + Ajouter un exercice
-              </button>
+              {/* Carte "ajouter" : exercice vide ou depuis la bibliothèque */}
+              <div style={{ flexShrink: 0, width: 'min(60vw, 200px)', minHeight: 240, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button onClick={addExo}
+                  style={{ flex: 1, borderRadius: 20, border: '2px dashed var(--border)', background: 'transparent', color: 'var(--text-faint)', fontWeight: 800, cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-faint)' }}>
+                  + Ajouter un exercice
+                </button>
+                <button onClick={() => setLibOpen(true)}
+                  style={{ padding: '12px 0', borderRadius: 16, border: '1.5px solid var(--accent)', background: 'var(--accent-subtle)',
+                    color: 'var(--accent)', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>
+                  📚 Bibliothèque
+                </button>
+              </div>
             </div>
 
             {blocks.length === 0 && (
               <p className="text-center text-xs mt-2" style={{ color: 'var(--text-faint)' }}>Ajoute ton premier exercice pour démarrer la fresque.</p>
+            )}
+
+            {libOpen && (
+              <LibraryPicker onClose={() => setLibOpen(false)} onAdd={addFromLibrary} existing={blocks.map(b => b.title)} />
             )}
           </div>
         )}
