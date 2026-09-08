@@ -351,6 +351,28 @@ function LibraryPicker({ onClose, onAdd, existing }) {
   const [cat, setCat] = useState('Tous')
   const [added, setAdded] = useState(0)
   const [flash, setFlash] = useState(null)
+  // Aperçu vidéo quand la souris reste sur la miniature (>1s)
+  const [preview, setPreview] = useState(null) // { id, name, x, y }
+  const previewTimer = useRef(null)
+  useEffect(() => () => clearTimeout(previewTimer.current), [])
+  const startPreview = (ex, el) => {
+    clearTimeout(previewTimer.current)
+    const vid = ytId(ex.url)
+    if (!vid) return
+    const r = el.getBoundingClientRect()
+    previewTimer.current = setTimeout(() => {
+      const W = 300, H = 200
+      const vw = window.innerWidth || document.documentElement.clientWidth
+      const vh = window.innerHeight || document.documentElement.clientHeight
+      const fitsRight = r.right + W + 12 < vw
+      setPreview({
+        id: vid, name: ex.name,
+        x: fitsRight ? r.right + 10 : Math.max(8, r.left - W - 10),
+        y: Math.min(Math.max(8, r.top - 60), Math.max(8, vh - H - 8)),
+      })
+    }, 1000)
+  }
+  const stopPreview = () => { clearTimeout(previewTimer.current); setPreview(null) }
 
   const inDay = new Set((existing || []).map(normName))
   const cats = ['Tous', ...[...new Set(all.map(e => e.cat))].sort((a, b) => a.localeCompare(b, 'fr'))]
@@ -366,6 +388,7 @@ function LibraryPicker({ onClose, onAdd, existing }) {
   }, [onClose])
 
   const pick = (ex) => {
+    stopPreview()
     onAdd(ex)
     setAdded(n => n + 1)
     setFlash(ex.name)
@@ -411,7 +434,7 @@ function LibraryPicker({ onClose, onAdd, existing }) {
         </div>
 
         {/* Liste */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 120 }}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 120 }} onScroll={stopPreview}>
           {all.length === 0 ? (
             <p className="text-center text-xs px-6 py-10" style={{ color: 'var(--text-muted)' }}>
               Ta bibliothèque est vide.<br />Ajoute tes vidéos dans l'onglet <b>Bibliothèque</b> (import par liens).
@@ -431,6 +454,7 @@ function LibraryPicker({ onClose, onAdd, existing }) {
                 onMouseLeave={e => { e.currentTarget.style.background = flashing ? 'rgba(39,174,96,0.14)' : 'transparent' }}>
                 {y ? (
                   <img src={`https://i.ytimg.com/vi/${y}/mqdefault.jpg`} alt="" loading="lazy"
+                    onMouseEnter={e => startPreview(ex, e.currentTarget)} onMouseLeave={stopPreview}
                     style={{ width: 68, height: 40, objectFit: 'cover', borderRadius: 8, flexShrink: 0, background: '#000' }} />
                 ) : (
                   <div style={{ width: 68, height: 40, borderRadius: 8, flexShrink: 0, background: 'var(--bg-card)',
@@ -459,6 +483,21 @@ function LibraryPicker({ onClose, onAdd, existing }) {
             style={{ background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer' }}>Terminé</button>
         </div>
       </div>
+
+      {/* Aperçu vidéo au survol d'une miniature */}
+      {preview && (
+        <div style={{ position: 'fixed', left: preview.x, top: preview.y, zIndex: 2700, width: 300,
+          background: 'var(--bg-card)', border: '1px solid var(--accent)', borderRadius: 14,
+          boxShadow: '0 16px 44px rgba(0,0,0,0.55)', overflow: 'hidden', pointerEvents: 'none' }}>
+          <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+            <iframe src={`https://www.youtube.com/embed/${preview.id}?autoplay=1&mute=1&rel=0&controls=0&modestbranding=1`}
+              title={preview.name} allow="autoplay; encrypted-media"
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }} />
+          </div>
+          <p style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-primary)', margin: 0, padding: '7px 10px',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🎥 {preview.name}</p>
+        </div>
+      )}
     </div>,
     document.body
   )
