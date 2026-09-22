@@ -900,7 +900,11 @@ export default function CoachProgramBuilder() {
                 ) : (
                   <span className="text-base font-black" style={{ color: active ? 'rgba(255,255,255,0.6)' : 'var(--text-faint)' }}>·</span>
                 )}
-                <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: active ? 'rgba(255,255,255,0.8)' : (n > 0 ? 'var(--accent)' : 'var(--text-faint)') }}>{n > 0 ? 'exos' : 'repos'}</span>
+                <span className="text-[8px] font-bold uppercase tracking-wide" title={d?.label}
+                  style={{ color: active ? 'rgba(255,255,255,0.8)' : (n > 0 ? 'var(--accent)' : 'var(--text-faint)'),
+                    maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 2px' }}>
+                  {n > 0 ? ((d?.label && d.label !== DAYS_FR[wd]) ? d.label : 'exos') : 'repos'}
+                </span>
               </button>
             )
           })}
@@ -915,8 +919,20 @@ export default function CoachProgramBuilder() {
         ) : (
           <div>
             <div className="flex items-center justify-between mb-3 gap-2">
-              <input value={curDay?.label || DAYS_FR[selDay]} onChange={e => updateWeek(w => ({ ...w, days: w.days.map(d => d.weekday === selDay ? { ...d, label: e.target.value } : d) }))}
-                className="font-black text-lg bg-transparent focus:outline-none" style={{ color: 'var(--text-primary)', minWidth: 0, flex: 1 }} />
+              {/* Nom de la séance : « Mercredi » reste en surtitre, le label est libre */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[9px] font-black uppercase tracking-[0.25em]" style={{ color: 'var(--gold)', margin: '0 0 2px' }}>{DAYS_FR[selDay]}</p>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    value={(curDay?.label && curDay.label !== DAYS_FR[selDay]) ? curDay.label : ''}
+                    onChange={e => { const v = e.target.value; updateWeek(w => ({ ...w, days: w.days.map(d => d.weekday === selDay ? { ...d, label: v || DAYS_FR[selDay] } : d) })) }}
+                    placeholder="Nomme ta séance… (Haut du corps, Puissance)"
+                    title="Donne un nom à cette séance"
+                    className="font-black text-lg bg-transparent focus:outline-none w-full"
+                    style={{ color: 'var(--text-primary)', minWidth: 0, borderBottom: '1.5px dashed var(--border)', paddingBottom: 2 }} />
+                  <span style={{ fontSize: 12, color: 'var(--text-faint)', flexShrink: 0 }} aria-hidden>✏️</span>
+                </div>
+              </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button onClick={() => setLibOpen(true)}
                   className="text-[11px] font-black px-3 py-1.5 rounded-xl"
