@@ -131,8 +131,14 @@ function WeekCard({ week, index, onExercise, hasAccess }) {
             <div key={di} className="p-3 rounded-xl" style={{ background: 'var(--bg-base)', border: '1px solid var(--border)' }}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
-                  style={{ background: 'var(--accent-subtle)', color: 'var(--accent)' }}>J{di + 1}</span>
+                  style={{ background: 'var(--accent-subtle)', color: day.weekday >= 7 ? 'var(--gold)' : 'var(--accent)' }}>
+                  {day.weekday >= 7 ? '⭐' : `J${di + 1}`}
+                </span>
                 <p className="text-xs font-black" style={{ color: 'var(--text-primary)' }}>{day.name || day.label || `Jour ${di + 1}`}</p>
+                {day.weekday >= 7 && (
+                  <span className="text-[9px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-md flex-shrink-0"
+                    style={{ background: 'rgba(232,200,74,0.12)', color: 'var(--gold)', border: '1px solid rgba(232,200,74,0.35)' }}>Bonus</span>
+                )}
               </div>
 
               {day.blocks?.length > 0 ? (

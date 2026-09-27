@@ -608,6 +608,21 @@ export default function CoachProgramBuilder() {
     setSelDay(wd)
   }
 
+  // ── Séances bonus : hors grille hebdo (weekday >= 7), le client les fait quand il veut ──
+  const BONUS_START = 7
+  const isBonusDay = (wd) => wd != null && wd >= BONUS_START
+  const bonusDays = (week.days || []).filter(d => isBonusDay(d.weekday)).sort((a, b) => a.weekday - b.weekday)
+  function addBonusDay() {
+    const wd = Math.max(BONUS_START - 1, ...(week.days || []).map(d => d.weekday ?? 0)) + 1
+    updateWeek(w => ({ ...w, days: [...(w.days || []), { id: uuidv4(), weekday: wd, label: `Séance bonus${bonusDays.length ? ' ' + (bonusDays.length + 1) : ''}`, blocks: [] }] }))
+    setSelDay(wd)
+  }
+  function removeBonusDay(wd) {
+    if (!window.confirm('Supprimer cette séance bonus ?')) return
+    updateWeek(w => ({ ...w, days: (w.days || []).filter(d => d.weekday !== wd) }))
+    if (selDay === wd) setSelDay(null)
+  }
+
   function updateDayBlocks(blocks) {
     updateWeek(w => ({ ...w, days: (w.days || []).map(d => d.weekday === selDay ? { ...d, blocks } : d) }))
   }
@@ -747,6 +762,7 @@ export default function CoachProgramBuilder() {
           d.blocks.forEach(b => { if (b.group) counts[b.group] = (counts[b.group] || 0) + 1 })
           return { ...d, blocks: d.blocks.map(b => (b.group && counts[b.group] < 2) ? { ...b, group: null } : b) }
         })
+        .sort((a, b) => (a.weekday ?? 0) - (b.weekday ?? 0)) // bonus (7+) après les jours de semaine
       return { ...w, days }
     })
     const payload = { ...form, weeks: cleanWeeks, sections: cleanWeeks }
@@ -880,7 +896,7 @@ export default function CoachProgramBuilder() {
             {form.weeks.length > 1 && <button onClick={removeWeek} className="text-[11px] font-bold" style={{ color: '#a03848' }}>✕ Semaine</button>}
           </div>
         </div>
-        <div className="mb-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6 }}>
+        <div className="mb-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6 }}>
           {DAYS_FR.map((dName, wd) => {
             const d = dayByWeekday(wd)
             const n = d?.blocks?.length || 0
@@ -910,6 +926,42 @@ export default function CoachProgramBuilder() {
           })}
         </div>
 
+        {/* ── Séances bonus : hors planning, à faire quand le client veut ── */}
+        <div className="mb-6 flex flex-wrap items-stretch gap-2">
+          {bonusDays.map(d => {
+            const n = d.blocks?.length || 0
+            const active = selDay === d.weekday
+            return (
+              <div key={d.weekday} style={{ position: 'relative' }}>
+                <button onClick={() => setSelDay(d.weekday)}
+                  className="rounded-xl py-2.5 pl-3 pr-8 flex flex-col items-start gap-0.5 transition-all"
+                  style={{
+                    background: active ? 'var(--accent)' : 'var(--bg-card)',
+                    border: `1.5px solid ${active ? 'var(--accent)' : 'var(--gold)'}`,
+                    transform: active ? 'translateY(-2px)' : 'none',
+                    boxShadow: active ? '0 8px 20px rgba(160,56,72,0.4)' : '0 2px 10px rgba(0,0,0,0.25)',
+                    cursor: 'pointer', maxWidth: 200,
+                  }}>
+                  <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: active ? 'rgba(255,255,255,0.85)' : 'var(--gold)' }}>⭐ Bonus</span>
+                  <span className="text-xs font-black" style={{ color: active ? '#fff' : 'var(--text-primary)', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {d.label || 'Séance bonus'}
+                  </span>
+                  <span className="text-[9px] font-bold" style={{ color: active ? 'rgba(255,255,255,0.75)' : 'var(--text-faint)' }}>{n} exo{n > 1 ? 's' : ''}</span>
+                </button>
+                <button onClick={e => { e.stopPropagation(); removeBonusDay(d.weekday) }} title="Supprimer la séance bonus"
+                  style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: 99, cursor: 'pointer',
+                    background: active ? 'rgba(255,255,255,0.18)' : 'var(--bg-base)', border: '1px solid var(--border)',
+                    color: active ? '#fff' : '#e06b7e', fontSize: 10, lineHeight: 1 }}>✕</button>
+              </div>
+            )
+          })}
+          <button onClick={addBonusDay}
+            className="rounded-xl px-4 py-2.5 text-xs font-black"
+            style={{ background: 'transparent', border: '1.5px dashed var(--gold)', color: 'var(--gold)', cursor: 'pointer' }}>
+            + Séance bonus
+          </button>
+        </div>
+
         {/* ── Fresque latérale de la séance ── */}
         {selDay == null ? (
           <div className="rounded-2xl py-16 text-center" style={{ background: 'var(--bg-card)', border: '1px dashed var(--border)' }}>
@@ -921,12 +973,14 @@ export default function CoachProgramBuilder() {
             <div className="flex items-center justify-between mb-3 gap-2">
               {/* Nom de la séance : « Mercredi » reste en surtitre, le label est libre */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="text-[9px] font-black uppercase tracking-[0.25em]" style={{ color: 'var(--gold)', margin: '0 0 2px' }}>{DAYS_FR[selDay]}</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.25em]" style={{ color: 'var(--gold)', margin: '0 0 2px' }}>
+                  {isBonusDay(selDay) ? '⭐ Séance bonus' : DAYS_FR[selDay]}
+                </p>
                 <div className="flex items-center gap-1.5">
                   <input
-                    value={(curDay?.label && curDay.label !== DAYS_FR[selDay]) ? curDay.label : ''}
-                    onChange={e => { const v = e.target.value; updateWeek(w => ({ ...w, days: w.days.map(d => d.weekday === selDay ? { ...d, label: v || DAYS_FR[selDay] } : d) })) }}
-                    placeholder="Nomme ta séance… (Haut du corps, Puissance)"
+                    value={(curDay?.label && curDay.label !== DAYS_FR[selDay] && !/^Séance bonus( \d+)?$/.test(curDay.label)) ? curDay.label : ''}
+                    onChange={e => { const v = e.target.value; updateWeek(w => ({ ...w, days: w.days.map(d => d.weekday === selDay ? { ...d, label: v || (isBonusDay(selDay) ? 'Séance bonus' : DAYS_FR[selDay]) } : d) })) }}
+                    placeholder={isBonusDay(selDay) ? 'Nomme ta séance bonus… (Abdos express, Cardio)' : 'Nomme ta séance… (Haut du corps, Puissance)'}
                     title="Donne un nom à cette séance"
                     className="font-black text-lg bg-transparent focus:outline-none w-full"
                     style={{ color: 'var(--text-primary)', minWidth: 0, borderBottom: '1.5px dashed var(--border)', paddingBottom: 2 }} />
